@@ -1,0 +1,17 @@
+﻿@model SimpleIAM.IdAuthority.UI.Account.SignedOutViewModel
+@{
+    ViewData["Title"] = "Sign Out";
+}
+
+<h2>Goodbye!</h2>
+
+@if (Model.SignOutIFrameUrl != null)
+{
+    <iframe style="display:none" width="0" height="0" class="signout" src="@Model.SignOutIFrameUrl"></iframe>
+}
+<p>You have been signed out</p>
+
+@if (Model.PostLogoutRedirectUri != null)
+{
+    <p>Return to <a href="@Model.PostLogoutRedirectUri">@Model.AppName</a></p>
+}
