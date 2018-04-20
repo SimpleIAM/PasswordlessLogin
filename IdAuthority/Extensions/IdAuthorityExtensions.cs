@@ -40,7 +40,7 @@ namespace SimpleIAM.IdAuthority
 
             var connection = configuration.GetConnectionString("IdAuthority");
 
-            services.AddDbContext<IdAuthorityDbContext>(options => options.UseSqlServer(connection, b => b.MigrationsAssembly("IdAuthorityDemo")));
+            services.AddDbContext<IdAuthorityDbContext>(options => options.UseSqlServer(connection));
             services.AddTransient<IOneTimePasswordService, OneTimePasswordService>();
             services.AddTransient<ISubjectStore, DbSubjectStore>();
 
