@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using IdentityServer4.Events;
 using IdentityServer4.Extensions;
@@ -43,14 +44,6 @@ namespace SimpleIAM.IdAuthority.UI.Account
             _subjectStore = subjectStore;
         }
 
-        [HttpGet("account")]
-        public async Task<IActionResult> Index()
-        {
-            // account details screen
-            // require a recent authentication in order to edit info
-            return View();
-        }
-
         [HttpGet("signin")]
         [AllowAnonymous]
         public async Task<ActionResult> SignIn(string returnUrl)
@@ -59,7 +52,30 @@ namespace SimpleIAM.IdAuthority.UI.Account
             return View(viewModel);
         }
 
-        [HttpGet("signinlink/{linkCode}")]
+        [HttpPost("signin")]
+        [AllowAnonymous]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> SignIn(string returnUrl, SignInInputModel model)
+        {
+            if (ModelState.IsValid)
+            {
+                var oneTimePassword = await _oneTimePasswordService.CreateOneTimePasswordAsync(model.Email, TimeSpan.FromMinutes(5), returnUrl);
+                var link = Url.Action("SignInLink", "Account", new { linkCode = oneTimePassword.LinkCode }, Request.Scheme);
+                var fields = new Dictionary<string, string>()
+                {
+                    { "link", link },
+                    { "one_time_password", oneTimePassword.OTP }
+                };
+                await _emailTemplateService.SendEmailAsync("SignInWithEmail", model.Email, fields);
+
+                AddPostRedirectMessage("A sign in link and a one time password have been sent to your email address.");
+                return RedirectToAction("SignInPass"); 
+            }
+            var viewModel = await GetSignInViewModel(returnUrl, model);
+            return View(viewModel);
+        }
+
+        [HttpGet("signin/{linkCode}")]
         [AllowAnonymous]
         public async Task<ActionResult> SignInLink(string linkCode)
         {
@@ -73,6 +89,7 @@ namespace SimpleIAM.IdAuthority.UI.Account
                 }
                 if (oneTimePassword.ExpiresUTC < DateTime.UtcNow)
                 {
+                    //todo: redirect to sign in and prefill email and redirect url. Show error on screen
                     ModelState.AddModelError("", "The sign in link has expired. Please request a new one.");
                     return View();
                 }
@@ -93,67 +110,71 @@ namespace SimpleIAM.IdAuthority.UI.Account
             return NotFound();
         }
 
-        [HttpPost("signin")]
+        [HttpGet("signinpass")]
+        [AllowAnonymous]
+        public async Task<ActionResult> SignInPass(string returnUrl)
+        {
+            var viewModel = await GetSignInPassViewModel(returnUrl);
+            return View(viewModel);
+        }
+
+        [HttpPost("signinpass")]
         [AllowAnonymous]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> SignIn(string returnUrl, SignInInputModel model)
+        public async Task<ActionResult> SignInPass(string returnUrl, SignInPassInputModel model)
         {
-            var signInEmailSent = false;
             if (ModelState.IsValid)
             {
-                if(model.Password == null)
-                {
-                    var oneTimePassword = await _oneTimePasswordService.CreateOneTimePasswordAsync(model.Email, TimeSpan.FromMinutes(5), returnUrl);
-                    var link = Url.Action("SignInLink", "Account", new { linkCode = oneTimePassword.LinkCode }, Request.Scheme);
-                    var fields = new Dictionary<string, string>()
-                    {
-                        { "link", link },
-                        { "one_time_password", oneTimePassword.OTP }
-                    };
-                    await _emailTemplateService.SendEmailAsync("SignInWithEmail", model.Email, fields);
-                    signInEmailSent = true;
-                }
-                else
-                {
-                    var oneTimePassword = await _oneTimePasswordService.UseOneTimePasswordAsync(model.Email);
+                var oneTimePassword = await _oneTimePasswordService.UseOneTimePasswordAsync(model.Email);
 
-                    if (oneTimePassword != null && oneTimePassword.OTP == model.Password)
+                if (oneTimePassword != null && oneTimePassword.OTP == model.Password)
+                {
+                    if (oneTimePassword.ExpiresUTC < DateTime.UtcNow)
                     {
-                        if (oneTimePassword.ExpiresUTC < DateTime.UtcNow)
-                        {
-                            ModelState.AddModelError("Password", "The one time password has expired. Please request a new one.");
-                        }
-                        else
-                        {
-                            var subject = await _subjectStore.GetSubjectByEmailAsync(oneTimePassword.Email, true);
-                            await _events.RaiseAsync(new UserLoginSuccessEvent(subject.Email, subject.SubjectId, subject.Email));
+                        ModelState.AddModelError("Password", "The one time password has expired. Please request a new one.");
+                    }
+                    else
+                    {
+                        var subject = await _subjectStore.GetSubjectByEmailAsync(oneTimePassword.Email, true);
+                        await _events.RaiseAsync(new UserLoginSuccessEvent(subject.Email, subject.SubjectId, subject.Email));
 
-                            // handle custom session length
-                            var authProps = (AuthenticationProperties)null;
-                            var maxSessionLengthMinutes = 1440; //todo: move to a config setting
-                            var sessionLengthMinutes = model.SessionLengthMinutes ?? 0;
-                            if (sessionLengthMinutes > 0 && sessionLengthMinutes < maxSessionLengthMinutes)
+                        // handle custom session length
+                        var authProps = (AuthenticationProperties)null;
+                        var maxSessionLengthMinutes = 1440; //todo: move to a config setting
+                        var sessionLengthMinutes = model.SessionLengthMinutes ?? 0;
+                        if (sessionLengthMinutes > 0 && sessionLengthMinutes < maxSessionLengthMinutes)
+                        {
+                            authProps = new AuthenticationProperties
                             {
-                                authProps = new AuthenticationProperties
-                                {
-                                    IsPersistent = true,
-                                    ExpiresUtc = DateTimeOffset.UtcNow.Add(TimeSpan.FromMinutes(sessionLengthMinutes))
-                                };
+                                IsPersistent = true,
+                                ExpiresUtc = DateTimeOffset.UtcNow.Add(TimeSpan.FromMinutes(sessionLengthMinutes))
                             };
+                        };
 
-                            await HttpContext.SignInAsync(subject.SubjectId, subject.Email, authProps);
+                        await HttpContext.SignInAsync(subject.SubjectId, subject.Email, authProps);
 
-                            if (_interaction.IsValidReturnUrl(returnUrl))
-                            {
-                                return Redirect(returnUrl);
-                            }
-
-                            return Redirect("~/");
+                        if (_interaction.IsValidReturnUrl(returnUrl))
+                        {
+                            return Redirect(returnUrl);
                         }
+
+                        return Redirect("~/");
                     }
                 }
             }
-            var viewModel = await GetSignInViewModel(returnUrl, model, signInEmailSent);
+            var viewModel = await GetSignInPassViewModel(returnUrl, model);
+            return View(viewModel);
+        }
+
+        [HttpGet("AccountSettings")]
+        public async Task<IActionResult> AccountSettings()
+        {
+            // account details screen
+            // require a recent authentication in order to edit info
+            var viewModel = new AccountSettingsViewModel()
+            {
+                Email = User.GetDisplayName()
+            };
             return View(viewModel);
         }
 
@@ -167,6 +188,9 @@ namespace SimpleIAM.IdAuthority.UI.Account
             {
                 await HttpContext.SignOutAsync();
                 await _events.RaiseAsync(new UserLogoutSuccessEvent(User.GetSubjectId(), User.GetDisplayName()));
+                
+                // We're signed out now, so the UI for this request should show an anonymous user
+                HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
             }
 
             var viewModel = new SignedOutViewModel()
@@ -180,18 +204,42 @@ namespace SimpleIAM.IdAuthority.UI.Account
         }
 
 
-        private async Task<SignInViewModel> GetSignInViewModel(string returnUrl, SignInInputModel model = null, bool signInEmailSent = false)
+        private async Task<SignInViewModel> GetSignInViewModel(string returnUrl, SignInInputModel model = null)
         {
             var viewModel = new SignInViewModel()
             {
                 Email = model?.Email,
                 LeaveBlank = model?.LeaveBlank,
-                SessionLengthMinutes = model?.SessionLengthMinutes,
-                SignInEmailSent = signInEmailSent,
                 ClientName = "??", // todo: fill in the value
             };
 
             return viewModel;
+        }
+
+        private async Task<SignInPassViewModel> GetSignInPassViewModel(string returnUrl, SignInPassInputModel model = null)
+        {
+            var viewModel = new SignInPassViewModel()
+            {
+                Email = model?.Email,
+                LeaveBlank = model?.LeaveBlank,
+                SessionLengthMinutes = model?.SessionLengthMinutes,
+                ClientName = "??", // todo: fill in the value
+            };
+
+            return viewModel;
+        }
+
+        private void AddPostRedirectMessage(string message)
+        {
+            var messages = TempData["PostRedirectMessages"];
+            if(messages == null)
+            {
+                TempData["PostRedirectMessages"] = message;
+            }
+            else
+            {
+                TempData["PostRedirectMessages"] = $"{messages}|{message}";
+            }
         }
     }
 }

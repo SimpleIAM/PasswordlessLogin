@@ -1,0 +1,14 @@
+﻿@{ 
+    var messageData = (string)TempData["PostRedirectMessages"];
+    if(messageData != null)
+    {
+        var messages = messageData.Split('|');
+        <div class="messages">
+            @foreach(var message in messages)
+            {
+                <div class="message">@message</div>
+            }
+        </div>
+    }
+}
+        

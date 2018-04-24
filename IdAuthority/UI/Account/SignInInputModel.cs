@@ -11,11 +11,7 @@ namespace SimpleIAM.IdAuthority.UI.Account
         [EmailAddress]
         public string Email { get; set; }
 
-        public string Password { get; set; }
-
-        public int? SessionLengthMinutes { get; set; }
-
-        [RegularExpression("^$", ErrorMessage = "Leave blank if you aren't a spam-bot")]
+        [RegularExpression("^$", ErrorMessage = "Leave blank unless you're a spambot")]
         public string LeaveBlank { get; set; }
     }
 }

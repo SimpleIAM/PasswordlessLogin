@@ -5,11 +5,15 @@ using System.ComponentModel.DataAnnotations;
 
 namespace SimpleIAM.IdAuthority.UI.Account
 {
-    public class SignInViewModel
+    public class SignInPassViewModel
     {
         [Required]
         [EmailAddress]
         public string Email { get; set; }
+
+        public string Password { get; set; }
+
+        public int? SessionLengthMinutes { get; set; }
 
         public string LeaveBlank { get; set; }
 

@@ -1,0 +1,44 @@
+﻿@model SimpleIAM.IdAuthority.UI.Account.SignInPassViewModel
+@{
+    ViewData["Title"] = "Sign In";
+}
+
+<div class="signin">
+    <h2>Sign In</h2>
+
+    <form method="post">
+        <div class="field">
+            <label asp-for="Email">Email</label>
+            <input type="email" asp-for="Email" placeholder="email" autofocus />
+            <span asp-validation-for="Email"></span>
+        </div>
+        <div class="field">
+            <label asp-for="Password">Password</label>
+            <input type="password" asp-for="Password" placeholder="password" />
+            <span asp-validation-for="Password"></span>
+        </div>
+        <div class="field">
+            <label asp-for="SessionLengthMinutes">Stay signed in for</label>
+            <select asp-for="SessionLengthMinutes">
+                <option value="15">15 minutes</option>
+                <option value="30">30 minutes</option>
+                <option value="60">1 hour</option>
+                <option value="720" selected>12 hours</option>
+                <option value="10080">1 week</option>
+                <option value="43920">1 month</option>
+            </select>
+        </div>
+        <div class="field" style="display:none">
+            <label asp-for="LeaveBlank">Leave blank</label>
+            <input type="text" asp-for="LeaveBlank" placeholder="leave blank" autocomplete="off" />
+            <span asp-validation-for="LeaveBlank"></span>
+        </div>
+        <div class="field">
+            <input type="submit" value="Sign in with password" />
+        </div>
+    </form>
+
+    <p class="hint">
+        Forgot password? <a asp-action="SignIn">Sign in with email</a>
+    </p>
+</div>

@@ -1,0 +1,13 @@
+﻿<ul class="mainmenu">
+    <li><span id="sitename">Site Name</span></li>
+    <li><a asp-action="Index" asp-controller="Home">Home</a></li>
+    @if (User.Identity.IsAuthenticated)
+    {
+    <li class="right"><a asp-action="SignOut" asp-controller="Account">Sign out</a></li>
+    <li class="right"><a asp-action="AccountSettings" asp-controller="Account">@User.Identity.Name</a></li>
+    }
+    else
+    {
+    <li class="right"><a asp-action="SignIn" asp-controller="Account">Sign in</a></li>
+    }
+</ul>

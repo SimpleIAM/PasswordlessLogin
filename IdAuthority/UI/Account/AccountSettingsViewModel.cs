@@ -5,14 +5,8 @@ using System.ComponentModel.DataAnnotations;
 
 namespace SimpleIAM.IdAuthority.UI.Account
 {
-    public class SignInViewModel
+    public class AccountSettingsViewModel
     {
-        [Required]
-        [EmailAddress]
         public string Email { get; set; }
-
-        public string LeaveBlank { get; set; }
-
-        public string ClientName { get; set; }
     }
 }

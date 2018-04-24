@@ -17,7 +17,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Remove="UI\Account\AccountSettings.cshtml" />
     <None Remove="UI\Account\SignInLink.cshtml" />
+    <None Remove="UI\Account\SignInPass.cshtml" />
+    <None Remove="UI\Shared\_MainMenu.cshtml" />
+    <None Remove="UI\Shared\_PostRedirectMessages.cshtml" />
   </ItemGroup>
 
   <ItemGroup>

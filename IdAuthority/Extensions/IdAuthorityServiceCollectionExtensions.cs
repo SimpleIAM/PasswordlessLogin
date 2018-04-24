@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 using IdentityServer4.Models;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using SimpleIAM.IdAuthority;
@@ -61,6 +62,8 @@ namespace Microsoft.Extensions.DependencyInjection
             services.AddEmbeddedViews();
 
             services.AddMvc();
+
+            services.AddSingleton<ITempDataProvider, CookieTempDataProvider>();
 
             return services;
         }

@@ -310,17 +310,109 @@ legend {
 
 /* --------------------------- */
 /* site styles */
-
-.field {
-    margin: 0.3em 0;
+html, body {
+    margin: 0;
+    padding: 0;
+    font-family: Helvetica, Arial, sans-serif;
 }
 
-label {
+#mainarea {
+    margin: 20px;
+}
+
+ul.mainmenu {
+    overflow: hidden;
+    list-style-type: none;
+    margin: 0 -2px;
+    padding: 0;
+    background-color: #666;
+    color: #fff;
+}
+ul.mainmenu > li {
     display: block;
-    margin: 0.6em 0 0.3em;
+    float: left;
+    border-left: 1px solid #777;
+    border-right: 1px solid #555;
+    margin-left: -2px;
+}
+ul.mainmenu > li.right {
+    float: right;
+}
+#sitename,
+.mainmenu a {
+    display: block;
+    height: 2.6em;
+    line-height: 2.6em;
+}
+#sitename {
+    padding: 0 2.8em;
+    font-weight:bold;
+}
+.mainmenu a {
+    padding: 0 1.4em;
+    text-decoration: none;
+    border-left: 1px solid #555;
+    border-right: 1px solid #777;
+}
+.mainmenu a,
+.mainmenu a:visited {
+    color: #fff;
+}
+ul.mainmenu a:hover {
+    background-color: #444;
 }
 
-input[name="Email"],
-input[name="Password"] {
-    width: 250px;
+.messages {
+    display: block;
+    margin: 2em auto;
+    max-width: 760px;
+    text-align: center;
+}
+.message {
+    display: block;
+    background-color: #ffb;
+    border-radius: 10px;
+    padding: 0.8em 1.2em;
+    color: #000;
+    margin:1em 0;
+}
+
+.signin,
+.signout {
+    width: 320px;
+    padding:1em;
+    text-align: center;
+    margin:2em auto;
+    background-color: #eee;
+    border-radius:10px;
+}
+
+.signin .field {
+    margin: 0.6em 0;
+}
+.signin label,
+.signin .hint {
+    color: #444;
+    font-size: 80%;
+}
+p.hint {
+    margin-top: 2em;
+}
+.signin label[for="Email"],
+.signin label[for="Password"] {
+    text-align:left;
+    margin: 0.8em auto 0.3em;
+    display: block;
+    width: 280px;
+}
+.signin input[name="Email"],
+.signin input[name="Password"],
+.signin input[type="submit"] {
+    font-size: 115%;
+    width: 280px;
+    padding-left: 0.7em;
+    padding-right: 0.7em;
+}
+.signin input[type="submit"] {
+    height: 2.4em;
 }
