@@ -25,6 +25,10 @@ namespace Microsoft.Extensions.DependencyInjection
                 throw new ArgumentNullException(nameof(services));
             }
 
+            var idProviderConfig = new IdProviderConfig();
+            configuration.Bind("IdProvider", idProviderConfig);
+            services.AddSingleton(idProviderConfig);
+
             var clients = configuration.GetSection("Apps").Get<List<ClientAppConfig>>() ?? new List<ClientAppConfig>();
             var idScopes = configuration.GetSection("IdScopes").Get<List<IdentityResource>>() ?? new List<IdentityResource>();
             idScopes.AddRange(new List<IdentityResource>() {
@@ -41,10 +45,11 @@ namespace Microsoft.Extensions.DependencyInjection
 
             services.AddIdentityServer(options =>
             {
-                options.UserInteraction.LoginUrl = "/signin";
+                options.UserInteraction.LoginUrl = idProviderConfig.DefaultSignInMethod == SignInMethod.Email ? "/signin" : "/signinpass";
                 options.UserInteraction.LogoutUrl = "/signout";
                 options.UserInteraction.LogoutIdParameter = "id";
                 options.UserInteraction.ErrorUrl = "/error";
+                options.Authentication.CookieLifetime = TimeSpan.FromMinutes(idProviderConfig.DefaultSessionLengthMinutes);
             })
                 .AddDeveloperSigningCredential() //todo: replace
                 .AddInMemoryClients(ClientConfigHelper.GetClientsFromConfig(clients))

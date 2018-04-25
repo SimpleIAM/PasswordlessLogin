@@ -1,5 +1,8 @@
-﻿<ul class="mainmenu">
-    <li><span id="sitename">Site Name</span></li>
+﻿@using SimpleIAM.IdAuthority.Configuration
+@inject IdProviderConfig config
+
+<ul class="mainmenu">
+    <li><span id="sitename">@config.DisplayName</span></li>
     <li><a asp-action="Index" asp-controller="Home">Home</a></li>
     @if (User.Identity.IsAuthenticated)
     {
@@ -8,6 +11,6 @@
     }
     else
     {
-    <li class="right"><a asp-action="SignIn" asp-controller="Account">Sign in</a></li>
+    <li class="right"><a asp-action="@config.SignInAction" asp-controller="Account">Sign in</a></li>
     }
 </ul>

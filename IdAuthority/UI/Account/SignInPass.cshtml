@@ -21,10 +21,7 @@
             <label asp-for="SessionLengthMinutes">Stay signed in for</label>
             <select asp-for="SessionLengthMinutes">
                 <option value="15">15 minutes</option>
-                <option value="30">30 minutes</option>
-                <option value="60">1 hour</option>
-                <option value="720" selected>12 hours</option>
-                <option value="10080">1 week</option>
+                <option value="720">12 hours</option>
                 <option value="43920">1 month</option>
             </select>
         </div>
@@ -34,7 +31,7 @@
             <span asp-validation-for="LeaveBlank"></span>
         </div>
         <div class="field">
-            <input type="submit" value="Sign in with password" />
+            <input type="submit" value="Sign in" />
         </div>
     </form>
 

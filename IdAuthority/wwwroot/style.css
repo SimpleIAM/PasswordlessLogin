@@ -416,3 +416,10 @@ p.hint {
 .signin input[type="submit"] {
     height: 2.4em;
 }
+
+.field-validation-error {
+    display: block;
+    color: #b00;
+    margin: 0.6em 0;
+    font-size: 80%;
+}

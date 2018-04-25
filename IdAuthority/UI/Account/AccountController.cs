@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using SimpleIAM.IdAuthority.Configuration;
 using SimpleIAM.IdAuthority.Services;
 using SimpleIAM.IdAuthority.Services.Email;
 using SimpleIAM.IdAuthority.Stores;
@@ -28,6 +29,7 @@ namespace SimpleIAM.IdAuthority.UI.Account
         private readonly IEmailTemplateService _emailTemplateService;
         private readonly IOneTimePasswordService _oneTimePasswordService;
         private readonly ISubjectStore _subjectStore;
+        private readonly IdProviderConfig _config;
 
 
         public AccountController(
@@ -35,13 +37,15 @@ namespace SimpleIAM.IdAuthority.UI.Account
             IEventService events,
             IEmailTemplateService emailTemplateService,
             IOneTimePasswordService oneTimePasswordService,
-            ISubjectStore subjectStore)
+            ISubjectStore subjectStore,
+            IdProviderConfig config)
         {
             _interaction = interaction;
             _events = events;
             _emailTemplateService = emailTemplateService;
             _oneTimePasswordService = oneTimePasswordService;
             _subjectStore = subjectStore;
+            _config = config;
         }
 
         [HttpGet("signin")]
@@ -68,11 +72,17 @@ namespace SimpleIAM.IdAuthority.UI.Account
                 };
                 await _emailTemplateService.SendEmailAsync("SignInWithEmail", model.Email, fields);
 
-                AddPostRedirectMessage("A sign in link and a one time password have been sent to your email address.");
-                return RedirectToAction("SignInPass"); 
+                return RedirectToAction("SignInLinkSent"); 
             }
             var viewModel = await GetSignInViewModel(returnUrl, model);
             return View(viewModel);
+        }
+
+        [HttpGet("signinlinksent")]
+        [AllowAnonymous]
+        public async Task<ActionResult> SignInLinkSent(string returnUrl)
+        {
+            return View();
         }
 
         [HttpGet("signin/{linkCode}")]
@@ -84,14 +94,14 @@ namespace SimpleIAM.IdAuthority.UI.Account
                 var oneTimePassword = await _oneTimePasswordService.UseOneTimeLinkAsync(linkCode);
                 if (oneTimePassword == null)
                 {
-                    ModelState.AddModelError("", "The sign in link is invalid. Please request a new one.");
-                    return View();
+                    AddPostRedirectMessage("The sign in link is invalid.");
+                    return RedirectToAction("SignIn");
                 }
                 if (oneTimePassword.ExpiresUTC < DateTime.UtcNow)
                 {
-                    //todo: redirect to sign in and prefill email and redirect url. Show error on screen
-                    ModelState.AddModelError("", "The sign in link has expired. Please request a new one.");
-                    return View();
+                    AddPostRedirectMessage("The sign in link expired.");
+                    //todo: consider if the redirect url should be kept...will it cause a correlation error?
+                    return RedirectToAction("SignIn", new { returnUrl = oneTimePassword.RedirectUrl });
                 }
 
                 var subject = await _subjectStore.GetSubjectByEmailAsync(oneTimePassword.Email, true);
@@ -127,8 +137,12 @@ namespace SimpleIAM.IdAuthority.UI.Account
             {
                 var oneTimePassword = await _oneTimePasswordService.UseOneTimePasswordAsync(model.Email);
 
-                if (oneTimePassword != null && oneTimePassword.OTP == model.Password)
+                if (oneTimePassword == null || oneTimePassword.OTP != model.Password)
                 {
+                    ModelState.AddModelError("Password", "Invalid email or password");
+                }
+                else
+                { 
                     if (oneTimePassword.ExpiresUTC < DateTime.UtcNow)
                     {
                         ModelState.AddModelError("Password", "The one time password has expired. Please request a new one.");
@@ -140,9 +154,8 @@ namespace SimpleIAM.IdAuthority.UI.Account
 
                         // handle custom session length
                         var authProps = (AuthenticationProperties)null;
-                        var maxSessionLengthMinutes = 1440; //todo: move to a config setting
                         var sessionLengthMinutes = model.SessionLengthMinutes ?? 0;
-                        if (sessionLengthMinutes > 0 && sessionLengthMinutes < maxSessionLengthMinutes)
+                        if (sessionLengthMinutes > 0 && sessionLengthMinutes < _config.MaxSessionLengthMinutes)
                         {
                             authProps = new AuthenticationProperties
                             {
@@ -153,6 +166,8 @@ namespace SimpleIAM.IdAuthority.UI.Account
 
                         await HttpContext.SignInAsync(subject.SubjectId, subject.Email, authProps);
 
+                        // use the redirect url saved with the one time password unless a different one was provided
+                        returnUrl = returnUrl ?? oneTimePassword.RedirectUrl; 
                         if (_interaction.IsValidReturnUrl(returnUrl))
                         {
                             return Redirect(returnUrl);
@@ -222,7 +237,7 @@ namespace SimpleIAM.IdAuthority.UI.Account
             {
                 Email = model?.Email,
                 LeaveBlank = model?.LeaveBlank,
-                SessionLengthMinutes = model?.SessionLengthMinutes,
+                SessionLengthMinutes = model?.SessionLengthMinutes ?? _config.DefaultSessionLengthMinutes,
                 ClientName = "??", // todo: fill in the value
             };
 

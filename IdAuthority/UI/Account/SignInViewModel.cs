@@ -9,6 +9,7 @@ namespace SimpleIAM.IdAuthority.UI.Account
     {
         [Required]
         [EmailAddress]
+        [RegularExpression(@".+\@.+\..+", ErrorMessage = "Enter a valid email address")]
         public string Email { get; set; }
 
         public string LeaveBlank { get; set; }
