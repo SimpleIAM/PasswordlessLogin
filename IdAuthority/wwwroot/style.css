@@ -320,46 +320,51 @@ html, body {
     margin: 20px;
 }
 
-ul.mainmenu {
+#mainnav {
     overflow: hidden;
-    list-style-type: none;
-    margin: 0 -2px;
-    padding: 0;
-    background-color: #666;
+    background-color: #444;
     color: #fff;
+    padding:0 8px;
 }
-ul.mainmenu > li {
-    display: block;
-    float: left;
-    border-left: 1px solid #777;
-    border-right: 1px solid #555;
-    margin-left: -2px;
-}
-ul.mainmenu > li.right {
-    float: right;
+#authmenu {
+    float:right;
+    list-style-type: none;
+    padding: 0;
+    margin:0;
 }
 #sitename,
-.mainmenu a {
+#authmenu > li {
     display: block;
-    height: 2.6em;
-    line-height: 2.6em;
+    float: left;
+    margin: 8px;
+    font-size: 16px;
+    font-weight: normal;
+    line-height: 36px;
 }
 #sitename {
-    padding: 0 2.8em;
+    font-weight:bold;
+    color: #eee;
+}
+#authmenu a {
+    background-color: #666;
+}
+#mainnav a {
+    display: block;
+    height: 36px;
+    padding: 0 1em;
+    text-decoration: none;
+    border-radius: 6px;
+}
+#mainnav .primary a {
+    background-color: #129FEA;
     font-weight:bold;
 }
-.mainmenu a {
-    padding: 0 1.4em;
-    text-decoration: none;
-    border-left: 1px solid #555;
-    border-right: 1px solid #777;
-}
-.mainmenu a,
-.mainmenu a:visited {
+#mainnav a,
+#mainnav a:visited {
     color: #fff;
 }
-ul.mainmenu a:hover {
-    background-color: #444;
+#mainnav a:hover {
+    filter: brightness(115%);
 }
 
 .messages {
@@ -422,4 +427,27 @@ p.hint {
     color: #b00;
     margin: 0.6em 0;
     font-size: 80%;
+}
+
+.apps {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-flow: row wrap;
+    align-content: stretch;
+}
+.app {
+    display: block;
+    max-width: 280px;
+    margin: 10px;
+}
+.app img {
+    display:block;
+    width:100%;
+    height: auto;
+}
+.appname {
+    display: block;
+    text-align: center;
+    padding: 1em 0;
 }

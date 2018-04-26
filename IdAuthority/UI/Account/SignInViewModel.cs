@@ -14,6 +14,6 @@ namespace SimpleIAM.IdAuthority.UI.Account
 
         public string LeaveBlank { get; set; }
 
-        public string ClientName { get; set; }
+        public string ReturnUrl { get; set; }
     }
 }

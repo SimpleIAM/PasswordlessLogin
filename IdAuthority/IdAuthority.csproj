@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <None Remove="UI\Account\AccountSettings.cshtml" />
+    <None Remove="UI\Account\Register.cshtml" />
     <None Remove="UI\Account\SignInLinkSent.cshtml" />
     <None Remove="UI\Account\SignInPass.cshtml" />
     <None Remove="UI\Shared\_MainMenu.cshtml" />

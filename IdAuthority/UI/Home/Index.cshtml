@@ -1,8 +1,19 @@
-﻿
+﻿@model IEnumerable<SimpleIAM.IdAuthority.Models.App>
 @{
-    ViewData["Title"] = "Home";
+    ViewData["Title"] = "Apps";
 }
 
-<h2>Home</h2>
+<h2>Apps</h2>
 
-<p>Put links to apps and/or sites here</p>
+<div class="apps">
+    @foreach (var app in Model)
+    {
+        <div class="app">
+            <a href="@app.Uri">
+                <img src="@app.LogoUri" />
+                <span class="appname">@app.Name</span>
+            </a>
+        </div>
+    }
+</div>
+

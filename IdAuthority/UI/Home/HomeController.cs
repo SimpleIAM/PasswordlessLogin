@@ -5,17 +5,27 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SimpleIAM.IdAuthority.Stores;
 
 namespace SimpleIAM.IdAuthority.Controllers
 {
     [Route("")]
     public class HomeController : Controller
     {
-        [HttpGet("")]
-        public IActionResult Index()
+        private readonly IAppStore _appStore;
+
+        public HomeController(IAppStore appStore)
         {
-            return View();
+            _appStore = appStore;
+        }
+
+        [HttpGet("")]
+        [Authorize]
+        public IActionResult Index()
+        {            
+            return View(_appStore.GetApps());
         }
 
         [Route("error")]

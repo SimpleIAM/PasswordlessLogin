@@ -29,7 +29,12 @@ namespace Microsoft.Extensions.DependencyInjection
             configuration.Bind("IdProvider", idProviderConfig);
             services.AddSingleton(idProviderConfig);
 
-            var clients = configuration.GetSection("Apps").Get<List<ClientAppConfig>>() ?? new List<ClientAppConfig>();
+            var clientConfigs = configuration.GetSection("Apps").Get<List<ClientAppConfig>>() ?? new List<ClientAppConfig>();
+            var clients = ClientConfigHelper.GetClientsFromConfig(clientConfigs);
+            var apps = ClientConfigHelper.GetAppsFromClients(clients);
+            var appStore = new InMemoryAppStore(apps);
+            services.AddSingleton<IAppStore>(appStore);
+
             var idScopes = configuration.GetSection("IdScopes").Get<List<IdentityResource>>() ?? new List<IdentityResource>();
             idScopes.AddRange(new List<IdentityResource>() {
                 new IdentityResources.OpenId(),
@@ -52,7 +57,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 options.Authentication.CookieLifetime = TimeSpan.FromMinutes(idProviderConfig.DefaultSessionLengthMinutes);
             })
                 .AddDeveloperSigningCredential() //todo: replace
-                .AddInMemoryClients(ClientConfigHelper.GetClientsFromConfig(clients))
+                .AddInMemoryClients(clients)
                 .AddInMemoryIdentityResources(idScopes);
 
             var smtpConfig = new SmtpConfig();

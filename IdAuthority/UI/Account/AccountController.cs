@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using IdentityServer4.Events;
 using IdentityServer4.Extensions;
 using IdentityServer4.Services;
+using IdentityServer4.Stores;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -30,6 +31,7 @@ namespace SimpleIAM.IdAuthority.UI.Account
         private readonly IOneTimePasswordService _oneTimePasswordService;
         private readonly ISubjectStore _subjectStore;
         private readonly IdProviderConfig _config;
+        private readonly IClientStore _clientStore;
 
 
         public AccountController(
@@ -38,7 +40,8 @@ namespace SimpleIAM.IdAuthority.UI.Account
             IEmailTemplateService emailTemplateService,
             IOneTimePasswordService oneTimePasswordService,
             ISubjectStore subjectStore,
-            IdProviderConfig config)
+            IdProviderConfig config,
+            IClientStore clientStore)
         {
             _interaction = interaction;
             _events = events;
@@ -46,6 +49,15 @@ namespace SimpleIAM.IdAuthority.UI.Account
             _oneTimePasswordService = oneTimePasswordService;
             _subjectStore = subjectStore;
             _config = config;
+            _clientStore = clientStore;
+        }
+
+        [HttpGet("register")]
+        [AllowAnonymous]
+        public async Task<ActionResult> Register(string returnUrl)
+        {
+            var viewModel = await GetSignInViewModel(returnUrl);
+            return View(viewModel);
         }
 
         [HttpGet("signin")]
@@ -71,6 +83,8 @@ namespace SimpleIAM.IdAuthority.UI.Account
                     { "one_time_password", oneTimePassword.OTP }
                 };
                 await _emailTemplateService.SendEmailAsync("SignInWithEmail", model.Email, fields);
+
+                SaveUsernameHint(model.Email);
 
                 return RedirectToAction("SignInLinkSent"); 
             }
@@ -166,6 +180,8 @@ namespace SimpleIAM.IdAuthority.UI.Account
 
                         await HttpContext.SignInAsync(subject.SubjectId, subject.Email, authProps);
 
+                        SaveUsernameHint(subject.Email);
+
                         // use the redirect url saved with the one time password unless a different one was provided
                         returnUrl = returnUrl ?? oneTimePassword.RedirectUrl; 
                         if (_interaction.IsValidReturnUrl(returnUrl))
@@ -207,10 +223,9 @@ namespace SimpleIAM.IdAuthority.UI.Account
                 // We're signed out now, so the UI for this request should show an anonymous user
                 HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
             }
-
             var viewModel = new SignedOutViewModel()
             {
-                AppName = context?.ClientName ?? "the website", //todo: note that this can be blank, so need to look up client name
+                AppName = (await _clientStore.FindEnabledClientByIdAsync(context?.ClientId))?.ClientName ?? "the website",
                 PostLogoutRedirectUri = context?.PostLogoutRedirectUri,
                 SignOutIFrameUrl = context?.SignOutIFrameUrl
             };
@@ -223,9 +238,9 @@ namespace SimpleIAM.IdAuthority.UI.Account
         {
             var viewModel = new SignInViewModel()
             {
-                Email = model?.Email,
+                Email = model?.Email ?? GetUsernameHint(),
                 LeaveBlank = model?.LeaveBlank,
-                ClientName = "??", // todo: fill in the value
+                ReturnUrl = returnUrl,
             };
 
             return viewModel;
@@ -233,12 +248,13 @@ namespace SimpleIAM.IdAuthority.UI.Account
 
         private async Task<SignInPassViewModel> GetSignInPassViewModel(string returnUrl, SignInPassInputModel model = null)
         {
+            
             var viewModel = new SignInPassViewModel()
             {
-                Email = model?.Email,
+                Email = model?.Email ?? GetUsernameHint(),
                 LeaveBlank = model?.LeaveBlank,
                 SessionLengthMinutes = model?.SessionLengthMinutes ?? _config.DefaultSessionLengthMinutes,
-                ClientName = "??", // todo: fill in the value
+                ReturnUrl = returnUrl,
             };
 
             return viewModel;
@@ -255,6 +271,31 @@ namespace SimpleIAM.IdAuthority.UI.Account
             {
                 TempData["PostRedirectMessages"] = $"{messages}|{message}";
             }
+        }
+
+        private void SaveUsernameHint(string email)
+        {
+            if(_config.RememberUsernames)
+            {
+                var options = new CookieOptions
+                {
+                    Expires = DateTime.Now.AddYears(1),
+                    HttpOnly = true,
+                    SameSite = SameSiteMode.Strict,
+                    Secure = true
+                };
+                Response.Cookies.Append("UsernameHint", email, options);
+            }
+        }
+
+        private string GetUsernameHint()
+        {
+            if (_config.RememberUsernames)
+            {
+                var usernameHint = Request.Cookies["UsernameHint"];
+                return usernameHint;
+            }
+            return null;
         }
     }
 }
