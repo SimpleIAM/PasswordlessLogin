@@ -5,7 +5,7 @@ using SimpleIAM.IdAuthority.Entities;
 using System;
 using System.Threading.Tasks;
 
-namespace SimpleIAM.IdAuthority.Services
+namespace SimpleIAM.IdAuthority.Services.OTP
 {
     public interface IOneTimePasswordService
     {

@@ -15,8 +15,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SimpleIAM.IdAuthority.Configuration;
-using SimpleIAM.IdAuthority.Services;
 using SimpleIAM.IdAuthority.Services.Email;
+using SimpleIAM.IdAuthority.Services.OTP;
 using SimpleIAM.IdAuthority.Stores;
 
 namespace SimpleIAM.IdAuthority.UI.Account

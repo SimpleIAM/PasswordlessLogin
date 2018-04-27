@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace SimpleIAM.IdAuthority.Entities
+namespace SimpleIAM.IdAuthority.Models
 {
     public class PasswordHash
     {
