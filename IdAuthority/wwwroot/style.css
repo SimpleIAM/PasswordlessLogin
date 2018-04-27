@@ -326,14 +326,19 @@ html, body {
     color: #fff;
     padding:0 8px;
 }
-#authmenu {
-    float:right;
+.menu {
     list-style-type: none;
     padding: 0;
-    margin:0;
+    margin: 0;
+}
+#mainmenu {
+    float: left;
+}
+#authmenu {
+    float:right;
 }
 #sitename,
-#authmenu > li {
+.menu > li {
     display: block;
     float: left;
     margin: 8px;
@@ -345,7 +350,7 @@ html, body {
     font-weight:bold;
     color: #eee;
 }
-#authmenu a {
+.menu a {
     background-color: #666;
 }
 #mainnav a {
@@ -354,6 +359,9 @@ html, body {
     padding: 0 1em;
     text-decoration: none;
     border-radius: 6px;
+    max-width: 200px;
+    overflow: hidden;
+    word-wrap: break-word;
 }
 #mainnav .primary a {
     background-color: #129FEA;
@@ -385,13 +393,24 @@ html, body {
 .signin,
 .signout {
     width: 320px;
-    padding:1em;
+    padding: 1em;
     text-align: center;
-    margin:2em auto;
+    margin: 2em auto;
     background-color: #eee;
-    border-radius:10px;
+    border-radius: 10px;
 }
-
+#emailhelp {
+    text-align: left;
+    display: none;
+    color: #444;
+}
+#emailhelp li {
+    line-height: 1.3em;
+    margin: 0.4em 0;
+}
+#emailhelp:target {
+    display:block;
+}
 .signin .field {
     margin: 0.6em 0;
 }
@@ -404,24 +423,39 @@ p.hint {
     margin-top: 2em;
 }
 .signin label[for="Email"],
+.signin label[for="OneTimeCode"],
 .signin label[for="Password"] {
-    text-align:left;
+    text-align: left;
     margin: 0.8em auto 0.3em;
     display: block;
     width: 280px;
 }
+.signin label[for="OneTimeCode"] {
+    text-align: center;
+}
 .signin input[name="Email"],
 .signin input[name="Password"],
+.signin input[name="OneTimeCode"],
 .signin input[type="submit"] {
     font-size: 115%;
     width: 280px;
     padding-left: 0.7em;
     padding-right: 0.7em;
 }
+.signin input[name="OneTimeCode"] {
+    width: 6em;
+}
+.signin .displayemail {
+    font-weight:bold;
+    margin: 1em 0;
+    word-wrap:break-word;
+}
 .signin input[type="submit"] {
     height: 2.4em;
 }
-
+.staysignedin > * {
+    vertical-align: middle;
+}
 .field-validation-error {
     display: block;
     color: #b00;

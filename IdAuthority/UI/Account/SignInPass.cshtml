@@ -8,21 +8,27 @@
     <form method="post">
         <div class="field">
             <label asp-for="Email">Email</label>
+            @if (Model.Email != null)
+            {
+            <input type="email" asp-for="Email" placeholder="email" />
+            }
+            else
+            {
             <input type="email" asp-for="Email" placeholder="email" autofocus />
+            }
             <span asp-validation-for="Email"></span>
         </div>
         <div class="field">
             <label asp-for="Password">Password</label>
+            @if (Model.Email != null)
+            {
+            <input type="password" asp-for="Password" placeholder="password" autofocus />
+            }
+            else
+            {
             <input type="password" asp-for="Password" placeholder="password" />
+            }
             <span asp-validation-for="Password"></span>
-        </div>
-        <div class="field">
-            <label asp-for="SessionLengthMinutes">Stay signed in for</label>
-            <select asp-for="SessionLengthMinutes">
-                <option value="15">15 minutes</option>
-                <option value="720">12 hours</option>
-                <option value="44640">1 month</option>
-            </select>
         </div>
         <div class="field" style="display:none">
             <label asp-for="LeaveBlank">Leave blank</label>
@@ -32,6 +38,7 @@
         <div class="field">
             <input type="submit" value="Sign in" />
         </div>
+        @await Html.PartialAsync("_StaySignedIn", new SimpleIAM.IdAuthority.UI.Account.SessionLengthViewModel(Model.SessionLengthMinutes))
     </form>
 
     <p class="hint">

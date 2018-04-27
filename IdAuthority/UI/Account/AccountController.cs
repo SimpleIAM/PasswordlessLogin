@@ -56,7 +56,8 @@ namespace SimpleIAM.IdAuthority.UI.Account
         [AllowAnonymous]
         public async Task<ActionResult> Register(string returnUrl)
         {
-            var viewModel = await GetSignInViewModel(returnUrl);
+            var viewModel = GetSignInViewModel(returnUrl);
+            viewModel.Email = null;
             return View(viewModel);
         }
 
@@ -64,7 +65,7 @@ namespace SimpleIAM.IdAuthority.UI.Account
         [AllowAnonymous]
         public async Task<ActionResult> SignIn(string returnUrl)
         {
-            var viewModel = await GetSignInViewModel(returnUrl);
+            var viewModel = GetSignInViewModel(returnUrl);
             return View(viewModel);
         }
 
@@ -85,18 +86,12 @@ namespace SimpleIAM.IdAuthority.UI.Account
                 await _emailTemplateService.SendEmailAsync("SignInWithEmail", model.Email, fields);
 
                 SaveUsernameHint(model.Email);
+                AddPostRedirectValue("Email", model.Email);
 
-                return RedirectToAction("SignInLinkSent"); 
+                return RedirectToAction("SignInCode"); 
             }
-            var viewModel = await GetSignInViewModel(returnUrl, model);
+            var viewModel = GetSignInViewModel(returnUrl, model);
             return View(viewModel);
-        }
-
-        [HttpGet("signinlinksent")]
-        [AllowAnonymous]
-        public async Task<ActionResult> SignInLinkSent(string returnUrl)
-        {
-            return View();
         }
 
         [HttpGet("signin/{linkCode}")]
@@ -134,32 +129,37 @@ namespace SimpleIAM.IdAuthority.UI.Account
             return NotFound();
         }
 
-        [HttpGet("signinpass")]
+        [HttpGet("signincode")]
         [AllowAnonymous]
-        public async Task<ActionResult> SignInPass(string returnUrl)
+        public async Task<ActionResult> SignInCode()
         {
-            var viewModel = await GetSignInPassViewModel(returnUrl);
+            var viewModel = GetSignInCodeViewModel();
+            viewModel.Email = GetPostRedirectValue("Email");
             return View(viewModel);
         }
 
-        [HttpPost("signinpass")]
+        [HttpPost("signincode")]
         [AllowAnonymous]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> SignInPass(string returnUrl, SignInPassInputModel model)
+        public async Task<ActionResult> SignInCode(SignInCodeInputModel model)
         {
             if (ModelState.IsValid)
             {
+                model.OneTimeCode = model.OneTimeCode.Trim();
                 var oneTimePassword = await _oneTimePasswordService.UseOneTimePasswordAsync(model.Email);
 
-                if (oneTimePassword == null || oneTimePassword.OTP != model.Password)
+                if (oneTimePassword == null || oneTimePassword.OTP != model.OneTimeCode)
                 {
-                    ModelState.AddModelError("Password", "Invalid email or password");
+                    ModelState.AddModelError("OneTimeCode", "Invalid one time code");
                 }
                 else
-                { 
+                {
                     if (oneTimePassword.ExpiresUTC < DateTime.UtcNow)
                     {
-                        ModelState.AddModelError("Password", "The one time password has expired. Please request a new one.");
+                        ModelState.AddModelError("OneTimeCode", "The one time code has expired. Please request a new one.");
+                        AddPostRedirectMessage("The one time code already expired. Please request a new one.");
+                        AddPostRedirectValue("Email", model.Email);
+                        return RedirectToAction("SignIn");
                     }
                     else
                     {
@@ -182,18 +182,37 @@ namespace SimpleIAM.IdAuthority.UI.Account
 
                         SaveUsernameHint(subject.Email);
 
-                        // use the redirect url saved with the one time password unless a different one was provided
-                        returnUrl = returnUrl ?? oneTimePassword.RedirectUrl; 
-                        if (_interaction.IsValidReturnUrl(returnUrl))
+                        if (_interaction.IsValidReturnUrl(oneTimePassword.RedirectUrl))
                         {
-                            return Redirect(returnUrl);
+                            return Redirect(oneTimePassword.RedirectUrl);
                         }
 
                         return Redirect("~/");
                     }
                 }
             }
-            var viewModel = await GetSignInPassViewModel(returnUrl, model);
+            var viewModel = GetSignInCodeViewModel(model);
+            return View(viewModel);
+        }
+
+        [HttpGet("signinpass")]
+        [AllowAnonymous]
+        public async Task<ActionResult> SignInPass(string returnUrl)
+        {
+            var viewModel = GetSignInPassViewModel(returnUrl);
+            return View(viewModel);
+        }
+
+        [HttpPost("signinpass")]
+        [AllowAnonymous]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> SignInPass(string returnUrl, SignInPassInputModel model)
+        {
+            if (ModelState.IsValid)
+            {
+                //todo: implement
+            }
+            var viewModel = GetSignInPassViewModel(returnUrl, model);
             return View(viewModel);
         }
 
@@ -234,7 +253,7 @@ namespace SimpleIAM.IdAuthority.UI.Account
         }
 
 
-        private async Task<SignInViewModel> GetSignInViewModel(string returnUrl, SignInInputModel model = null)
+        private SignInViewModel GetSignInViewModel(string returnUrl, SignInInputModel model = null)
         {
             var viewModel = new SignInViewModel()
             {
@@ -246,7 +265,21 @@ namespace SimpleIAM.IdAuthority.UI.Account
             return viewModel;
         }
 
-        private async Task<SignInPassViewModel> GetSignInPassViewModel(string returnUrl, SignInPassInputModel model = null)
+        private SignInCodeViewModel GetSignInCodeViewModel(SignInCodeInputModel model = null)
+        {
+
+            var viewModel = new SignInCodeViewModel()
+            {
+                Email = model?.Email ?? GetUsernameHint(),
+                OneTimeCode = model?.OneTimeCode,
+                LeaveBlank = model?.LeaveBlank,
+                SessionLengthMinutes = model?.SessionLengthMinutes ?? _config.DefaultSessionLengthMinutes
+            };
+
+            return viewModel;
+        }
+
+        private SignInPassViewModel GetSignInPassViewModel(string returnUrl = null, SignInPassInputModel model = null)
         {
             
             var viewModel = new SignInPassViewModel()
@@ -262,15 +295,25 @@ namespace SimpleIAM.IdAuthority.UI.Account
 
         private void AddPostRedirectMessage(string message)
         {
-            var messages = TempData["PostRedirectMessages"];
+            var messages = GetPostRedirectValue("Messages");
             if(messages == null)
             {
-                TempData["PostRedirectMessages"] = message;
+                AddPostRedirectValue("Messages", message);
             }
             else
             {
-                TempData["PostRedirectMessages"] = $"{messages}|{message}";
+                AddPostRedirectValue("Messages", $"{messages}|{message}");
             }
+        }
+
+        private void AddPostRedirectValue(string key, string value)
+        {
+            TempData[$"PostRedirect.{key}"] = value;
+        }
+
+        private string GetPostRedirectValue(string key)
+        {
+            return (string)TempData[$"PostRedirect.{key}"];
         }
 
         private void SaveUsernameHint(string email)
@@ -282,7 +325,7 @@ namespace SimpleIAM.IdAuthority.UI.Account
                     Expires = DateTime.Now.AddYears(1),
                     HttpOnly = true,
                     SameSite = SameSiteMode.Strict,
-                    Secure = true
+                    //Secure = true //todo: consider pros and cons of enabling this
                 };
                 Response.Cookies.Append("UsernameHint", email, options);
             }

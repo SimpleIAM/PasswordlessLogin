@@ -1,19 +1,9 @@
-﻿@model IEnumerable<SimpleIAM.IdAuthority.Models.App>
+﻿@using SimpleIAM.IdAuthority.Configuration
+@inject IdProviderConfig config
 @{
-    ViewData["Title"] = "Apps";
+    ViewData["Title"] = config.DisplayName;
 }
 
-<h2>Apps</h2>
+<h2>@config.DisplayName</h2>
 
-<div class="apps">
-    @foreach (var app in Model)
-    {
-        <div class="app">
-            <a href="@app.Uri">
-                <img src="@app.LogoUri" />
-                <span class="appname">@app.Name</span>
-            </a>
-        </div>
-    }
-</div>
-
+<p>About your company</p>

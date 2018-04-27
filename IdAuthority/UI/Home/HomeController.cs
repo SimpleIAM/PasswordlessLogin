@@ -22,9 +22,15 @@ namespace SimpleIAM.IdAuthority.Controllers
         }
 
         [HttpGet("")]
-        [Authorize]
         public IActionResult Index()
         {            
+            return View();
+        }
+
+        [HttpGet("apps")]
+        [Authorize]
+        public IActionResult Apps()
+        {
             return View(_appStore.GetApps());
         }
 

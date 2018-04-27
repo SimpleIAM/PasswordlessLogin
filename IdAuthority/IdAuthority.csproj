@@ -19,10 +19,14 @@
   <ItemGroup>
     <None Remove="UI\Account\AccountSettings.cshtml" />
     <None Remove="UI\Account\Register.cshtml" />
-    <None Remove="UI\Account\SignInLinkSent.cshtml" />
+    <None Remove="UI\Account\SignInCode.cshtml" />
     <None Remove="UI\Account\SignInPass.cshtml" />
+    <None Remove="UI\Home\Apps.cshtml" />
+    <None Remove="UI\Shared\_EmailHelp.cshtml" />
     <None Remove="UI\Shared\_MainMenu.cshtml" />
     <None Remove="UI\Shared\_PostRedirectMessages.cshtml" />
+    <None Remove="UI\Shared\_StaySignedIn.cshtml" />
+    <None Remove="UI\Shared\_StaySignedInDropdown.cshtml" />
   </ItemGroup>
 
   <ItemGroup>
