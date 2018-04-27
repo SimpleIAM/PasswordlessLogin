@@ -18,7 +18,7 @@ namespace SimpleIAM.IdAuthority.Configuration
                     new EmailTemplate()
                     {
                         Subject = "Sign in link",
-                        Body = "Use this link to sign in\n{{link}}\n\nor use this one time password: {{one_time_password}}",
+                        Body = "Use this link to sign in\n{{link}}\n\nor use this one time code: {{one_time_password}}",
                     }
                 },
             };

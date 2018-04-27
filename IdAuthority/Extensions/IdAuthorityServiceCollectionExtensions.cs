@@ -10,6 +10,7 @@ using SimpleIAM.IdAuthority.Configuration;
 using SimpleIAM.IdAuthority.Entities;
 using SimpleIAM.IdAuthority.Services.Email;
 using SimpleIAM.IdAuthority.Services.OTP;
+using SimpleIAM.IdAuthority.Services.Password;
 using SimpleIAM.IdAuthority.Stores;
 using System;
 using System.Collections.Generic;
@@ -68,6 +69,10 @@ namespace Microsoft.Extensions.DependencyInjection
             var emailTemplates = ProcessEmailTemplates.GetTemplatesFromMailConfig(configuration.GetSection("Mail"));
             services.AddSingleton(emailTemplates);
             services.AddTransient<IEmailTemplateService, EmailTemplateService>();
+
+            services.AddSingleton<IPasswordHashService>(new AspNetIdentityPasswordHashService(10000));
+            services.AddTransient<IPasswordHashStore, DbPasswordHashStore>();
+            services.AddTransient<IPasswordService, DefaultPasswordService>();
 
             services.AddEmbeddedViews();
 

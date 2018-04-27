@@ -118,7 +118,16 @@ namespace SimpleIAM.IdAuthority.Services.Password
                 throw new ArgumentNullException(nameof(password));
             }
 
-            byte[] decodedHashedPassword = Convert.FromBase64String(passwordHash);
+            byte[] decodedHashedPassword;
+            try
+            {
+                decodedHashedPassword = Convert.FromBase64String(passwordHash);
+            }
+            catch(FormatException ex)
+            {
+                // the password hash is invalid
+                return CheckPaswordHashResult.DoesNotMatch;
+            }
 
             // read the format marker from the hashed password
             if (decodedHashedPassword.Length == 0)

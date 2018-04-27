@@ -15,8 +15,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SimpleIAM.IdAuthority.Configuration;
+using SimpleIAM.IdAuthority.Entities;
 using SimpleIAM.IdAuthority.Services.Email;
 using SimpleIAM.IdAuthority.Services.OTP;
+using SimpleIAM.IdAuthority.Services.Password;
 using SimpleIAM.IdAuthority.Stores;
 
 namespace SimpleIAM.IdAuthority.UI.Account
@@ -32,6 +34,7 @@ namespace SimpleIAM.IdAuthority.UI.Account
         private readonly ISubjectStore _subjectStore;
         private readonly IdProviderConfig _config;
         private readonly IClientStore _clientStore;
+        private readonly IPasswordService _passwordService;
 
 
         public AccountController(
@@ -41,7 +44,8 @@ namespace SimpleIAM.IdAuthority.UI.Account
             IOneTimePasswordService oneTimePasswordService,
             ISubjectStore subjectStore,
             IdProviderConfig config,
-            IClientStore clientStore)
+            IClientStore clientStore,
+            IPasswordService passwordService)
         {
             _interaction = interaction;
             _events = events;
@@ -50,6 +54,7 @@ namespace SimpleIAM.IdAuthority.UI.Account
             _subjectStore = subjectStore;
             _config = config;
             _clientStore = clientStore;
+            _passwordService = passwordService;
         }
 
         [HttpGet("register")]
@@ -112,18 +117,8 @@ namespace SimpleIAM.IdAuthority.UI.Account
                     //todo: consider if the redirect url should be kept...will it cause a correlation error?
                     return RedirectToAction("SignIn", new { returnUrl = oneTimePassword.RedirectUrl });
                 }
-
                 var subject = await _subjectStore.GetSubjectByEmailAsync(oneTimePassword.Email, true);
-                await _events.RaiseAsync(new UserLoginSuccessEvent(subject.Email, subject.SubjectId, subject.Email));
-
-                await HttpContext.SignInAsync(subject.SubjectId, subject.Email);
-
-                if (_interaction.IsValidReturnUrl(oneTimePassword.RedirectUrl))
-                {
-                    return Redirect(oneTimePassword.RedirectUrl);
-                }
-
-                return Redirect("~/");
+                return await FinishSignIn(subject, null, oneTimePassword.RedirectUrl);
             }
 
             return NotFound();
@@ -164,30 +159,7 @@ namespace SimpleIAM.IdAuthority.UI.Account
                     else
                     {
                         var subject = await _subjectStore.GetSubjectByEmailAsync(oneTimePassword.Email, true);
-                        await _events.RaiseAsync(new UserLoginSuccessEvent(subject.Email, subject.SubjectId, subject.Email));
-
-                        // handle custom session length
-                        var authProps = (AuthenticationProperties)null;
-                        var sessionLengthMinutes = model.SessionLengthMinutes ?? 0;
-                        if (sessionLengthMinutes > 0 && sessionLengthMinutes < _config.MaxSessionLengthMinutes)
-                        {
-                            authProps = new AuthenticationProperties
-                            {
-                                IsPersistent = true,
-                                ExpiresUtc = DateTimeOffset.UtcNow.Add(TimeSpan.FromMinutes(sessionLengthMinutes))
-                            };
-                        };
-
-                        await HttpContext.SignInAsync(subject.SubjectId, subject.Email, authProps);
-
-                        SaveUsernameHint(subject.Email);
-
-                        if (_interaction.IsValidReturnUrl(oneTimePassword.RedirectUrl))
-                        {
-                            return Redirect(oneTimePassword.RedirectUrl);
-                        }
-
-                        return Redirect("~/");
+                        return await FinishSignIn(subject, model.SessionLengthMinutes, oneTimePassword.RedirectUrl);
                     }
                 }
             }
@@ -210,7 +182,30 @@ namespace SimpleIAM.IdAuthority.UI.Account
         {
             if (ModelState.IsValid)
             {
-                //todo: implement
+                var subject = await _subjectStore.GetSubjectByEmailAsync(model.Email, false);
+                if (subject == null)
+                {
+                    ModelState.AddModelError("Password", "The email address or password wasn't right");
+                }
+                else
+                {
+                    var checkPasswordResult = await _passwordService.CheckPasswordAsync(subject.SubjectId, model.Password);
+                    switch (checkPasswordResult)
+                    {
+                        case CheckPasswordResult.NotFound:
+                        case CheckPasswordResult.PasswordIncorrect:
+                            ModelState.AddModelError("Password", "The email address or password wasn't right");
+                            break;
+                        case CheckPasswordResult.TemporarilyLocked:
+                            ModelState.AddModelError("Password", "Your password is temporarily locked. Try again later or sign in with email.");
+                            break;
+                        case CheckPasswordResult.ServiceFailure:
+                            ModelState.AddModelError("Password", "Hmm. Something went wrong. Please try again.");
+                            break;
+                        case CheckPasswordResult.Success:
+                            return await FinishSignIn(subject, model.SessionLengthMinutes, returnUrl);
+                    }
+                }
             }
             var viewModel = GetSignInPassViewModel(returnUrl, model);
             return View(viewModel);
@@ -252,6 +247,32 @@ namespace SimpleIAM.IdAuthority.UI.Account
             return View(viewModel);
         }
 
+        private async Task<ActionResult> FinishSignIn(Subject subject, int? sessionLengthMinutes, string returnUrl)
+        {
+            await _events.RaiseAsync(new UserLoginSuccessEvent(subject.Email, subject.SubjectId, subject.Email));
+
+            // handle custom session length
+            var authProps = (AuthenticationProperties)null;
+            var sessionLengthMinutesInt = sessionLengthMinutes ?? 0;
+            if (sessionLengthMinutes > 0 && sessionLengthMinutes < _config.MaxSessionLengthMinutes)
+            {
+                authProps = new AuthenticationProperties
+                {
+                    IsPersistent = true,
+                    ExpiresUtc = DateTimeOffset.UtcNow.Add(TimeSpan.FromMinutes(sessionLengthMinutesInt))
+                };
+            };
+
+            await HttpContext.SignInAsync(subject.SubjectId, subject.Email, authProps);
+
+            SaveUsernameHint(subject.Email);
+
+            if (_interaction.IsValidReturnUrl(returnUrl))
+            {
+                return Redirect(returnUrl);
+            }
+            return RedirectToAction("Apps", "Home");
+        }
 
         private SignInViewModel GetSignInViewModel(string returnUrl, SignInInputModel model = null)
         {
