@@ -11,9 +11,10 @@ using System;
 namespace SimpleIAM.IdAuthority.Migrations.Migrations
 {
     [DbContext(typeof(IdAuthorityDbContext))]
-    partial class IdAuthorityDbContextModelSnapshot : ModelSnapshot
+    [Migration("20180430161327_RenameOTP")]
+    partial class RenameOTP
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

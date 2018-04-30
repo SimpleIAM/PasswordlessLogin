@@ -17,7 +17,7 @@ using Microsoft.AspNetCore.Mvc;
 using SimpleIAM.IdAuthority.Configuration;
 using SimpleIAM.IdAuthority.Entities;
 using SimpleIAM.IdAuthority.Services.Email;
-using SimpleIAM.IdAuthority.Services.OTP;
+using SimpleIAM.IdAuthority.Services.OTC;
 using SimpleIAM.IdAuthority.Services.Password;
 using SimpleIAM.IdAuthority.Stores;
 
@@ -30,7 +30,7 @@ namespace SimpleIAM.IdAuthority.UI.Authenticate
         private readonly IIdentityServerInteractionService _interaction;
         private readonly IEventService _events;
         private readonly IEmailTemplateService _emailTemplateService;
-        private readonly IOneTimePasswordService _oneTimePasswordService;
+        private readonly IOneTimeCodeService _oneTimeCodeService;
         private readonly ISubjectStore _subjectStore;
         private readonly IdProviderConfig _config;
         private readonly IClientStore _clientStore;
@@ -41,7 +41,7 @@ namespace SimpleIAM.IdAuthority.UI.Authenticate
             IIdentityServerInteractionService interaction,
             IEventService events,
             IEmailTemplateService emailTemplateService,
-            IOneTimePasswordService oneTimePasswordService,
+            IOneTimeCodeService oneTimeCodeService,
             ISubjectStore subjectStore,
             IdProviderConfig config,
             IClientStore clientStore,
@@ -50,7 +50,7 @@ namespace SimpleIAM.IdAuthority.UI.Authenticate
             _interaction = interaction;
             _events = events;
             _emailTemplateService = emailTemplateService;
-            _oneTimePasswordService = oneTimePasswordService;
+            _oneTimeCodeService = oneTimeCodeService;
             _subjectStore = subjectStore;
             _config = config;
             _clientStore = clientStore;
@@ -81,12 +81,12 @@ namespace SimpleIAM.IdAuthority.UI.Authenticate
         {
             if (ModelState.IsValid)
             {
-                var oneTimePassword = await _oneTimePasswordService.CreateOneTimePasswordAsync(model.Email, TimeSpan.FromMinutes(5), returnUrl);
-                var link = Url.Action("SignInLink", "Authenticate", new { linkCode = oneTimePassword.LinkCode }, Request.Scheme);
+                var oneTimeCode = await _oneTimeCodeService.CreateOneTimeCodeAsync(model.Email, TimeSpan.FromMinutes(5), returnUrl);
+                var link = Url.Action("SignInLink", "Authenticate", new { linkCode = oneTimeCode.LinkCode }, Request.Scheme);
                 var fields = new Dictionary<string, string>()
                 {
                     { "link", link },
-                    { "one_time_password", oneTimePassword.OTP }
+                    { "one_time_code", oneTimeCode.OTC }
                 };
                 await _emailTemplateService.SendEmailAsync("SignInWithEmail", model.Email, fields);
 
@@ -105,20 +105,20 @@ namespace SimpleIAM.IdAuthority.UI.Authenticate
         {
             if(linkCode != null && linkCode.Length < 36)
             {
-                var oneTimePassword = await _oneTimePasswordService.UseOneTimeLinkAsync(linkCode);
-                if (oneTimePassword == null)
+                var oneTimeCode = await _oneTimeCodeService.UseOneTimeLinkAsync(linkCode);
+                if (oneTimeCode == null)
                 {
                     AddPostRedirectMessage("The sign in link is invalid.");
                     return RedirectToAction("SignIn");
                 }
-                if (oneTimePassword.ExpiresUTC < DateTime.UtcNow)
+                if (oneTimeCode.ExpiresUTC < DateTime.UtcNow)
                 {
                     AddPostRedirectMessage("The sign in link expired.");
                     //todo: consider if the redirect url should be kept...will it cause a correlation error?
-                    return RedirectToAction("SignIn", new { returnUrl = oneTimePassword.RedirectUrl });
+                    return RedirectToAction("SignIn", new { returnUrl = oneTimeCode.RedirectUrl });
                 }
-                var subject = await _subjectStore.GetSubjectByEmailAsync(oneTimePassword.Email, true);
-                return await FinishSignIn(subject, null, oneTimePassword.RedirectUrl);
+                var subject = await _subjectStore.GetSubjectByEmailAsync(oneTimeCode.Email, true);
+                return await FinishSignIn(subject, null, oneTimeCode.RedirectUrl);
             }
 
             return NotFound();
@@ -141,15 +141,15 @@ namespace SimpleIAM.IdAuthority.UI.Authenticate
             if (ModelState.IsValid)
             {
                 model.OneTimeCode = model.OneTimeCode.Trim();
-                var oneTimePassword = await _oneTimePasswordService.UseOneTimePasswordAsync(model.Email);
+                var oneTimeCode = await _oneTimeCodeService.UseOneTimeCodeAsync(model.Email);
 
-                if (oneTimePassword == null || oneTimePassword.OTP != model.OneTimeCode)
+                if (oneTimeCode == null || oneTimeCode.OTC != model.OneTimeCode)
                 {
                     ModelState.AddModelError("OneTimeCode", "Invalid one time code");
                 }
                 else
                 {
-                    if (oneTimePassword.ExpiresUTC < DateTime.UtcNow)
+                    if (oneTimeCode.ExpiresUTC < DateTime.UtcNow)
                     {
                         ModelState.AddModelError("OneTimeCode", "The one time code has expired. Please request a new one.");
                         AddPostRedirectMessage("The one time code already expired. Please request a new one.");
@@ -158,8 +158,8 @@ namespace SimpleIAM.IdAuthority.UI.Authenticate
                     }
                     else
                     {
-                        var subject = await _subjectStore.GetSubjectByEmailAsync(oneTimePassword.Email, true);
-                        return await FinishSignIn(subject, model.SessionLengthMinutes, oneTimePassword.RedirectUrl);
+                        var subject = await _subjectStore.GetSubjectByEmailAsync(oneTimeCode.Email, true);
+                        return await FinishSignIn(subject, model.SessionLengthMinutes, oneTimeCode.RedirectUrl);
                     }
                 }
             }

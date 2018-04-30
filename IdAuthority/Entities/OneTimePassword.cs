@@ -7,11 +7,11 @@ using System.Text;
 
 namespace SimpleIAM.IdAuthority.Entities
 {
-    public class OneTimePassword
+    public class OneTimeCode
     {
         public string Email { get; set; }
 
-        public string OTP { get; set; }
+        public string OTC { get; set; }
 
         public string LinkCode { get; set; }
 

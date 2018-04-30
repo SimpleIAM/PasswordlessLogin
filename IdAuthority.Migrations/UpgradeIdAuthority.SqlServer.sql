@@ -63,3 +63,45 @@ END;
 
 GO
 
+IF NOT EXISTS(SELECT * FROM [__EFMigrationsHistory] WHERE [MigrationId] = N'20180430161327_RenameOTP')
+BEGIN
+    DROP TABLE [OneTimePasswords];
+END;
+
+GO
+
+IF NOT EXISTS(SELECT * FROM [__EFMigrationsHistory] WHERE [MigrationId] = N'20180430161327_RenameOTP')
+BEGIN
+    DECLARE @var0 sysname;
+    SELECT @var0 = [d].[name]
+    FROM [sys].[default_constraints] [d]
+    INNER JOIN [sys].[columns] [c] ON [d].[parent_column_id] = [c].[column_id] AND [d].[parent_object_id] = [c].[object_id]
+    WHERE ([d].[parent_object_id] = OBJECT_ID(N'PasswordHashes') AND [c].[name] = N'TempLockUntilUTC');
+    IF @var0 IS NOT NULL EXEC(N'ALTER TABLE [PasswordHashes] DROP CONSTRAINT [' + @var0 + '];');
+    ALTER TABLE [PasswordHashes] ALTER COLUMN [TempLockUntilUTC] datetime2 NULL;
+END;
+
+GO
+
+IF NOT EXISTS(SELECT * FROM [__EFMigrationsHistory] WHERE [MigrationId] = N'20180430161327_RenameOTP')
+BEGIN
+    CREATE TABLE [OneTimeCodes] (
+        [Email] nvarchar(254) NOT NULL,
+        [ExpiresUTC] datetime2 NOT NULL,
+        [LinkCode] nvarchar(36) NULL,
+        [OTC] nvarchar(8) NULL,
+        [RedirectUrl] nvarchar(2048) NULL,
+        CONSTRAINT [PK_OneTimeCodes] PRIMARY KEY ([Email])
+    );
+END;
+
+GO
+
+IF NOT EXISTS(SELECT * FROM [__EFMigrationsHistory] WHERE [MigrationId] = N'20180430161327_RenameOTP')
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20180430161327_RenameOTP', N'2.0.2-rtm-10011');
+END;
+
+GO
+

@@ -15,7 +15,7 @@ namespace SimpleIAM.IdAuthority.Entities
         { }
 
         public DbSet<Subject> Subjects { get; set; }
-        public DbSet<OneTimePassword> OneTimePasswords { get; set; }
+        public DbSet<OneTimeCode> OneTimeCodes { get; set; }
         public DbSet<PasswordHash> PasswordHashes { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -30,12 +30,12 @@ namespace SimpleIAM.IdAuthority.Entities
                 subject.HasIndex(x => x.Email).IsUnique();
             });
 
-            modelBuilder.Entity<OneTimePassword>(otc =>
+            modelBuilder.Entity<OneTimeCode>(otc =>
             {
                 otc.HasKey(x => x.Email);
 
                 otc.Property(x => x.Email).HasMaxLength(254).IsRequired();
-                otc.Property(x => x.OTP).HasMaxLength(8);
+                otc.Property(x => x.OTC).HasMaxLength(8);
                 otc.Property(x => x.LinkCode).HasMaxLength(36);
                 otc.Property(x => x.ExpiresUTC).IsRequired();
                 otc.Property(x => x.RedirectUrl).HasMaxLength(2048);

@@ -9,7 +9,7 @@ using SimpleIAM.IdAuthority;
 using SimpleIAM.IdAuthority.Configuration;
 using SimpleIAM.IdAuthority.Entities;
 using SimpleIAM.IdAuthority.Services.Email;
-using SimpleIAM.IdAuthority.Services.OTP;
+using SimpleIAM.IdAuthority.Services.OTC;
 using SimpleIAM.IdAuthority.Services.Password;
 using SimpleIAM.IdAuthority.Stores;
 using System;
@@ -46,7 +46,7 @@ namespace Microsoft.Extensions.DependencyInjection
             var connection = configuration.GetConnectionString("IdAuthority");
 
             services.AddDbContext<IdAuthorityDbContext>(options => options.UseSqlServer(connection));
-            services.AddTransient<IOneTimePasswordService, OneTimePasswordService>();
+            services.AddTransient<IOneTimeCodeService, OneTimeCodeService>();
             services.AddTransient<ISubjectStore, DbSubjectStore>();
 
             services.AddIdentityServer(options =>
