@@ -1,6 +1,6 @@
 ﻿@using SimpleIAM.IdAuthority.Configuration
 @inject IdProviderConfig config
-@model SimpleIAM.IdAuthority.UI.Account.SessionLengthViewModel
+@model SimpleIAM.IdAuthority.UI.Authenticate.SessionLengthViewModel
 @if(config.DefaultSessionLengthMinutes != config.MaxSessionLengthMinutes) {
 <div class="field staysignedin">
     <input type="checkbox" name="SessionLengthMinutes" id="SessionLengthMinutes" value="@config.MaxSessionLengthMinutes" @if(Model.SessionLengthMinutes == config.MaxSessionLengthMinutes) { <text> checked</text> } />

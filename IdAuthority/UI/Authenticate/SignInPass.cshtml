@@ -1,4 +1,4 @@
-﻿@model SimpleIAM.IdAuthority.UI.Account.SignInPassViewModel
+﻿@model SimpleIAM.IdAuthority.UI.Authenticate.SignInPassViewModel
 @{
     ViewData["Title"] = "Sign In";
 }
@@ -38,7 +38,7 @@
         <div class="field">
             <input type="submit" value="Sign in" />
         </div>
-        @await Html.PartialAsync("_StaySignedIn", new SimpleIAM.IdAuthority.UI.Account.SessionLengthViewModel(Model.SessionLengthMinutes))
+        @await Html.PartialAsync("_StaySignedIn", new SimpleIAM.IdAuthority.UI.Authenticate.SessionLengthViewModel(Model.SessionLengthMinutes))
     </form>
 
     <p class="hint">

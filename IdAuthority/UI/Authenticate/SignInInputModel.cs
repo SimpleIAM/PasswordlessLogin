@@ -3,7 +3,7 @@
 
 using System.ComponentModel.DataAnnotations;
 
-namespace SimpleIAM.IdAuthority.UI.Account
+namespace SimpleIAM.IdAuthority.UI.Authenticate
 {
     public class SignInInputModel
     {

@@ -3,9 +3,9 @@
 
 using System.ComponentModel.DataAnnotations;
 
-namespace SimpleIAM.IdAuthority.UI.Account
+namespace SimpleIAM.IdAuthority.UI.Authenticate
 {
-    public class SignInPassInputModel
+    public class SignInCodeInputModel
     {
         [Required]
         [EmailAddress]
@@ -13,7 +13,8 @@ namespace SimpleIAM.IdAuthority.UI.Account
         public string Email { get; set; }
 
         [Required]
-        public string Password { get; set; }
+        [RegularExpression(@" *[0-9]{6} *", ErrorMessage = "Enter a 6-digit number")]
+        public string OneTimeCode { get; set; }
 
         public int? SessionLengthMinutes { get; set; }
 

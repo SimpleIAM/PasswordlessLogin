@@ -3,21 +3,21 @@
 
 using System.ComponentModel.DataAnnotations;
 
-namespace SimpleIAM.IdAuthority.UI.Account
+namespace SimpleIAM.IdAuthority.UI.Authenticate
 {
-    public class SignInPassViewModel
+    public class SignInPassInputModel
     {
         [Required]
         [EmailAddress]
         [RegularExpression(@".+\@.+\..+", ErrorMessage = "Enter a valid email address")]
         public string Email { get; set; }
 
+        [Required]
         public string Password { get; set; }
 
         public int? SessionLengthMinutes { get; set; }
 
+        [RegularExpression("^$", ErrorMessage = "Leave blank unless you're a spambot")]
         public string LeaveBlank { get; set; }
-
-        public string ReturnUrl { get; set; }
     }
 }

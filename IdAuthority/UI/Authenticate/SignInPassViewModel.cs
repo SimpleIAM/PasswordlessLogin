@@ -3,20 +3,21 @@
 
 using System.ComponentModel.DataAnnotations;
 
-namespace SimpleIAM.IdAuthority.UI.Account
+namespace SimpleIAM.IdAuthority.UI.Authenticate
 {
-    public class SignInCodeViewModel
+    public class SignInPassViewModel
     {
         [Required]
         [EmailAddress]
         [RegularExpression(@".+\@.+\..+", ErrorMessage = "Enter a valid email address")]
         public string Email { get; set; }
 
-        [RegularExpression(@" *[0-9]{6} *", ErrorMessage = "Enter a 6-digit number")]
-        public string OneTimeCode { get; set; }
+        public string Password { get; set; }
 
         public int? SessionLengthMinutes { get; set; }
 
         public string LeaveBlank { get; set; }
+
+        public string ReturnUrl { get; set; }
     }
 }

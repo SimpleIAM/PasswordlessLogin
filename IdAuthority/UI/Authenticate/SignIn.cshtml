@@ -1,12 +1,12 @@
-﻿@model SimpleIAM.IdAuthority.UI.Account.SignInViewModel
+﻿@model SimpleIAM.IdAuthority.UI.Authenticate.SignInViewModel
 @{
-    ViewData["Title"] = "Register";
+    ViewData["Title"] = "Sign In";
 }
 
 
 <div class="signin">
-    <h2>Register</h2>
-    <form method="post" asp-action="SignIn">
+    <h2>Sign In</h2>
+    <form method="post">
         <div class="field">
             <label asp-for="Email">Email</label>
             <input type="email" asp-for="Email" placeholder="email" autofocus />
@@ -18,12 +18,11 @@
             <span asp-validation-for="LeaveBlank"></span>
         </div>
         <div class="field">
-            <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
-            <input type="submit" value="Register" />
+            <input type="submit" value="Get sign in code" />
         </div>
     </form>
 
     <p class="hint">
-        <a asp-action="SignIn" asp-route-returnUrl="@Model.ReturnUrl">Sign in</a>
+        <a asp-action="SignInPass" asp-route-returnUrl="@Model.ReturnUrl">Sign in with password</a>
     </p>
 </div>
