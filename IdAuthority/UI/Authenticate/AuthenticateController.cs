@@ -2,8 +2,6 @@
 // Licensed under the Apache License, Version 2.0.
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using IdentityServer4.Events;
@@ -16,7 +14,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SimpleIAM.IdAuthority.Configuration;
 using SimpleIAM.IdAuthority.Entities;
-using SimpleIAM.IdAuthority.Services.Email;
 using SimpleIAM.IdAuthority.Services.OTC;
 using SimpleIAM.IdAuthority.Services.Password;
 using SimpleIAM.IdAuthority.Stores;
@@ -29,7 +26,6 @@ namespace SimpleIAM.IdAuthority.UI.Authenticate
     {
         private readonly IIdentityServerInteractionService _interaction;
         private readonly IEventService _events;
-        private readonly IEmailTemplateService _emailTemplateService;
         private readonly IOneTimeCodeService _oneTimeCodeService;
         private readonly ISubjectStore _subjectStore;
         private readonly IdProviderConfig _config;
@@ -40,7 +36,6 @@ namespace SimpleIAM.IdAuthority.UI.Authenticate
         public AuthenticateController(
             IIdentityServerInteractionService interaction,
             IEventService events,
-            IEmailTemplateService emailTemplateService,
             IOneTimeCodeService oneTimeCodeService,
             ISubjectStore subjectStore,
             IdProviderConfig config,
@@ -49,7 +44,6 @@ namespace SimpleIAM.IdAuthority.UI.Authenticate
         {
             _interaction = interaction;
             _events = events;
-            _emailTemplateService = emailTemplateService;
             _oneTimeCodeService = oneTimeCodeService;
             _subjectStore = subjectStore;
             _config = config;
@@ -81,44 +75,54 @@ namespace SimpleIAM.IdAuthority.UI.Authenticate
         {
             if (ModelState.IsValid)
             {
-                var oneTimeCode = await _oneTimeCodeService.CreateOneTimeCodeAsync(model.Email, TimeSpan.FromMinutes(5), returnUrl);
-                var link = Url.Action("SignInLink", "Authenticate", new { linkCode = oneTimeCode.LinkCode }, Request.Scheme);
-                var fields = new Dictionary<string, string>()
+                var result = await _oneTimeCodeService.SendOneTimeCodeAsync(model.Email, TimeSpan.FromMinutes(5), returnUrl);
+
+                switch(result)
                 {
-                    { "link", link },
-                    { "one_time_code", oneTimeCode.OTC }
-                };
-                await _emailTemplateService.SendEmailAsync("SignInWithEmail", model.Email, fields);
-
-                SaveUsernameHint(model.Email);
-                AddPostRedirectValue("Email", model.Email);
-
-                return RedirectToAction("SignInCode"); 
+                    case SentOneTimeCodeResult.Sent:
+                        SaveUsernameHint(model.Email);
+                        AddPostRedirectValue("Email", model.Email);
+                        return RedirectToAction("SignInCode");
+                    case SentOneTimeCodeResult.TooManyRequests:
+                        ModelState.AddModelError("Email", "A code has already been sent to this address. Please wait a few minutes before requesting a new code.");
+                        break;
+                    case SentOneTimeCodeResult.InvalidRequest:
+                        ModelState.AddModelError("Email", "Invalid address");
+                        break;
+                    case SentOneTimeCodeResult.ServiceFailure:
+                    default:
+                        ModelState.AddModelError("Email", "Something went wrong.");
+                        break;
+                }
             }
             var viewModel = GetSignInViewModel(returnUrl, model);
             return View(viewModel);
         }
 
-        [HttpGet("signin/{linkCode}")]
+        [HttpGet("signin/{longCode}")]
         [AllowAnonymous]
-        public async Task<ActionResult> SignInLink(string linkCode)
+        public async Task<ActionResult> SignInLink(string longCode)
         {
-            if(linkCode != null && linkCode.Length < 36)
+            if(longCode != null && longCode.Length < 36)
             {
-                var oneTimeCode = await _oneTimeCodeService.UseOneTimeLinkAsync(linkCode);
-                if (oneTimeCode == null)
+                var response = await _oneTimeCodeService.CheckOneTimeCodeAsync(longCode);
+                switch(response.Result)
                 {
-                    AddPostRedirectMessage("The sign in link is invalid.");
-                    return RedirectToAction("SignIn");
+                    case CheckOneTimeCodeResult.Verified:
+                        var subject = await _subjectStore.GetSubjectByEmailAsync(response.SentTo, true); //todo: does this need to handle a phone number?
+                        return await FinishSignIn(subject, null, response.RedirectUrl);
+                    case CheckOneTimeCodeResult.Expired:
+                        AddPostRedirectMessage("The sign in link expired.");
+                        return RedirectToAction("SignIn");
+                    case CheckOneTimeCodeResult.CodeIncorrect:
+                    case CheckOneTimeCodeResult.NotFound:
+                        AddPostRedirectMessage("The sign in link is invalid.");
+                        return RedirectToAction("SignIn");
+                    case CheckOneTimeCodeResult.ServiceFailure:
+                    default:
+                        AddPostRedirectMessage("Something went wrong.");
+                        return RedirectToAction("SignIn");
                 }
-                if (oneTimeCode.ExpiresUTC < DateTime.UtcNow)
-                {
-                    AddPostRedirectMessage("The sign in link expired.");
-                    //todo: consider if the redirect url should be kept...will it cause a correlation error?
-                    return RedirectToAction("SignIn", new { returnUrl = oneTimeCode.RedirectUrl });
-                }
-                var subject = await _subjectStore.GetSubjectByEmailAsync(oneTimeCode.Email, true);
-                return await FinishSignIn(subject, null, oneTimeCode.RedirectUrl);
             }
 
             return NotFound();
@@ -141,26 +145,27 @@ namespace SimpleIAM.IdAuthority.UI.Authenticate
             if (ModelState.IsValid)
             {
                 model.OneTimeCode = model.OneTimeCode.Trim();
-                var oneTimeCode = await _oneTimeCodeService.UseOneTimeCodeAsync(model.Email);
-
-                if (oneTimeCode == null || oneTimeCode.OTC != model.OneTimeCode)
+                var response = await _oneTimeCodeService.CheckOneTimeCodeAsync(model.Email, model.OneTimeCode);
+                switch (response.Result)
                 {
-                    ModelState.AddModelError("OneTimeCode", "Invalid one time code");
-                }
-                else
-                {
-                    if (oneTimeCode.ExpiresUTC < DateTime.UtcNow)
-                    {
-                        ModelState.AddModelError("OneTimeCode", "The one time code has expired. Please request a new one.");
+                    case CheckOneTimeCodeResult.Verified:
+                        var subject = await _subjectStore.GetSubjectByEmailAsync(model.Email, true); //todo: does this need to handle a phone number?
+                        return await FinishSignIn(subject, null, response.RedirectUrl);
+                    case CheckOneTimeCodeResult.Expired:
                         AddPostRedirectMessage("The one time code already expired. Please request a new one.");
                         AddPostRedirectValue("Email", model.Email);
                         return RedirectToAction("SignIn");
-                    }
-                    else
-                    {
-                        var subject = await _subjectStore.GetSubjectByEmailAsync(oneTimeCode.Email, true);
-                        return await FinishSignIn(subject, model.SessionLengthMinutes, oneTimeCode.RedirectUrl);
-                    }
+                    case CheckOneTimeCodeResult.CodeIncorrect:
+                    case CheckOneTimeCodeResult.NotFound:
+                        ModelState.AddModelError("OneTimeCode", "Invalid one time code");
+                        break;
+                    case CheckOneTimeCodeResult.ShortCodeLocked:
+                        ModelState.AddModelError("OneTimeCode", "The one time code is locked. Please request a new one after a few minutes. ");
+                        break;
+                    case CheckOneTimeCodeResult.ServiceFailure:
+                    default:
+                        AddPostRedirectMessage("Something went wrong.");
+                        return RedirectToAction("SignIn");
                 }
             }
             var viewModel = GetSignInCodeViewModel(model);

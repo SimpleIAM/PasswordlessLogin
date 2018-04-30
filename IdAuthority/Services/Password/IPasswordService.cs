@@ -11,6 +11,7 @@ namespace SimpleIAM.IdAuthority.Services.Password
         bool CanChangePassword { get; }
         bool CanRemovePassword { get; }
 
+        Task<bool> UserHasPasswordAsync(string uniqueIdentifier);
         Task<SetPasswordResult> SetPasswordAsync(string uniqueIdentifier, string password);
         Task<ChangePasswordResult> ChangePasswordAsync(string uniqueIdentifier, string oldPassword, string newPassword);
         Task<RemovePasswordResult> RemovePasswordAsync(string uniqueIdentifier);

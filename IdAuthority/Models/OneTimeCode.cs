@@ -2,20 +2,20 @@
 // Licensed under the Apache License, Version 2.0.
 
 using System;
-using System.Collections.Generic;
-using System.Text;
 
-namespace SimpleIAM.IdAuthority.Entities
+namespace SimpleIAM.IdAuthority.Models
 {
     public class OneTimeCode
     {
-        public string Email { get; set; }
+        public string SentTo { get; set; }
 
-        public string OTC { get; set; }
+        public string ShortCodeHash { get; set; }
 
-        public string LinkCode { get; set; }
+        public string LongCodeHash { get; set; }
 
         public DateTime ExpiresUTC { get; set; }
+
+        public int FailedAttemptCount { get; set; }
 
         public string RedirectUrl { get; set; }
     }

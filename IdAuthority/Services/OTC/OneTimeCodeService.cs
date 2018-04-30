@@ -2,71 +2,149 @@
 // Licensed under the Apache License, Version 2.0.
 
 using System;
+using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
-using SimpleIAM.IdAuthority.Entities;
+using IdentityServer4.Models;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using SimpleIAM.IdAuthority.Models;
+using SimpleIAM.IdAuthority.Services.Email;
+using SimpleIAM.IdAuthority.Services.Password;
+using SimpleIAM.IdAuthority.Stores;
 
 namespace SimpleIAM.IdAuthority.Services.OTC
 {
     public class OneTimeCodeService : IOneTimeCodeService
     {
-        private IdAuthorityDbContext _context;
+        private readonly IOneTimeCodeStore _oneTimeCodeStore;
+        private readonly IPasswordHashService _passwordHashService;
+        private readonly IEmailTemplateService _emailTemplateService;
+        private readonly IUrlHelper _urlHelper;
+        private readonly IHttpContextAccessor _httpContext;
 
-        public OneTimeCodeService(IdAuthorityDbContext context)
+        public OneTimeCodeService(
+            IOneTimeCodeStore oneTimeCodeStore,
+            IPasswordHashService passwordHashService,
+            IEmailTemplateService emailTemplateService,
+            IUrlHelper urlHelper,
+            IHttpContextAccessor httpContext
+            )
         {
-            _context = context;
+            _oneTimeCodeStore = oneTimeCodeStore;
+            _passwordHashService = passwordHashService;
+            _emailTemplateService = emailTemplateService;
+            _urlHelper = urlHelper;
+            _httpContext = httpContext;
         }
 
-        public async Task<OneTimeCode> CreateOneTimeCodeAsync(string email, TimeSpan validity, string redirectUrl = null)
+        public async Task<SentOneTimeCodeResult> SendOneTimeCodeAsync(string sendTo, TimeSpan validity, string redirectUrl = null)
         {
-            await UseOneTimeCodeAsync(email); // remove existing otc, if any
+            var otc = await _oneTimeCodeStore.GetOneTimeCodeAsync(sendTo);
+            if(otc?.ExpiresUTC > DateTime.UtcNow.AddMinutes(2))
+            {
+                // if they locked the last code, they have to wait until it is almost expired
+                // if they didn't recieve the last code, unfortunately they still need to wait. We can't resent the code
+                // because it is hashed and we don't know what it is.
+                return SentOneTimeCodeResult.TooManyRequests;
+            }
 
             var rngProvider = new RNGCryptoServiceProvider();
             var byteArray = new byte[8];
             rngProvider.GetBytes(byteArray);
-            var randomNumber = BitConverter.ToUInt64(byteArray, 0);
-            var code = (randomNumber % 1000000).ToString("000000");
+            var longCode = BitConverter.ToUInt64(byteArray, 0);
+            var longCodeHash = GetFastHash(longCode.ToString());
+            var shortCode = (longCode % 1000000).ToString("000000");
+            var shortCodeHash = _passwordHashService.HashPassword(shortCode); // a fast hash salted with longCodeHash might be a sufficient alternative
 
-            var otc = new OneTimeCode()
+            otc = new OneTimeCode()
             {
-                OTC = code,
+                SentTo = sendTo,
+                ShortCodeHash = shortCodeHash,
                 ExpiresUTC = DateTime.UtcNow.Add(validity),
-                LinkCode = randomNumber.ToString(),
-                Email = email,
-                RedirectUrl = redirectUrl
+                LongCodeHash = longCodeHash,
+                RedirectUrl = redirectUrl,
+                FailedAttemptCount = 0,
             };
+            await _oneTimeCodeStore.RemoveOneTimeCodeAsync(sendTo);
+            await _oneTimeCodeStore.AddOneTimeCodeAsync(otc);
 
-            await _context.AddAsync(otc);
-            await _context.SaveChangesAsync();
-
-            return otc;
-        }
-
-        public async Task<OneTimeCode> UseOneTimeLinkAsync(string linkCode)
-        {
-            var otc = await _context.OneTimeCodes.SingleOrDefaultAsync(x => x.LinkCode == linkCode);
-            if(otc != null)
+            if (sendTo.Contains("@")) // todo: have a better email check?
             {
-                await DeleteOneTimeCodeAsync(otc);
+                var link = _urlHelper.Action("SignInLink", "Authenticate", new { longCode = longCode.ToString() }, _httpContext.HttpContext.Request.Scheme);
+                var fields = new Dictionary<string, string>()
+                {
+                    { "link", link },
+                    { "one_time_code", shortCode }
+                };
+                await _emailTemplateService.SendEmailAsync("SignInWithEmail", sendTo, fields);
+                return SentOneTimeCodeResult.Sent;
             }
-            return otc;
-        }
-
-        public async Task<OneTimeCode> UseOneTimeCodeAsync(string email)
-        {
-            var otc = await _context.OneTimeCodes.SingleOrDefaultAsync(x => x.Email == email);
-            if (otc != null)
+            else
             {
-                await DeleteOneTimeCodeAsync(otc);
+                return SentOneTimeCodeResult.InvalidRequest; // non-email addresses not implemented
+                // todo: if valid phone number, send shortcode to phone number via SMS
             }
-            return otc;
         }
 
-        public async Task DeleteOneTimeCodeAsync(OneTimeCode oneTimeCode)
+        public async Task<CheckOneTimeCodeResponse> CheckOneTimeCodeAsync(string longCode)
         {
-            _context.Remove(oneTimeCode);
-            await _context.SaveChangesAsync();
+            if(string.IsNullOrEmpty(longCode) || longCode.Length > 36 )
+            {
+                return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.CodeIncorrect);
+            }
+
+            var longCodeHash = GetFastHash(longCode);
+            var otc = await _oneTimeCodeStore.GetOneTimeCodeByLongCodeAsync(longCodeHash);
+
+            if(otc == null)
+            {
+                return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.NotFound);
+            }
+            if(otc.ExpiresUTC < DateTime.UtcNow)
+            {
+                return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.Expired);
+            }
+
+            await _oneTimeCodeStore.ExpireOneTimeCodeAsync(otc.SentTo);
+            return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.Verified, otc.SentTo, otc.RedirectUrl);
+        }
+
+        public async Task<CheckOneTimeCodeResponse> CheckOneTimeCodeAsync(string sentTo, string shortCode)
+        {
+            var otc = await _oneTimeCodeStore.GetOneTimeCodeAsync(sentTo);
+            if (otc == null)
+            {
+                return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.NotFound);
+            }
+            if (otc.ExpiresUTC < DateTime.UtcNow)
+            {
+                return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.Expired);
+            }
+
+            if (!string.IsNullOrEmpty(shortCode) && shortCode.Length <= 8)
+            {
+                if (otc.FailedAttemptCount > 1)
+                {
+                    // maximum of 2 attempts during code validity period to prevent guessing attacks
+                    // long code remains valid, preventing account lockout attacks (and giving a fumbling but valid user another way in)
+                    return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.ShortCodeLocked); 
+                }
+                var checkResult = _passwordHashService.CheckPasswordHash(otc.ShortCodeHash, shortCode);
+                if (checkResult == CheckPaswordHashResult.Matches || checkResult == CheckPaswordHashResult.MatchesNeedsRehash)
+                {
+                    await _oneTimeCodeStore.ExpireOneTimeCodeAsync(sentTo);
+                    return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.Verified, sentTo, otc.RedirectUrl);
+                }
+            }
+
+            await _oneTimeCodeStore.UpdateOneTimeCodeFailureAsync(sentTo, otc.FailedAttemptCount + 1);
+            return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.CodeIncorrect);
+        }
+
+        private string GetFastHash(string longCode)
+        {
+            return longCode.Sha256();
         }
     }
 }

@@ -88,7 +88,7 @@ namespace SimpleIAM.IdAuthority.Services.Password
             switch(checkHashResult)
             {
                 case CheckPaswordHashResult.DoesNotMatch:
-                    if (hashInfo.FailedAuthenticationCount > 3) // todo, get from settings
+                    if (hashInfo.FailedAttemptCount > 3) // todo, get from settings
                     {
                         var lockUntil = DateTime.UtcNow.AddMinutes(5); // todo: get from settings
                         //todo: consider if failure count should be reset or not. (should first subsequent failure after lockout initiate another lockout period?)
@@ -97,7 +97,7 @@ namespace SimpleIAM.IdAuthority.Services.Password
                     }
                     else
                     {
-                        await _passwordHashStore.UpdatePasswordHashFailureAsync(uniqueIdentifier, hashInfo.FailedAuthenticationCount + 1);
+                        await _passwordHashStore.UpdatePasswordHashFailureAsync(uniqueIdentifier, hashInfo.FailedAttemptCount + 1);
                         return CheckPasswordResult.PasswordIncorrect;
                     }
                 case CheckPaswordHashResult.MatchesNeedsRehash:
@@ -116,6 +116,12 @@ namespace SimpleIAM.IdAuthority.Services.Password
         {
             //todo: implement an accurate password strength check or a length check based on settings
             return password?.Length > 8;
+        }
+
+        public async Task<bool> UserHasPasswordAsync(string uniqueIdentifier)
+        {
+            var record = await _passwordHashStore.GetPasswordHashAsync(uniqueIdentifier);
+            return record != null;
         }
     }
 }

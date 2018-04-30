@@ -2,8 +2,6 @@
 // Licensed under the Apache License, Version 2.0.
 
 using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace SimpleIAM.IdAuthority.Models
 {
@@ -15,7 +13,7 @@ namespace SimpleIAM.IdAuthority.Models
 
         public DateTime LastChangedUTC { get; set; }
 
-        public int FailedAuthenticationCount { get; set; }
+        public int FailedAttemptCount { get; set; }
 
         public DateTime? TempLockUntilUTC { get; set; }
     }

@@ -105,3 +105,72 @@ END;
 
 GO
 
+IF NOT EXISTS(SELECT * FROM [__EFMigrationsHistory] WHERE [MigrationId] = N'20180430215827_ReworkOTC')
+BEGIN
+    DECLARE @var1 sysname;
+    SELECT @var1 = [d].[name]
+    FROM [sys].[default_constraints] [d]
+    INNER JOIN [sys].[columns] [c] ON [d].[parent_column_id] = [c].[column_id] AND [d].[parent_object_id] = [c].[object_id]
+    WHERE ([d].[parent_object_id] = OBJECT_ID(N'OneTimeCodes') AND [c].[name] = N'LinkCode');
+    IF @var1 IS NOT NULL EXEC(N'ALTER TABLE [OneTimeCodes] DROP CONSTRAINT [' + @var1 + '];');
+    ALTER TABLE [OneTimeCodes] DROP COLUMN [LinkCode];
+END;
+
+GO
+
+IF NOT EXISTS(SELECT * FROM [__EFMigrationsHistory] WHERE [MigrationId] = N'20180430215827_ReworkOTC')
+BEGIN
+    DECLARE @var2 sysname;
+    SELECT @var2 = [d].[name]
+    FROM [sys].[default_constraints] [d]
+    INNER JOIN [sys].[columns] [c] ON [d].[parent_column_id] = [c].[column_id] AND [d].[parent_object_id] = [c].[object_id]
+    WHERE ([d].[parent_object_id] = OBJECT_ID(N'OneTimeCodes') AND [c].[name] = N'OTC');
+    IF @var2 IS NOT NULL EXEC(N'ALTER TABLE [OneTimeCodes] DROP CONSTRAINT [' + @var2 + '];');
+    ALTER TABLE [OneTimeCodes] DROP COLUMN [OTC];
+END;
+
+GO
+
+IF NOT EXISTS(SELECT * FROM [__EFMigrationsHistory] WHERE [MigrationId] = N'20180430215827_ReworkOTC')
+BEGIN
+    EXEC sp_rename N'PasswordHashes.FailedAuthenticationCount', N'FailedAttemptCount', N'COLUMN';
+END;
+
+GO
+
+IF NOT EXISTS(SELECT * FROM [__EFMigrationsHistory] WHERE [MigrationId] = N'20180430215827_ReworkOTC')
+BEGIN
+    EXEC sp_rename N'OneTimeCodes.Email', N'SentTo', N'COLUMN';
+END;
+
+GO
+
+IF NOT EXISTS(SELECT * FROM [__EFMigrationsHistory] WHERE [MigrationId] = N'20180430215827_ReworkOTC')
+BEGIN
+    ALTER TABLE [OneTimeCodes] ADD [FailedAttemptCount] int NOT NULL DEFAULT 0;
+END;
+
+GO
+
+IF NOT EXISTS(SELECT * FROM [__EFMigrationsHistory] WHERE [MigrationId] = N'20180430215827_ReworkOTC')
+BEGIN
+    ALTER TABLE [OneTimeCodes] ADD [LongCodeHash] nvarchar(max) NULL;
+END;
+
+GO
+
+IF NOT EXISTS(SELECT * FROM [__EFMigrationsHistory] WHERE [MigrationId] = N'20180430215827_ReworkOTC')
+BEGIN
+    ALTER TABLE [OneTimeCodes] ADD [ShortCodeHash] nvarchar(max) NULL;
+END;
+
+GO
+
+IF NOT EXISTS(SELECT * FROM [__EFMigrationsHistory] WHERE [MigrationId] = N'20180430215827_ReworkOTC')
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20180430215827_ReworkOTC', N'2.0.2-rtm-10011');
+END;
+
+GO
+

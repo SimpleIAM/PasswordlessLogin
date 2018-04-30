@@ -2,6 +2,10 @@
 // Licensed under the Apache License, Version 2.0.
 
 using IdentityServer4.Models;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -46,6 +50,7 @@ namespace Microsoft.Extensions.DependencyInjection
             var connection = configuration.GetConnectionString("IdAuthority");
 
             services.AddDbContext<IdAuthorityDbContext>(options => options.UseSqlServer(connection));
+            services.AddTransient<IOneTimeCodeStore, DbOneTimeCodeStore>();
             services.AddTransient<IOneTimeCodeService, OneTimeCodeService>();
             services.AddTransient<ISubjectStore, DbSubjectStore>();
 
@@ -75,6 +80,16 @@ namespace Microsoft.Extensions.DependencyInjection
             services.AddTransient<IPasswordService, DefaultPasswordService>();
 
             services.AddEmbeddedViews();
+
+            services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+
+            // IUrlHelper
+            services.AddSingleton<IActionContextAccessor, ActionContextAccessor>();
+            services.AddScoped<IUrlHelper>(x => {
+                var actionContext = x.GetRequiredService<IActionContextAccessor>().ActionContext;
+                var factory = x.GetRequiredService<IUrlHelperFactory>();
+                return factory.GetUrlHelper(actionContext);
+            });
 
             services.AddMvc();
 

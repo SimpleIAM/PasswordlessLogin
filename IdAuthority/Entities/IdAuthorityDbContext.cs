@@ -2,9 +2,6 @@
 // Licensed under the Apache License, Version 2.0.
 
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace SimpleIAM.IdAuthority.Entities
 {
@@ -32,11 +29,11 @@ namespace SimpleIAM.IdAuthority.Entities
 
             modelBuilder.Entity<OneTimeCode>(otc =>
             {
-                otc.HasKey(x => x.Email);
+                otc.HasKey(x => x.SentTo);
 
-                otc.Property(x => x.Email).HasMaxLength(254).IsRequired();
-                otc.Property(x => x.OTC).HasMaxLength(8);
-                otc.Property(x => x.LinkCode).HasMaxLength(36);
+                otc.Property(x => x.SentTo).HasMaxLength(254).IsRequired();
+                otc.Property(x => x.ShortCodeHash);
+                otc.Property(x => x.LongCodeHash);
                 otc.Property(x => x.ExpiresUTC).IsRequired();
                 otc.Property(x => x.RedirectUrl).HasMaxLength(2048);
             });
@@ -48,7 +45,7 @@ namespace SimpleIAM.IdAuthority.Entities
                 ph.Property(x => x.SubjectId).HasMaxLength(36).IsRequired();
                 ph.Property(x => x.LastChangedUTC).IsRequired();
                 ph.Property(x => x.Hash).IsRequired();
-                ph.Property(x => x.FailedAuthenticationCount).IsRequired();
+                ph.Property(x => x.FailedAttemptCount).IsRequired();
             });
         }
     }

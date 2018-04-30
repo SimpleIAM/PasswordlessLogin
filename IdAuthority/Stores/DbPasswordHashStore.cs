@@ -18,12 +18,12 @@ namespace SimpleIAM.IdAuthority.Stores
 
         public async Task<bool> AddPasswordHashAsync(string uniqueIdentifier, string passwordHash)
         {
-            var record = new Entities.PasswordHash()
+            var record = new PasswordHash()
             {
                 SubjectId = uniqueIdentifier,
                 Hash = passwordHash,
                 LastChangedUTC = DateTime.UtcNow,
-                FailedAuthenticationCount = 0,
+                FailedAttemptCount = 0,
                 TempLockUntilUTC = null
             };
             await _context.AddAsync(record);
@@ -34,19 +34,7 @@ namespace SimpleIAM.IdAuthority.Stores
         public async Task<Models.PasswordHash> GetPasswordHashAsync(string uniqueIdentifier)
         {
             var record = await _context.PasswordHashes.FindAsync(uniqueIdentifier);
-            if(record == null)
-            {
-                return null;
-            }
-            var hashInfo = new Models.PasswordHash()
-            {
-                SubjectId = record.SubjectId,
-                Hash = record.Hash,
-                LastChangedUTC = record.LastChangedUTC,
-                FailedAuthenticationCount = record.FailedAuthenticationCount,
-                TempLockUntilUTC = record.TempLockUntilUTC,
-            };
-            return hashInfo;
+            return record?.ToModel();
         }
 
         public async Task<bool> UpdatePasswordHashFailureAsync(string uniqueIdentifier, int failureCount)
@@ -55,7 +43,7 @@ namespace SimpleIAM.IdAuthority.Stores
             var record = await _context.PasswordHashes.FindAsync(uniqueIdentifier);
             if(record != null)
             {
-                record.FailedAuthenticationCount = failureCount;
+                record.FailedAttemptCount = failureCount;
                 _context.Entry(record).Property(x => x.Hash).IsModified = false;
                 _context.Entry(record).Property(x => x.LastChangedUTC).IsModified = false;
                 _context.Entry(record).Property(x => x.TempLockUntilUTC).IsModified = false;
@@ -68,7 +56,7 @@ namespace SimpleIAM.IdAuthority.Stores
         {
             var count = 1;
             var record = await _context.PasswordHashes.FindAsync(uniqueIdentifier);
-            if (record == null)
+            if (record != null)
             {
                 _context.Remove(record);
                 count = await _context.SaveChangesAsync();
@@ -85,7 +73,7 @@ namespace SimpleIAM.IdAuthority.Stores
                 record.TempLockUntilUTC = lockUntil;
                 _context.Entry(record).Property(x => x.Hash).IsModified = false;
                 _context.Entry(record).Property(x => x.LastChangedUTC).IsModified = false;
-                _context.Entry(record).Property(x => x.FailedAuthenticationCount).IsModified = false;
+                _context.Entry(record).Property(x => x.FailedAttemptCount).IsModified = false;
                 count = await _context.SaveChangesAsync();
             }
             return count > 0;
@@ -99,7 +87,7 @@ namespace SimpleIAM.IdAuthority.Stores
             {
                 record.Hash = newHash;
                 _context.Entry(record).Property(x => x.LastChangedUTC).IsModified = false;
-                _context.Entry(record).Property(x => x.FailedAuthenticationCount).IsModified = false;
+                _context.Entry(record).Property(x => x.FailedAttemptCount).IsModified = false;
                 _context.Entry(record).Property(x => x.TempLockUntilUTC).IsModified = false;
                 count = await _context.SaveChangesAsync();
             }
