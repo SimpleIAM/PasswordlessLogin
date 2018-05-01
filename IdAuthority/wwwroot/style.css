@@ -316,6 +316,10 @@ html, body {
     font-family: Helvetica, Arial, sans-serif;
 }
 
+ol > li {
+    margin: 0.6em 0;
+}
+
 #mainarea {
     margin: 20px;
 }
@@ -411,54 +415,56 @@ html, body {
 #emailhelp:target {
     display:block;
 }
-.signin .field {
+.field {
     margin: 0.6em 0;
 }
-.signin label,
-.signin .hint {
+label,
+.hint {
     color: #444;
     font-size: 80%;
 }
 p.hint {
     margin-top: 2em;
 }
-.signin label[for="Email"],
-.signin label[for="OneTimeCode"],
-.signin label[for="Password"] {
+label {
     text-align: left;
-    margin: 0.8em auto 0.3em;
+    margin: 0.8em 0 0.3em;
     display: block;
     width: 280px;
+}
+.signin label {
+    margin-left: auto;
+    margin-right: auto;
 }
 .signin label[for="OneTimeCode"] {
     text-align: center;
 }
-.signin input[name="Email"],
-.signin input[name="Password"],
-.signin input[name="OneTimeCode"],
-.signin input[type="submit"] {
+input[type] {
     font-size: 115%;
     width: 280px;
     padding-left: 0.7em;
     padding-right: 0.7em;
 }
-.signin input[name="OneTimeCode"] {
+input[name="OneTimeCode"] {
     width: 6em;
+}
+input[type="submit"] {
+    height: 2.4em;
 }
 .signin .displayemail {
     font-weight:bold;
     margin: 1em 0;
     word-wrap:break-word;
 }
-.signin input[type="submit"] {
-    height: 2.4em;
-}
 .staysignedin > * {
     vertical-align: middle;
 }
+.warning,
 .field-validation-error {
-    display: block;
     color: #b00;
+}
+.field-validation-error {
+    display: block;    
     margin: 0.6em 0;
     font-size: 80%;
 }

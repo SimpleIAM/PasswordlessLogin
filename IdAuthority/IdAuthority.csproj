@@ -17,6 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Remove="UI\Account\GetOneTimeCode.cshtml" />
     <None Remove="UI\Account\RemovePassword.cshtml" />
     <None Remove="UI\Account\SetPassword.cshtml" />
     <None Remove="UI\Authenticate\AccountSettings.cshtml" />
@@ -29,6 +30,8 @@
     <None Remove="UI\Shared\_PostRedirectMessages.cshtml" />
     <None Remove="UI\Shared\_StaySignedIn.cshtml" />
     <None Remove="UI\Shared\_StaySignedInDropdown.cshtml" />
+    <None Remove="wwwroot\setpassword.js" />
+    <None Remove="wwwroot\timezonize.js" />
   </ItemGroup>
 
   <ItemGroup>

@@ -5,16 +5,18 @@
 <h2>My Account</h2>
 
 <h3>Sign in options</h3>
-<ol>
+<ol id="signinoptionlist">
     <li>
-        Email: @Model.Email
+        Email
+        <strong>@Model.Email</strong>
     </li>
     <li>
-        Password:
-        @if(Model.PaswordLastChangedUTC != null)
+        Password
+        @if (Model.PaswordLastChangedUTC != null)
         {
-            <span>Last changed @Model.PaswordLastChangedUTC.ToString()</span>
-            <a asp-action="SetPassword">Change Password</a> 
+            <text>set on <time datetime="@(((DateTime)Model.PaswordLastChangedUTC).ToString("s", System.Globalization.CultureInfo.InvariantCulture)).000Z">@Model.PaswordLastChangedUTC.ToString()</time></text>
+            <br />
+            <a asp-action="SetPassword">Change Password</a>
             <text>&bull;</text>
             <a asp-action="RemovePassword">Remove Password</a>
         }
@@ -24,3 +26,7 @@
         }
     </li>
 </ol>
+
+@section scripts {
+    <script type="text/javascript" src="~/timezonize.js"></script>
+}

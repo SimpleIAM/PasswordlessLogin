@@ -7,14 +7,14 @@ namespace SimpleIAM.IdAuthority.UI.Account
 {
     public class SetPasswordModel
     {
-        public bool GetOneTimeCode { get; set; }
-
         [Required]
         [RegularExpression(@" *[0-9]{6} *", ErrorMessage = "Enter a 6-digit number")]
         public string OneTimeCode { get; set; }
 
         [Required]
         public string NewPassword { get; set; }
+
+        public int MinimumPasswordStrengthInBits { get; set; }
 
         [Required]
         public string ConfirmPassword { get; set; }

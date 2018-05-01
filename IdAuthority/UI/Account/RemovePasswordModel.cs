@@ -7,8 +7,6 @@ namespace SimpleIAM.IdAuthority.UI.Account
 {
     public class RemovePasswordModel
     {
-        public bool GetOneTimeCode { get; set; }
-
         [Required]
         [RegularExpression(@" *[0-9]{6} *", ErrorMessage = "Enter a 6-digit number")]
         public string OneTimeCode { get; set; }

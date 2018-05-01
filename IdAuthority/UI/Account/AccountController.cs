@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using IdentityServer4.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SimpleIAM.IdAuthority.Configuration;
 using SimpleIAM.IdAuthority.Services.Email;
 using SimpleIAM.IdAuthority.Services.OTC;
 using SimpleIAM.IdAuthority.Services.Password;
@@ -23,17 +24,20 @@ namespace SimpleIAM.IdAuthority.UI.Authenticate
         private readonly ISubjectStore _subjectStore;
         private readonly IPasswordService _passwordService;
         private readonly IOneTimeCodeService _oneTimeCodeService;
+        private readonly IdProviderConfig _config;
 
         public AccountController(            
             IEmailTemplateService emailTemplateService,
             ISubjectStore subjectStore,
             IPasswordService passwordService,
-            IOneTimeCodeService oneTimeCodeService)
+            IOneTimeCodeService oneTimeCodeService,
+            IdProviderConfig config)
         {
             _emailTemplateService = emailTemplateService;
             _subjectStore = subjectStore;
             _passwordService = passwordService;
             _oneTimeCodeService = oneTimeCodeService;
+            _config = config;
         }
 
         [HttpGet("")]
@@ -54,41 +58,42 @@ namespace SimpleIAM.IdAuthority.UI.Authenticate
         }
 
         [HttpGet("setpassword")]
-        public async Task<IActionResult> SetPassword()
+        public IActionResult SetPassword(int step = 1)
         {
-            var viewModel = new SetPasswordModel();
-            return View(viewModel);
+            switch (step)
+            {
+                case 1:
+                    return View("GetOneTimeCode");
+                case 2:
+                    var viewModel = GetSetPasswordViewModel();
+                    return View(viewModel);
+                default:
+                    return NotFound();
+            }
         }
 
         [HttpPost("setpassword")]
-        public async Task<IActionResult> SetPassword(SetPasswordModel model)
+        public async Task<IActionResult> SetPassword(SetPasswordModel model, bool getOneTimeCode = false)
         {
             var sub = User.GetSubjectId();
 
             var email = User.GetDisplayName();
 
-            if(model.GetOneTimeCode)
+            if(getOneTimeCode)
             {
-                ModelState.Clear();
-                var result = await _oneTimeCodeService.SendOneTimeCodeAsync(email, TimeSpan.FromMinutes(5));
-                switch(result)
+                var success = await SendOneTimeCodeBeforeRedirect();
+                if (success)
                 {
-                    case SendOneTimeCodeResult.Sent:
-                        ModelState.AddModelError("GetOneTimeCode", "We sent a code to your email address");
-                        break;
-                    case SendOneTimeCodeResult.InvalidRequest:
-                    case SendOneTimeCodeResult.ServiceFailure:
-                    case SendOneTimeCodeResult.TooManyRequests:
-                        ModelState.AddModelError("GetOneTimeCode", "Fail"); //todo: refine
-                        break;
+                    return RedirectToAction("SetPassword", new { step = 2 });
                 }
+                return RedirectToAction("SetPassword");
             }
             else if (ModelState.IsValid)
             {
                 var checkOtcResponse = await _oneTimeCodeService.CheckOneTimeCodeAsync(email, model.OneTimeCode);
                 if (checkOtcResponse.Result != CheckOneTimeCodeResult.Verified)
                 {
-                    ModelState.AddModelError("OneTimeCode", "Fail"); //todo: refine
+                    ModelState.AddModelError("OneTimeCode", "Code is incorrect or expired");
                 }
                 else
                 {
@@ -108,46 +113,44 @@ namespace SimpleIAM.IdAuthority.UI.Authenticate
                 }
             }
 
-            var viewModel = new SetPasswordModel
-            {
-                OneTimeCode = model.OneTimeCode
-            };
+            var viewModel = GetSetPasswordViewModel(model);
             return View(viewModel);
         }
 
         [HttpGet("removepassword")]
-        public async Task<IActionResult> RemovePassword()
+        public IActionResult RemovePassword(int step = 1)
         {
-            return View();
+            switch (step)
+            {
+                case 1:
+                    return View("GetOneTimeCode");
+                case 2:
+                    return View();
+                default:
+                    return NotFound();
+            }
         }
 
         [HttpPost("removepassword")]
-        public async Task<IActionResult> RemovePassword(RemovePasswordModel model)
+        public async Task<IActionResult> RemovePassword(RemovePasswordModel model, bool getOneTimeCode = false)
         {
             var email = User.GetDisplayName();
 
-            if (model.GetOneTimeCode)
+            if (getOneTimeCode)
             {
-                ModelState.Clear();
-                var result = await _oneTimeCodeService.SendOneTimeCodeAsync(email, TimeSpan.FromMinutes(5));
-                switch (result)
+                var success = await SendOneTimeCodeBeforeRedirect();
+                if (success)
                 {
-                    case SendOneTimeCodeResult.Sent:
-                        ModelState.AddModelError("GetOneTimeCode", "We sent a code to your email address");
-                        break;
-                    case SendOneTimeCodeResult.InvalidRequest:
-                    case SendOneTimeCodeResult.ServiceFailure:
-                    case SendOneTimeCodeResult.TooManyRequests:
-                        ModelState.AddModelError("GetOneTimeCode", "Fail"); //todo: refine
-                        break;
+                    return RedirectToAction("RemovePassword", new { step = 2 });
                 }
+                return RedirectToAction("RemovePassword");
             }
             else if (ModelState.IsValid)
             {
                 var checkOtcResponse = await _oneTimeCodeService.CheckOneTimeCodeAsync(email, model.OneTimeCode);
                 if (checkOtcResponse.Result != CheckOneTimeCodeResult.Verified)
                 {
-                    ModelState.AddModelError("OneTimeCode", "Fail"); //todo: refine
+                    ModelState.AddModelError("OneTimeCode", "Code is incorrect or expired");
                 }
                 else
                 {
@@ -163,6 +166,36 @@ namespace SimpleIAM.IdAuthority.UI.Authenticate
                 }
             }
             return View(model);
+        }
+
+        private async Task<bool> SendOneTimeCodeBeforeRedirect()
+        {
+            var email = User.GetDisplayName();
+
+            var result = await _oneTimeCodeService.SendOneTimeCodeAsync(email, TimeSpan.FromMinutes(5));
+            switch (result)
+            {
+                case SendOneTimeCodeResult.Sent:
+                    AddPostRedirectMessage("We sent a one time code to your email address");
+                    return true;
+                case SendOneTimeCodeResult.TooManyRequests:
+                    AddPostRedirectMessage("We recently sent a one time code to your email address. If you didn't get it, please go back and request a new code in a few minutes.");
+                    return true;
+                default:
+                case SendOneTimeCodeResult.InvalidRequest:
+                case SendOneTimeCodeResult.ServiceFailure:
+                    ModelState.AddModelError("GetOneTimeCode", "Something went wrong and we were unable to send you a one time code");
+                    return false;
+            }
+        }
+
+        private SetPasswordModel GetSetPasswordViewModel(SetPasswordModel inputModel = null)
+        {
+            var viewModel = new SetPasswordModel() {
+                MinimumPasswordStrengthInBits = _config.MinimumPasswordStrengthInBits,
+                OneTimeCode = inputModel?.OneTimeCode
+            };
+            return viewModel;
         }
     }
 }
