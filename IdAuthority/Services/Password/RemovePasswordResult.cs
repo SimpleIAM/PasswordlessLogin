@@ -6,7 +6,6 @@ namespace SimpleIAM.IdAuthority.Services.Password
     public enum RemovePasswordResult
     {
         Success,
-        NotSupported,
         ServiceFailure,
     }
 }

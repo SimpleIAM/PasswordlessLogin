@@ -7,7 +7,6 @@ namespace SimpleIAM.IdAuthority.Services.Password
     {
         Success,
         PasswordDoesNotMeetStrengthRequirements,
-        NotSupported,
         ServiceFailure,
     }
 }

@@ -1,0 +1,26 @@
+﻿@model SimpleIAM.IdAuthority.UI.Account.MyAccountViewModel
+@{
+    ViewData["Title"] = "My Account";
+}
+<h2>My Account</h2>
+
+<h3>Sign in options</h3>
+<ol>
+    <li>
+        Email: @Model.Email
+    </li>
+    <li>
+        Password:
+        @if(Model.PaswordLastChangedUTC != null)
+        {
+            <span>Last changed @Model.PaswordLastChangedUTC.ToString()</span>
+            <a asp-action="SetPassword">Change Password</a> 
+            <text>&bull;</text>
+            <a asp-action="RemovePassword">Remove Password</a>
+        }
+        else
+        {
+            <a asp-action="SetPassword">Set Password</a>
+        }
+    </li>
+</ol>

@@ -17,6 +17,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Remove="UI\Account\RemovePassword.cshtml" />
+    <None Remove="UI\Account\SetPassword.cshtml" />
     <None Remove="UI\Authenticate\AccountSettings.cshtml" />
     <None Remove="UI\Authenticate\Register.cshtml" />
     <None Remove="UI\Authenticate\SignInCode.cshtml" />

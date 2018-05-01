@@ -14,6 +14,14 @@ namespace SimpleIAM.IdAuthority.Configuration
             var templates = new EmailTemplates()
             {
                 {
+                    "OneTimeCode",
+                    new EmailTemplate()
+                    {
+                        Subject = "One time code",
+                        Body = "Here is your one time code: {{one_time_code}}",
+                    }
+                },
+                {
                     "SignInWithEmail",
                     new EmailTemplate()
                     {

@@ -11,7 +11,7 @@
             <li><a asp-action="Apps" asp-controller="Home">Apps</a></li>
         </ul>
         <ul id="authmenu" class="menu">
-            <li class="primary"><a asp-action="AccountSettings" asp-controller="Account">@User.Identity.Name</a></li>
+            <li class="primary"><a asp-action="MyAccount" asp-controller="Account">@User.Identity.Name</a></li>
             <li><a asp-action="SignOut" asp-controller="Authenticate">Sign out</a></li>
         </ul>
     }

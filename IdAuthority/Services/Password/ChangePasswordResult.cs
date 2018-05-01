@@ -8,7 +8,6 @@ namespace SimpleIAM.IdAuthority.Services.Password
         Success,
         OldPasswordIncorrect, // or account not found
         NewPasswordDoesNotMeetStrengthRequirements,
-        NotSupported,
         ServiceFailure,
     }
 }

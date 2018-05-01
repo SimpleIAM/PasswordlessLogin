@@ -17,21 +17,21 @@ using SimpleIAM.IdAuthority.Entities;
 using SimpleIAM.IdAuthority.Services.OTC;
 using SimpleIAM.IdAuthority.Services.Password;
 using SimpleIAM.IdAuthority.Stores;
+using SimpleIAM.IdAuthority.UI.Shared;
 
 namespace SimpleIAM.IdAuthority.UI.Authenticate
 {
     [Route("")]
     [Authorize]
-    public class AuthenticateController : Controller
+    public class AuthenticateController : BaseController
     {
         private readonly IIdentityServerInteractionService _interaction;
         private readonly IEventService _events;
         private readonly IOneTimeCodeService _oneTimeCodeService;
         private readonly ISubjectStore _subjectStore;
-        private readonly IdProviderConfig _config;
         private readonly IClientStore _clientStore;
         private readonly IPasswordService _passwordService;
-
+        private readonly IdProviderConfig _config;
 
         public AuthenticateController(
             IIdentityServerInteractionService interaction,
@@ -46,9 +46,9 @@ namespace SimpleIAM.IdAuthority.UI.Authenticate
             _events = events;
             _oneTimeCodeService = oneTimeCodeService;
             _subjectStore = subjectStore;
-            _config = config;
             _clientStore = clientStore;
             _passwordService = passwordService;
+            _config = config;
         }
 
         [HttpGet("register")]
@@ -75,21 +75,21 @@ namespace SimpleIAM.IdAuthority.UI.Authenticate
         {
             if (ModelState.IsValid)
             {
-                var result = await _oneTimeCodeService.SendOneTimeCodeAsync(model.Email, TimeSpan.FromMinutes(5), returnUrl);
+                var result = await _oneTimeCodeService.SendOneTimeCodeAndLinkAsync(model.Email, TimeSpan.FromMinutes(5), returnUrl);
 
                 switch(result)
                 {
-                    case SentOneTimeCodeResult.Sent:
+                    case SendOneTimeCodeResult.Sent:
                         SaveUsernameHint(model.Email);
                         AddPostRedirectValue("Email", model.Email);
                         return RedirectToAction("SignInCode");
-                    case SentOneTimeCodeResult.TooManyRequests:
+                    case SendOneTimeCodeResult.TooManyRequests:
                         ModelState.AddModelError("Email", "A code has already been sent to this address. Please wait a few minutes before requesting a new code.");
                         break;
-                    case SentOneTimeCodeResult.InvalidRequest:
+                    case SendOneTimeCodeResult.InvalidRequest:
                         ModelState.AddModelError("Email", "Invalid address");
                         break;
-                    case SentOneTimeCodeResult.ServiceFailure:
+                    case SendOneTimeCodeResult.ServiceFailure:
                     default:
                         ModelState.AddModelError("Email", "Something went wrong.");
                         break;
@@ -305,29 +305,6 @@ namespace SimpleIAM.IdAuthority.UI.Authenticate
             };
 
             return viewModel;
-        }
-
-        private void AddPostRedirectMessage(string message)
-        {
-            var messages = GetPostRedirectValue("Messages");
-            if(messages == null)
-            {
-                AddPostRedirectValue("Messages", message);
-            }
-            else
-            {
-                AddPostRedirectValue("Messages", $"{messages}|{message}");
-            }
-        }
-
-        private void AddPostRedirectValue(string key, string value)
-        {
-            TempData[$"PostRedirect.{key}"] = value;
-        }
-
-        private string GetPostRedirectValue(string key)
-        {
-            return (string)TempData[$"PostRedirect.{key}"];
         }
 
         private void SaveUsernameHint(string email)

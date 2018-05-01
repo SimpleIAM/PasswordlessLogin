@@ -20,41 +20,7 @@ namespace SimpleIAM.IdAuthority.Services.Password
             _passwordHashStore = passwordHashStore;
         }
 
-        public bool CanSetPassword => true;
-
-        public bool CanChangePassword => true;
-
-        public bool CanRemovePassword => true;
-
         public string UniqueIdentifierClaimType => "sub";
-
-        public async Task<ChangePasswordResult> ChangePasswordAsync(string uniqueIdentifier, string oldPassword, string newPassword)
-        {
-            if (!PasswordIsStrongEnough(newPassword))
-            {
-                return ChangePasswordResult.NewPasswordDoesNotMeetStrengthRequirements;
-            }
-            var checkOldPaswordResult = await CheckPasswordAsync(uniqueIdentifier, oldPassword);
-            switch(checkOldPaswordResult)
-            {
-                case CheckPasswordResult.PasswordIncorrect:
-                case CheckPasswordResult.NotFound:
-                    return ChangePasswordResult.OldPasswordIncorrect;
-                case CheckPasswordResult.ServiceFailure:
-                    return ChangePasswordResult.ServiceFailure;
-                case CheckPasswordResult.TemporarilyLocked:
-                    // this case is hairy... we probably need to validate the hash via a common method
-                    return ChangePasswordResult.ServiceFailure;
-                case CheckPasswordResult.Success:
-                    var newHash = _passwordHashService.HashPassword(newPassword);
-                    var success = await _passwordHashStore.UpdatePasswordHashAsync(uniqueIdentifier, newHash);
-                    //todo: reset lockout and failed count, or should that be done in the store?
-                    return success ? ChangePasswordResult.Success : ChangePasswordResult.ServiceFailure;
-                default:
-                    // this should never happen
-                    return ChangePasswordResult.ServiceFailure;
-            }
-        }
 
         public async Task<RemovePasswordResult> RemovePasswordAsync(string uniqueIdentifier)
         {
@@ -69,6 +35,10 @@ namespace SimpleIAM.IdAuthority.Services.Password
                 return SetPasswordResult.PasswordDoesNotMeetStrengthRequirements;
             }
             var hash = _passwordHashService.HashPassword(password);
+            if(await RemovePasswordAsync(uniqueIdentifier) == RemovePasswordResult.ServiceFailure)
+            {
+                return SetPasswordResult.ServiceFailure;
+            }
             var result = await _passwordHashStore.AddPasswordHashAsync(uniqueIdentifier, hash);
             return result ? SetPasswordResult.Success : SetPasswordResult.ServiceFailure;
         }
@@ -115,13 +85,13 @@ namespace SimpleIAM.IdAuthority.Services.Password
         private bool PasswordIsStrongEnough(string password)
         {
             //todo: implement an accurate password strength check or a length check based on settings
-            return password?.Length > 8;
+            return password?.Length >= 8;
         }
 
-        public async Task<bool> UserHasPasswordAsync(string uniqueIdentifier)
+        public async Task<DateTime?> PasswordLastChangedAsync(string uniqueIdentifier)
         {
             var record = await _passwordHashStore.GetPasswordHashAsync(uniqueIdentifier);
-            return record != null;
+            return record?.LastChangedUTC;
         }
     }
 }

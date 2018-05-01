@@ -38,53 +38,14 @@ namespace SimpleIAM.IdAuthority.Services.OTC
             _httpContext = httpContext;
         }
 
-        public async Task<SentOneTimeCodeResult> SendOneTimeCodeAsync(string sendTo, TimeSpan validity, string redirectUrl = null)
+        public async Task<SendOneTimeCodeResult> SendOneTimeCodeAsync(string sendTo, TimeSpan validity)
         {
-            var otc = await _oneTimeCodeStore.GetOneTimeCodeAsync(sendTo);
-            if(otc?.ExpiresUTC > DateTime.UtcNow.AddMinutes(2))
-            {
-                // if they locked the last code, they have to wait until it is almost expired
-                // if they didn't recieve the last code, unfortunately they still need to wait. We can't resent the code
-                // because it is hashed and we don't know what it is.
-                return SentOneTimeCodeResult.TooManyRequests;
-            }
+            return await SendOneTimeCodeInternalAsync("OneTimeCode", sendTo, validity);
+        }
 
-            var rngProvider = new RNGCryptoServiceProvider();
-            var byteArray = new byte[8];
-            rngProvider.GetBytes(byteArray);
-            var longCode = BitConverter.ToUInt64(byteArray, 0);
-            var longCodeHash = GetFastHash(longCode.ToString());
-            var shortCode = (longCode % 1000000).ToString("000000");
-            var shortCodeHash = _passwordHashService.HashPassword(shortCode); // a fast hash salted with longCodeHash might be a sufficient alternative
-
-            otc = new OneTimeCode()
-            {
-                SentTo = sendTo,
-                ShortCodeHash = shortCodeHash,
-                ExpiresUTC = DateTime.UtcNow.Add(validity),
-                LongCodeHash = longCodeHash,
-                RedirectUrl = redirectUrl,
-                FailedAttemptCount = 0,
-            };
-            await _oneTimeCodeStore.RemoveOneTimeCodeAsync(sendTo);
-            await _oneTimeCodeStore.AddOneTimeCodeAsync(otc);
-
-            if (sendTo.Contains("@")) // todo: have a better email check?
-            {
-                var link = _urlHelper.Action("SignInLink", "Authenticate", new { longCode = longCode.ToString() }, _httpContext.HttpContext.Request.Scheme);
-                var fields = new Dictionary<string, string>()
-                {
-                    { "link", link },
-                    { "one_time_code", shortCode }
-                };
-                await _emailTemplateService.SendEmailAsync("SignInWithEmail", sendTo, fields);
-                return SentOneTimeCodeResult.Sent;
-            }
-            else
-            {
-                return SentOneTimeCodeResult.InvalidRequest; // non-email addresses not implemented
-                // todo: if valid phone number, send shortcode to phone number via SMS
-            }
+        public async Task<SendOneTimeCodeResult> SendOneTimeCodeAndLinkAsync(string sendTo, TimeSpan validity, string redirectUrl = null)
+        {
+            return await SendOneTimeCodeInternalAsync("SignInWithEmail", sendTo, validity, redirectUrl);
         }
 
         public async Task<CheckOneTimeCodeResponse> CheckOneTimeCodeAsync(string longCode)
@@ -140,6 +101,55 @@ namespace SimpleIAM.IdAuthority.Services.OTC
 
             await _oneTimeCodeStore.UpdateOneTimeCodeFailureAsync(sentTo, otc.FailedAttemptCount + 1);
             return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.CodeIncorrect);
+        }
+
+        private async Task<SendOneTimeCodeResult> SendOneTimeCodeInternalAsync(string template, string sendTo, TimeSpan validity, string redirectUrl = null)
+        {
+            var otc = await _oneTimeCodeStore.GetOneTimeCodeAsync(sendTo);
+            if (otc?.ExpiresUTC > DateTime.UtcNow.AddMinutes(2))
+            {
+                // if they locked the last code, they have to wait until it is almost expired
+                // if they didn't recieve the last code, unfortunately they still need to wait. We can't resent the code
+                // because it is hashed and we don't know what it is.
+                return SendOneTimeCodeResult.TooManyRequests;
+            }
+
+            var rngProvider = new RNGCryptoServiceProvider();
+            var byteArray = new byte[8];
+            rngProvider.GetBytes(byteArray);
+            var longCode = BitConverter.ToUInt64(byteArray, 0);
+            var longCodeHash = GetFastHash(longCode.ToString());
+            var shortCode = (longCode % 1000000).ToString("000000");
+            var shortCodeHash = _passwordHashService.HashPassword(shortCode); // a fast hash salted with longCodeHash might be a sufficient alternative
+
+            otc = new OneTimeCode()
+            {
+                SentTo = sendTo,
+                ShortCodeHash = shortCodeHash,
+                ExpiresUTC = DateTime.UtcNow.Add(validity),
+                LongCodeHash = longCodeHash,
+                RedirectUrl = redirectUrl,
+                FailedAttemptCount = 0,
+            };
+            await _oneTimeCodeStore.RemoveOneTimeCodeAsync(sendTo);
+            await _oneTimeCodeStore.AddOneTimeCodeAsync(otc);
+
+            if (sendTo.Contains("@")) // todo: have a better email check?
+            {
+                var link = _urlHelper.Action("SignInLink", "Authenticate", new { longCode = longCode.ToString() }, _httpContext.HttpContext.Request.Scheme);
+                var fields = new Dictionary<string, string>()
+                {
+                    { "link", link },
+                    { "one_time_code", shortCode }
+                };
+                await _emailTemplateService.SendEmailAsync(template, sendTo, fields);
+                return SendOneTimeCodeResult.Sent;
+            }
+            else
+            {
+                return SendOneTimeCodeResult.InvalidRequest; // non-email addresses not implemented
+                // todo: if valid phone number, send shortcode to phone number via SMS
+            }
         }
 
         private string GetFastHash(string longCode)

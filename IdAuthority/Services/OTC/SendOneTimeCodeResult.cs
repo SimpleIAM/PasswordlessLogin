@@ -3,7 +3,7 @@
 
 namespace SimpleIAM.IdAuthority.Services.OTC
 {
-    public enum SentOneTimeCodeResult
+    public enum SendOneTimeCodeResult
     {
         Sent,
         TooManyRequests, // there is a valid code that hasn't expired
