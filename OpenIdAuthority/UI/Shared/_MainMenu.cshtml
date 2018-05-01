@@ -1,0 +1,25 @@
+﻿@using SimpleIAM.OpenIdAuthority.Configuration
+@inject IdProviderConfig config
+
+<nav id="mainnav">
+    <h1 id="sitename">
+        <a asp-action="Index" asp-controller="Home">@config.DisplayName</a>
+    </h1>
+    @if (User.Identity.IsAuthenticated)
+    {
+        <ul id="mainmenu" class="menu">
+            <li><a asp-action="Apps" asp-controller="Home">Apps</a></li>
+        </ul>
+        <ul id="authmenu" class="menu">
+            <li class="primary"><a asp-action="MyAccount" asp-controller="Account">@User.Identity.Name</a></li>
+            <li><a asp-action="SignOut" asp-controller="Authenticate">Sign out</a></li>
+        </ul>
+    }
+    else
+    {
+        <ul id="authmenu" class="menu">
+            <li><a asp-action="Register" asp-controller="Authenticate">Register</a></li>
+            <li class="primary"><a asp-action="@config.SignInAction" asp-controller="Authenticate">Sign in</a></li>
+        </ul>
+    }
+</nav>

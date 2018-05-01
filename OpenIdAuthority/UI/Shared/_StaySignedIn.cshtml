@@ -1,0 +1,10 @@
+﻿@using SimpleIAM.OpenIdAuthority.Configuration
+@inject IdProviderConfig config
+@model SimpleIAM.OpenIdAuthority.UI.Authenticate.SessionLengthViewModel
+@if(config.DefaultSessionLengthMinutes != config.MaxSessionLengthMinutes) {
+<div class="field staysignedin">
+    <input type="checkbox" name="SessionLengthMinutes" id="SessionLengthMinutes" value="@config.MaxSessionLengthMinutes" @if(Model.SessionLengthMinutes == config.MaxSessionLengthMinutes) { <text> checked</text> } />
+    <input type="hidden" name="SessionLengthMinutes" value="@config.DefaultSessionLengthMinutes" />
+    <label for="SessionLengthMinutes">Stay signed in</label>
+</div>
+}

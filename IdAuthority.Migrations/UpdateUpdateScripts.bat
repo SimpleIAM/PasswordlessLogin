@@ -1,1 +1,0 @@
-dotnet ef migrations script --idempotent --output UpgradeIdAuthority.SqlServer.sql

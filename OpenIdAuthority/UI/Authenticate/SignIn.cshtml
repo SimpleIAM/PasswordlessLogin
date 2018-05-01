@@ -1,0 +1,28 @@
+﻿@model SimpleIAM.OpenIdAuthority.UI.Authenticate.SignInViewModel
+@{
+    ViewData["Title"] = "Sign In";
+}
+
+
+<div class="signin">
+    <h2>Sign In</h2>
+    <form method="post">
+        <div class="field">
+            <label asp-for="Email">Email</label>
+            <input type="email" asp-for="Email" placeholder="email" autofocus />
+            <span asp-validation-for="Email"></span>
+        </div>
+        <div class="field" style="display:none">
+            <label asp-for="LeaveBlank">Leave blank</label>
+            <input type="text" asp-for="LeaveBlank" placeholder="leave blank" autocomplete="off" />
+            <span asp-validation-for="LeaveBlank"></span>
+        </div>
+        <div class="field">
+            <input type="submit" value="Get sign in code" />
+        </div>
+    </form>
+
+    <p class="hint">
+        <a asp-action="SignInPass" asp-route-returnUrl="@Model.ReturnUrl">Sign in with password</a>
+    </p>
+</div>
