@@ -107,7 +107,7 @@ namespace SimpleIAM.OpenIdAuthority.Services.Password
                 | ((uint)(buffer[offset + 3]));
         }
 
-        public CheckPaswordHashResult CheckPasswordHash(string passwordHash, string password)
+        public virtual CheckPaswordHashResult CheckPasswordHash(string passwordHash, string password)
         {
             if (passwordHash == null)
             {
