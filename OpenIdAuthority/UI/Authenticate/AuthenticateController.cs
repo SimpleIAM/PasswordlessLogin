@@ -55,7 +55,7 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
         [AllowAnonymous]
         public async Task<ActionResult> Register(string returnUrl)
         {
-            var viewModel = GetSignInViewModel(returnUrl);
+            var viewModel = await GetSignInViewModelAsync(returnUrl);
             viewModel.Email = null;
             return View(viewModel);
         }
@@ -64,7 +64,7 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
         [AllowAnonymous]
         public async Task<ActionResult> SignIn(string returnUrl)
         {
-            var viewModel = GetSignInViewModel(returnUrl);
+            var viewModel = await GetSignInViewModelAsync(returnUrl);
             return View(viewModel);
         }
 
@@ -72,7 +72,7 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
         [AllowAnonymous]
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> SignIn(string returnUrl, SignInInputModel model)
-        {
+        {               
             if (ModelState.IsValid)
             {
                 var result = await _oneTimeCodeService.SendOneTimeCodeAndLinkAsync(model.Email, TimeSpan.FromMinutes(5), returnUrl);
@@ -95,7 +95,7 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
                         break;
                 }
             }
-            var viewModel = GetSignInViewModel(returnUrl, model);
+            var viewModel = await GetSignInViewModelAsync(returnUrl, model);
             return View(viewModel);
         }
 
@@ -176,7 +176,7 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
         [AllowAnonymous]
         public async Task<ActionResult> SignInPass(string returnUrl)
         {
-            var viewModel = GetSignInPassViewModel(returnUrl);
+            var viewModel = await GetSignInPassViewModelAsync(returnUrl);
             return View(viewModel);
         }
 
@@ -212,7 +212,7 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
                     }
                 }
             }
-            var viewModel = GetSignInPassViewModel(returnUrl, model);
+            var viewModel = await GetSignInPassViewModelAsync(returnUrl, model);
             return View(viewModel);
         }
 
@@ -267,11 +267,13 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
             return RedirectToAction("Apps", "Home");
         }
 
-        private SignInViewModel GetSignInViewModel(string returnUrl, SignInInputModel model = null)
+        private async Task<SignInViewModel> GetSignInViewModelAsync(string returnUrl, SignInInputModel model = null)
         {
+            var context = await _interaction.GetAuthorizationContextAsync(returnUrl);
+
             var viewModel = new SignInViewModel()
             {
-                Email = model?.Email ?? GetUsernameHint(),
+                Email = model?.Email ?? context?.LoginHint ?? GetUsernameHint(),
                 LeaveBlank = model?.LeaveBlank,
                 ReturnUrl = returnUrl,
             };
@@ -281,7 +283,6 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
 
         private SignInCodeViewModel GetSignInCodeViewModel(SignInCodeInputModel model = null)
         {
-
             var viewModel = new SignInCodeViewModel()
             {
                 Email = model?.Email ?? GetUsernameHint(),
@@ -293,12 +294,13 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
             return viewModel;
         }
 
-        private SignInPassViewModel GetSignInPassViewModel(string returnUrl = null, SignInPassInputModel model = null)
+        private async Task<SignInPassViewModel> GetSignInPassViewModelAsync(string returnUrl = null, SignInPassInputModel model = null)
         {
-            
+            var context = await _interaction.GetAuthorizationContextAsync(returnUrl);
+
             var viewModel = new SignInPassViewModel()
             {
-                Email = model?.Email ?? GetUsernameHint(),
+                Email = model?.Email ?? context?.LoginHint ?? GetUsernameHint(),
                 LeaveBlank = model?.LeaveBlank,
                 SessionLengthMinutes = model?.SessionLengthMinutes ?? _config.DefaultSessionLengthMinutes,
                 ReturnUrl = returnUrl,
