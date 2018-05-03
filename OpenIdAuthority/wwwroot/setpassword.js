@@ -1,5 +1,4 @@
-﻿const oneTimeCodeEl = document.getElementById("OneTimeCode");
-const newPassEl = document.getElementById("NewPassword");
+﻿const newPassEl = document.getElementById("NewPassword");
 const confirmPassEl = document.getElementById("ConfirmPassword");
 const strengthEl = document.getElementById("passwordstrengthbits");
 const feedbackEl = document.getElementById("passwordfeedback");
@@ -9,10 +8,6 @@ let strength_bits = 0;
 
 analysePassword();
 enableSubmitIfFormValid();
-
-oneTimeCodeEl.addEventListener('keyup', function (e) {
-    enableSubmitIfFormValid();
-});
 
 newPassEl.addEventListener('keyup', function (e) {
     let capsLock = e.getModifierState && e.getModifierState('CapsLock'); //todo: warn
@@ -43,12 +38,12 @@ function analysePassword() {
 }
 
 function enableSubmitIfFormValid() {
-    const oneTimeCodePresent = oneTimeCodeEl.value.length >= 6;
+    const passwordStrongEnough = strength_bits > minStrength;
+
     const passwordsMatch = confirmPassEl.value === newPassEl.value;
     if (!passwordsMatch) {
         //todo: warn
     }
-    const passwordStrongEnough = strength_bits > minStrength;
 
-    setPasswordButtonEl.disabled = !(oneTimeCodePresent && passwordsMatch && passwordStrongEnough);
+    setPasswordButtonEl.disabled = !(passwordStrongEnough && passwordsMatch);
 }

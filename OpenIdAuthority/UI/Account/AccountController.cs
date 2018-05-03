@@ -58,59 +58,29 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
         }
 
         [HttpGet("setpassword")]
-        public IActionResult SetPassword(int step = 1)
+        public IActionResult SetPassword()
         {
-            switch (step)
-            {
-                case 1:
-                    return View("GetOneTimeCode");
-                case 2:
-                    var viewModel = GetSetPasswordViewModel();
-                    return View(viewModel);
-                default:
-                    return NotFound();
-            }
+            var viewModel = GetSetPasswordViewModel();
+            return View(viewModel);
         }
 
         [HttpPost("setpassword")]
-        public async Task<IActionResult> SetPassword(SetPasswordModel model, bool getOneTimeCode = false)
+        public async Task<IActionResult> SetPassword(SetPasswordModel model)
         {
             var sub = User.GetSubjectId();
 
-            var email = User.GetDisplayName();
-
-            if(getOneTimeCode)
+            var result = await _passwordService.SetPasswordAsync(sub, model.NewPassword);
+            switch (result)
             {
-                var success = await SendOneTimeCodeBeforeRedirect();
-                if (success)
-                {
-                    return RedirectToAction("SetPassword", new { step = 2 });
-                }
-                return RedirectToAction("SetPassword");
-            }
-            else if (ModelState.IsValid)
-            {
-                var checkOtcResponse = await _oneTimeCodeService.CheckOneTimeCodeAsync(email, model.OneTimeCode);
-                if (checkOtcResponse.Result != CheckOneTimeCodeResult.Verified)
-                {
-                    ModelState.AddModelError("OneTimeCode", "Code is incorrect or expired");
-                }
-                else
-                {
-                    var result = await _passwordService.SetPasswordAsync(sub, model.NewPassword);
-                    switch (result)
-                    {
-                        case SetPasswordResult.Success:
-                            AddPostRedirectMessage("Password successfully set");
-                            return RedirectToAction("MyAccount");
-                        case SetPasswordResult.PasswordDoesNotMeetStrengthRequirements:
-                            ModelState.AddModelError("NewPassword", "Password does not meet minimum password strength requirements (try something longer).");
-                            break;
-                        case SetPasswordResult.ServiceFailure:
-                            ModelState.AddModelError("NewPassword", "Something went wrong.");
-                            break;
-                    }
-                }
+                case SetPasswordResult.Success:
+                    AddPostRedirectMessage("Password successfully set");
+                    return RedirectToAction("MyAccount");
+                case SetPasswordResult.PasswordDoesNotMeetStrengthRequirements:
+                    ModelState.AddModelError("NewPassword", "Password does not meet minimum password strength requirements (try something longer).");
+                    break;
+                case SetPasswordResult.ServiceFailure:
+                    ModelState.AddModelError("NewPassword", "Something went wrong.");
+                    break;
             }
 
             var viewModel = GetSetPasswordViewModel(model);
