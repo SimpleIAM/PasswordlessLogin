@@ -260,7 +260,7 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
 
             SaveUsernameHint(subject.Email);
 
-            if (_interaction.IsValidReturnUrl(returnUrl))
+            if (Url.IsLocalUrl(returnUrl) || _interaction.IsValidReturnUrl(returnUrl))
             {
                 return Redirect(returnUrl);
             }
