@@ -1,6 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <PackageId>OpenIdAuthority</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>Ryan Foster</Authors>
+    <Company>SimpleIAM.com</Company>
     <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>SimpleIAM.OpenIdAuthority</RootNamespace>
     <AssemblyName>SimpleIAM.OpenIdAuthority</AssemblyName>
@@ -8,12 +12,12 @@
 
   <ItemGroup>
     <Content Remove="**\*.cshtml" />
-    <Content Remove="wwwroot\*.*" />
+    <Content Remove="wwwroot\**" />
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="**\*.cshtml" />
-    <EmbeddedResource Include="wwwroot\*.*" />
+    <EmbeddedResource Include="wwwroot\**" />
   </ItemGroup>
 
   <ItemGroup>
