@@ -41,12 +41,15 @@ namespace Microsoft.AspNetCore.Builder
                 })
                 .FrameAncestors(s => s.None())
             );
-
-            app.UseStaticFiles();
+            var compositeFileProvider = new CompositeFileProvider(
+                new EmbeddedFileProvider(typeof(OpenIdAuthorityApplicationBuilderExtensions).GetTypeInfo().Assembly, "SimpleIAM.OpenIdAuthority.wwwroot"),
+                env.WebRootFileProvider
+            );
+            env.WebRootFileProvider = compositeFileProvider;
 
             app.UseStaticFiles(new StaticFileOptions
             {
-                FileProvider = new EmbeddedFileProvider(typeof(OpenIdAuthorityApplicationBuilderExtensions).GetTypeInfo().Assembly, "SimpleIAM.OpenIdAuthority.wwwroot")
+                FileProvider = compositeFileProvider
             });
 
             app.UseIdentityServer();
