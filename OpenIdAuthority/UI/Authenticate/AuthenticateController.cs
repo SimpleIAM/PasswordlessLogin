@@ -75,9 +75,9 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
         {               
             if (ModelState.IsValid)
             {
-                var result = await _oneTimeCodeService.SendOneTimeCodeAndLinkAsync(model.Email, TimeSpan.FromMinutes(5), returnUrl);
+                var response = await _oneTimeCodeService.SendOneTimeCodeAndLinkAsync(model.Email, TimeSpan.FromMinutes(5), returnUrl);
 
-                switch(result)
+                switch(response.Result)
                 {
                     case SendOneTimeCodeResult.Sent:
                         SaveUsernameHint(model.Email);

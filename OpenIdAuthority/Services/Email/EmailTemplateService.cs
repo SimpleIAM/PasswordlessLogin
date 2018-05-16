@@ -19,7 +19,7 @@ namespace SimpleIAM.OpenIdAuthority.Services.Email
             _emailService = emailService;
         }
 
-        public async Task SendEmailAsync(string templateName, string to, Dictionary<string, string> fields)
+        public async Task<SendMessageResult> SendEmailAsync(string templateName, string to, Dictionary<string, string> fields)
         {
             if (_templates.TryGetValue(templateName, out EmailTemplate template))
             {
@@ -30,7 +30,7 @@ namespace SimpleIAM.OpenIdAuthority.Services.Email
                     subject = subject.Replace("{{" + field.Key + "}}", field.Value);
                     body = body.Replace("{{" + field.Key + "}}", field.Value);
                 }
-                await _emailService.SendEmailAsync(template.From, to, subject.ToString(), body.ToString());
+                return await _emailService.SendEmailAsync(template.From, to, subject.ToString(), body.ToString());
             }
             else
             {

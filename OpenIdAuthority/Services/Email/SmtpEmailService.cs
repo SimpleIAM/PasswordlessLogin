@@ -5,6 +5,7 @@ using MailKit.Net.Smtp;
 using MimeKit;
 using MimeKit.Text;
 using SimpleIAM.OpenIdAuthority.Configuration;
+using System;
 using System.Threading.Tasks;
 
 namespace SimpleIAM.OpenIdAuthority.Services.Email
@@ -18,7 +19,7 @@ namespace SimpleIAM.OpenIdAuthority.Services.Email
             _smtpConfig = smtpConfig;
         }
 
-        public async Task SendEmailAsync(string from, string to, string subject, string body)
+        public async Task<SendMessageResult> SendEmailAsync(string from, string to, string subject, string body)
         {
             var message = new MimeMessage
             {
@@ -43,11 +44,36 @@ namespace SimpleIAM.OpenIdAuthority.Services.Email
 
             using(var client = new SmtpClient())
             {
-                await client.ConnectAsync(_smtpConfig.Server, _smtpConfig.Port, _smtpConfig.UseSsl);
-                await client.AuthenticateAsync(_smtpConfig.Username, _smtpConfig.Password);
-                await client.SendAsync(message);
-                await client.DisconnectAsync(true);
+                try
+                {
+                    await client.ConnectAsync(_smtpConfig.Server, _smtpConfig.Port, _smtpConfig.UseSsl);
+                    await client.AuthenticateAsync(_smtpConfig.Username, _smtpConfig.Password);
+                    await client.SendAsync(message);
+                }
+                catch (Exception ex) when (ItIsANetworkError(ex))
+                {
+                    //todo: log warning
+                    return SendMessageResult.Failed("Failed to send email. Please try again.");
+                }
+                catch (Exception ex) when (ItIsANetworkError(ex))
+                {
+                    //todo: log error
+                    return SendMessageResult.Failed("Failed to send email");
+                }
+                finally
+                {
+                    await client.DisconnectAsync(true);
+                }
             }
+            return SendMessageResult.Success();
+        }
+
+        private bool ItIsANetworkError(Exception ex)
+        {
+            return
+                ex is System.Net.Sockets.SocketException ||
+                ex is System.IO.IOException ||
+                ex is MailKit.ProtocolException;
         }
     }
 }

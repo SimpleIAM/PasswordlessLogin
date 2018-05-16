@@ -13,6 +13,7 @@ using SimpleIAM.OpenIdAuthority;
 using SimpleIAM.OpenIdAuthority.Configuration;
 using SimpleIAM.OpenIdAuthority.Entities;
 using SimpleIAM.OpenIdAuthority.Services.Email;
+using SimpleIAM.OpenIdAuthority.Services.Message;
 using SimpleIAM.OpenIdAuthority.Services.OTC;
 using SimpleIAM.OpenIdAuthority.Services.Password;
 using SimpleIAM.OpenIdAuthority.Stores;
@@ -53,6 +54,7 @@ namespace Microsoft.Extensions.DependencyInjection
             services.AddTransient<IOneTimeCodeStore, DbOneTimeCodeStore>();
             services.AddTransient<IOneTimeCodeService, OneTimeCodeService>();
             services.AddTransient<ISubjectStore, DbSubjectStore>();
+            services.AddTransient<IMessageService, MessageService>();
 
             services.AddIdentityServer(options =>
             {

@@ -17,6 +17,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="node_modules\**" />
     <Content Remove="**\*.cshtml" />
     <Content Remove="wwwroot\**" />
   </ItemGroup>
@@ -24,6 +25,11 @@
   <ItemGroup>
     <EmbeddedResource Include="**\*.cshtml" />
     <EmbeddedResource Include="wwwroot\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Remove="node_modules\**" />
+    <None Remove="node_modules\**" />
   </ItemGroup>
 
   <ItemGroup>
@@ -42,6 +48,7 @@
     <None Remove="UI\Shared\_StaySignedInDropdown.cshtml" />
     <None Remove="wwwroot\setpassword.js" />
     <None Remove="wwwroot\timezonize.js" />
+    <None Remove="yarn.lock" />
   </ItemGroup>
 
   <ItemGroup>

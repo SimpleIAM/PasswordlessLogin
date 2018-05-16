@@ -7,6 +7,6 @@ namespace SimpleIAM.OpenIdAuthority.Services.Email
 {
     public interface IEmailService
     {
-        Task SendEmailAsync(string from, string to, string subject, string body);
+        Task<SendMessageResult> SendEmailAsync(string from, string to, string subject, string body);
     }
 }

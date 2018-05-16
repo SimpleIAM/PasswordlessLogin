@@ -25,8 +25,16 @@ namespace SimpleIAM.OpenIdAuthority.Configuration
                     "SignInWithEmail",
                     new EmailTemplate()
                     {
-                        Subject = "Sign in link",
-                        Body = "Use this link to sign in\n{{link}}\n\nor use this one time code: {{one_time_code}}",
+                        Subject = "One time code and sign in link",
+                        Body = "Use this one time code to sign in: <strong>{{one_time_code}}</strong><br /><br />Or use this link:<br /><a href=\"{{sign_in_link}}\">{{sign_in_link}}</a>",
+                    }
+                },
+                {
+                    "AccountNotFound",
+                    new EmailTemplate()
+                    {
+                        Subject = "Account Not Found",
+                        Body = "We didn't find an account associated with this address. You can register here: <br /><a href=\"{{register_link}}\">{{register_link}}</a>",
                     }
                 },
             };

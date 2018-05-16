@@ -8,8 +8,8 @@ namespace SimpleIAM.OpenIdAuthority.Services.OTC
 {
     public interface IOneTimeCodeService
     {
-        Task<SendOneTimeCodeResult> SendOneTimeCodeAsync(string sendTo, TimeSpan validity);
-        Task<SendOneTimeCodeResult> SendOneTimeCodeAndLinkAsync(string sendTo, TimeSpan validity, string redirectUrl = null);
+        Task<SendOneTimeCodeResponse> SendOneTimeCodeAsync(string sendTo, TimeSpan validity);
+        Task<SendOneTimeCodeResponse> SendOneTimeCodeAndLinkAsync(string sendTo, TimeSpan validity, string redirectUrl = null);
         Task<CheckOneTimeCodeResponse> CheckOneTimeCodeAsync(string longCode);
         Task<CheckOneTimeCodeResponse> CheckOneTimeCodeAsync(string sentTo, string shortCode);
     }

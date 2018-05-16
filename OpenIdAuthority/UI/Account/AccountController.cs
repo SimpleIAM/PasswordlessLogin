@@ -142,8 +142,8 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
         {
             var email = User.GetDisplayName();
 
-            var result = await _oneTimeCodeService.SendOneTimeCodeAsync(email, TimeSpan.FromMinutes(5));
-            switch (result)
+            var response = await _oneTimeCodeService.SendOneTimeCodeAsync(email, TimeSpan.FromMinutes(5));
+            switch (response.Result)
             {
                 case SendOneTimeCodeResult.Sent:
                     AddPostRedirectMessage("We sent a one time code to your email address");

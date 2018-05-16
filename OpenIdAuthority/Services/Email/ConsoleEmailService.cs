@@ -8,7 +8,7 @@ namespace SimpleIAM.OpenIdAuthority.Services.Email
 {
     public class ConsoleEmailService : IEmailService
     {
-        public async Task SendEmailAsync(string from, string to, string subject, string body)
+        public async Task<SendMessageResult> SendEmailAsync(string from, string to, string subject, string body)
         {
             Console.WriteLine("---Email---");
             Console.Write("From: ");
@@ -20,6 +20,7 @@ namespace SimpleIAM.OpenIdAuthority.Services.Email
             Console.WriteLine("---");
             Console.WriteLine(body);
             Console.WriteLine("---End Email---");
+            return SendMessageResult.Success();
         }
     }
 }

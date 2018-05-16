@@ -9,7 +9,7 @@ using IdentityServer4.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SimpleIAM.OpenIdAuthority.Models;
-using SimpleIAM.OpenIdAuthority.Services.Email;
+using SimpleIAM.OpenIdAuthority.Services.Message;
 using SimpleIAM.OpenIdAuthority.Services.Password;
 using SimpleIAM.OpenIdAuthority.Stores;
 
@@ -19,33 +19,27 @@ namespace SimpleIAM.OpenIdAuthority.Services.OTC
     {
         private readonly IOneTimeCodeStore _oneTimeCodeStore;
         private readonly IPasswordHashService _passwordHashService;
-        private readonly IEmailTemplateService _emailTemplateService;
-        private readonly IUrlHelper _urlHelper;
-        private readonly IHttpContextAccessor _httpContext;
+        private readonly IMessageService _messageService;
 
         public OneTimeCodeService(
             IOneTimeCodeStore oneTimeCodeStore,
             IPasswordHashService passwordHashService,
-            IEmailTemplateService emailTemplateService,
-            IUrlHelper urlHelper,
-            IHttpContextAccessor httpContext
+            IMessageService messageService
             )
         {
             _oneTimeCodeStore = oneTimeCodeStore;
             _passwordHashService = passwordHashService;
-            _emailTemplateService = emailTemplateService;
-            _urlHelper = urlHelper;
-            _httpContext = httpContext;
+            _messageService = messageService;
         }
 
-        public async Task<SendOneTimeCodeResult> SendOneTimeCodeAsync(string sendTo, TimeSpan validity)
+        public async Task<SendOneTimeCodeResponse> SendOneTimeCodeAsync(string sendTo, TimeSpan validity)
         {
-            return await SendOneTimeCodeInternalAsync("OneTimeCode", sendTo, validity);
+            return await SendOneTimeCodeInternalAsync(sendTo, validity);
         }
 
-        public async Task<SendOneTimeCodeResult> SendOneTimeCodeAndLinkAsync(string sendTo, TimeSpan validity, string redirectUrl = null)
+        public async Task<SendOneTimeCodeResponse> SendOneTimeCodeAndLinkAsync(string sendTo, TimeSpan validity, string redirectUrl = null)
         {
-            return await SendOneTimeCodeInternalAsync("SignInWithEmail", sendTo, validity, redirectUrl);
+            return await SendOneTimeCodeInternalAsync(sendTo, validity, true, redirectUrl);
         }
 
         public async Task<CheckOneTimeCodeResponse> CheckOneTimeCodeAsync(string longCode)
@@ -103,7 +97,7 @@ namespace SimpleIAM.OpenIdAuthority.Services.OTC
             return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.CodeIncorrect);
         }
 
-        private async Task<SendOneTimeCodeResult> SendOneTimeCodeInternalAsync(string template, string sendTo, TimeSpan validity, string redirectUrl = null)
+        private async Task<SendOneTimeCodeResponse> SendOneTimeCodeInternalAsync(string sendTo, TimeSpan validity, bool includeLink = false, string redirectUrl = null)
         {
             var otc = await _oneTimeCodeStore.GetOneTimeCodeAsync(sendTo);
             if (otc?.ExpiresUTC > DateTime.UtcNow.AddMinutes(2))
@@ -111,7 +105,8 @@ namespace SimpleIAM.OpenIdAuthority.Services.OTC
                 // if they locked the last code, they have to wait until it is almost expired
                 // if they didn't recieve the last code, unfortunately they still need to wait. We can't resent the code
                 // because it is hashed and we don't know what it is.
-                return SendOneTimeCodeResult.TooManyRequests;
+                return new SendOneTimeCodeResponse(SendOneTimeCodeResult.TooManyRequests, 
+                    "A code has already been sent to this address. Please wait a few minutes before requesting a new code.");
             }
 
             var rngProvider = new RNGCryptoServiceProvider();
@@ -132,24 +127,29 @@ namespace SimpleIAM.OpenIdAuthority.Services.OTC
                 FailedAttemptCount = 0,
             };
             await _oneTimeCodeStore.RemoveOneTimeCodeAsync(sendTo);
-            await _oneTimeCodeStore.AddOneTimeCodeAsync(otc);
-
-            if (sendTo.Contains("@")) // todo: have a better email check?
+            var codeSaved = await _oneTimeCodeStore.AddOneTimeCodeAsync(otc);
+            if(!codeSaved)
             {
-                var link = _urlHelper.Action("SignInLink", "Authenticate", new { longCode = longCode.ToString() }, _httpContext.HttpContext.Request.Scheme);
-                var fields = new Dictionary<string, string>()
-                {
-                    { "link", link },
-                    { "one_time_code", shortCode }
-                };
-                await _emailTemplateService.SendEmailAsync(template, sendTo, fields);
-                return SendOneTimeCodeResult.Sent;
+                return new SendOneTimeCodeResponse(SendOneTimeCodeResult.ServiceFailure);
+            }
+
+            SendMessageResult response;
+            if (includeLink) {
+                response = await _messageService.SendOneTimeCodeAndLinkMessageAsync(sendTo, shortCode, longCode.ToString());
+            }
+            else {
+                response = await _messageService.SendOneTimeCodeMessageAsync(sendTo, shortCode);
+            }
+
+            if (response.MessageSent)
+            {
+                return new SendOneTimeCodeResponse(SendOneTimeCodeResult.Sent);
             }
             else
             {
-                return SendOneTimeCodeResult.InvalidRequest; // non-email addresses not implemented
-                // todo: if valid phone number, send shortcode to phone number via SMS
+                return new SendOneTimeCodeResponse(SendOneTimeCodeResult.ServiceFailure, response.ErrorMessageForEndUser);
             }
+
         }
 
         private string GetFastHash(string longCode)
