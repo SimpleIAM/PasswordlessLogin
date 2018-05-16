@@ -4,22 +4,22 @@
 }
 
 
-<div class="signin">
-    <h2>Register</h2>
-    <form method="post" asp-action="SignIn">
-        <div class="field">
-            <label asp-for="Email">Email</label>
-            <input type="email" asp-for="Email" placeholder="email" autofocus />
-            <span asp-validation-for="Email"></span>
+<div class="focusBox focusBox-centered">
+    <h2 class="focusBox_title">Register</h2>
+    <form method="post" asp-action="SignIn" class="form">
+        <div class="field field-stacked form_row">
+            <label asp-for="Email" class="field_label">Email</label>
+            <input class="field_element field_element-fullWidth" type="email" asp-for="Email" placeholder="email" autofocus />
+            <span asp-validation-for="Email" class="field_error"></span>
         </div>
-        <div class="field" style="display:none">
-            <label asp-for="LeaveBlank">Leave blank</label>
-            <input type="text" asp-for="LeaveBlank" placeholder="leave blank" autocomplete="off" />
-            <span asp-validation-for="LeaveBlank"></span>
+        <div class="field field-stacked form-row" style="display:none">
+            <label asp-for="LeaveBlank" class="field_label">Leave blank</label>
+            <input class="field_element field_element-fullWidth" type="text" asp-for="LeaveBlank" placeholder="leave blank" autocomplete="off" />
+            <span asp-validation-for="LeaveBlank" class="field_error"></span>
         </div>
         <div class="field">
             <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
-            <input type="submit" value="Register" />
+            <input type="submit" value="Register" class="field_element field_element-tall" />
         </div>
     </form>
 

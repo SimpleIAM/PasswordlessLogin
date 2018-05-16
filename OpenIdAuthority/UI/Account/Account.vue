@@ -6,7 +6,7 @@
 
 <script>
 import Vue from 'vue';
-const zxcvbn = () => import(/* webpackChunkName: "pwstrength" */ 'zxcvbn');
+//const zxcvbn = () => import(/* webpackChunkName: "pwstrength" */ 'zxcvbn');
 
 export default {
     data: function () {

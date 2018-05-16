@@ -19,14 +19,14 @@
     "babel-preset-stage-3": "^6.24.1",
     "cross-env": "^5.1.4",
     "css-loader": "^0.28.11",
+    "document-register-element": "^1.8.1",
     "vue": "^2.5.16",
+    "vue-cookie": "^1.1.4",
+    "vue-custom-element": "^3.0.6",
     "vue-loader": "^15.0.9",
     "vue-template-compiler": "^2.5.16",
     "webpack": "^4.8.1",
     "webpack-cli": "^2.1.3",
     "zxcvbn": "^4.4.2"
-  },
-  "dependencies": {
-    "vue-cookie": "^1.1.4"
   }
 }

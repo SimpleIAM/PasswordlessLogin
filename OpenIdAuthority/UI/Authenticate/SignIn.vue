@@ -1,81 +1,95 @@
 <template>
-  <div class="signin">
-    <form @submit.prevent="submitForm">
-      <div class="field">
-        <label for="username">Email, phone, or username</label>
-        <input 
+  <div class="signIn">
+    <form @submit.prevent="submitForm" class="form">
+      <section class="field field-stacked form_row">
+        <label class="field_label" for="username">Email, phone, or username</label>
+        <input class="field_element field_element-fullWidth signIn_username"
           ref="username"
           id="username" 
           v-model="username" 
           type="text" 
           placeholder="you@example.com"
           >
-        <span v-if="usernameError" class="field-validation-error">{{usernameError}}</span>
-      </div>
-      <div v-show="username.length && !showPasswordReset">
-        <div class="field">
-          <label for="password">Passphrase or one time code</label>
-          <input ref="password" type="password" placeholder="******* or 000000" id="password" v-model="password">
-          <span v-if="passwordError" class="field-validation-error">{{passwordError}}</span>
+        <span v-if="usernameError" class="field_error">{{usernameError}}</span>
+      </section>
+      <section v-show="username.length && !showPasswordReset">
+        <div class="field field-stacked form_row">
+          <label class="field_label" for="password">Passphrase or one time code</label>
+          <input class="field_element field_element-fullWidth signIn_password" ref="password" type="password" placeholder="**** / 123..." id="password" v-model="password">
+          <span v-if="passwordError" class="field_error">{{passwordError}}</span>
         </div>
 
-        <div class="field">
-          <div class="inline">
-            <input 
-              :disabled="password.length == 0"
-              type="checkbox" 
-              id="stay-signed-in" 
-              v-model="staySignedIn">
-            <label for="stay-signed-in">Remember username and stay signed in</label>
+        <div class="field field-checkbox form_row">
+          <input 
+            class="field_element"
+            :disabled="password.length == 0"
+            type="checkbox" 
+            id="stay-signed-in" 
+            v-model="staySignedIn">
+          <label class="field_label" for="stay-signed-in">Remember username and stay signed in</label>
+        </div>
+
+        <div class="fields fields-flexSpaceBetween form_row">
+          <div class="field">
+            <button 
+              class="field_element field_element-tall signIn_oneTimeCodeButton"
+              :type="password.length == 0 ? 'submit' : 'button'"
+              :disabled="password.length > 0"
+              >Get one time code
+            </button>
+          </div>
+          <div class="field">
+            <button 
+              class="field_element field_element-tall signIn_signInButton"
+              type="submit"
+              :disabled="!signInEnabled"
+              >Sign in
+            </button>
           </div>
         </div>
-
-        <div class="field inline">
-          <button 
-            :type="password.length == 0 ? 'submit' : 'button'"
-            :disabled="password.length > 0"
-            >Get one time code
-          </button>
-          <button 
-            type="submit"
-            :disabled="!signInEnabled"
-            >Sign in
-          </button>
-        </div>
-        <p v-if="message" class="message">
+        <div class="signIn_message" v-if="message">
           {{message}}
-        </p>
-        <div class="hint" v-if="!showPasswordReset">
-          <a href="#" @click.prevent="showPasswordReset = true">Forgot password?</a>
         </div>
-      </div>
+        <div v-if="!showPasswordReset" class="signIn_footer">
+          <a class="signIn_forgotPasswordLink" href="#" @click.prevent="forgotPasswordLinkClicked">Forgot password?</a>
+        </div>
+      </section>
       <section v-if="showPasswordReset"> 
-        <div class="field" >
-          <button             
+        <div class="field form_row">
+          <button 
+            :disabled="username.length == 0"            
             type="submit"
-            class="full-width"
+            class="field_element field_element-fullWidth field_element-tall signIn_passwordResetButton"
             >Get password reset email
           </button>
         </div>
-        <div class="field" >
-          <button type="button" @click.prevent="showPasswordReset = false"
+        <div class="signIn_footer">
+          <a 
+            href="#"
+            class="signIn_cancelButton"
+            @click.prevent="showPasswordReset = false"
             >Cancel
-          </button>
+          </a>
         </div>
       </section>
     </form>
-    <div v-if="savedUsernames.length && username.length == 0">
-      <hr>
-      <h3>Saved Usernames</h3>
-      <div class="field" v-for="name in savedUsernames" v-bind:key="name">
-        <button @click="selectUsername(name)" class="full-width">
-          {{name}}
-        </button>
+    <section class="savedUsernames" v-if="savedUsernames.length && username.length == 0">
+      <header class="savedUsernames_header">
+        <span class="savedUsernames_title">Saved Usernames</span>
+      </header>
+      <div class="form">
+        <div class="field form_row" v-for="name in savedUsernames" v-bind:key="name">
+          <button 
+            @click="selectUsername(name)" 
+            class="savedUsernames_username field_element field_element-fullWidth field_element-tall">
+            {{name}}
+          </button>
+        </div>
       </div>
-      <p class="hint">
-        <a href="#" @click.prevent="clearSavedUsernames">Clear saved usernames</a>
-      </p>
-    </div>    
+      <div class="savedUsernames_footer">
+        <a href="#" class="savedUsernames_clearUsernames" @click.prevent="clearSavedUsernames">Clear saved usernames</a>
+      </div>
+    </section>
   </div>
 </template>
 
@@ -134,7 +148,6 @@ export default {
       });
     },
     submitForm: function() {
-      console.log('submit');
       if(this.showPasswordReset) {
         this.getPasswordResetEmail();
       }
@@ -142,7 +155,6 @@ export default {
         this.getOneTimeCode();
       }
       else {
-        console.log('pre sign in');
         this.signIn();
       }
     },
@@ -152,17 +164,20 @@ export default {
         "We sent sent a one time code to your email or phone.";
     },
     signIn: function() {
-      console.log('sign in');
       if(this.signInEnabled) {
         this.message = "Signing in..."
         //before redirect, save cookie
         this.saveUsernames();
       }
     },
+    forgotPasswordLinkClicked: function() {
+      this.showPasswordReset = true;
+      this.password = '';
+    },
     getPasswordResetEmail: function() {
+      //todo:implement
       this.message = "Check your email for password reset instructions";
-      this.showPasswordReset = false;
-      alert("not implemented");
+      this.showPasswordReset = false;      
     },
     loadSavedUsernames() {
       this.savedUsernames = [];

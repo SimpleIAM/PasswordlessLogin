@@ -26,13 +26,13 @@ function analysePassword() {
     strengthEl.innerText = strength_bits;
     let feedback = '';
     if (pw_analysis.feedback.warning) {
-        feedback = feedback + '<li class="warning">' + pw_analysis.feedback.warning + '</li>';
+        feedback = feedback + '<li class="passwordFeedback passwordFeedback-warning">' + pw_analysis.feedback.warning + '</li>';
     }
     pw_analysis.feedback.suggestions.forEach(function (suggestion) {
-        feedback = feedback + '<li>' + suggestion + '</li>';
+        feedback = feedback + '<li class="passwordFeedback">' + suggestion + '</li>';
     });
     if (feedback) {
-        feedback = '<ul class="hint">' + feedback + '</ul>';
+        feedback = '<ul>' + feedback + '</ul>';
     }
     feedbackEl.innerHTML = feedback;
 }

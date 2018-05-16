@@ -9,9 +9,9 @@
     @foreach (var app in Model)
     {
         <div class="app">
-            <a href="@app.Uri">
-                <img src="@app.LogoUri" />
-                <span class="appname">@app.Name</span>
+            <a class="app_link" href="@app.Uri">
+                <img class="app_image" src="@app.LogoUri" />
+                <span class="app_name">@app.Name</span>
             </a>
         </div>
     }

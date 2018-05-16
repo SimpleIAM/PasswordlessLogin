@@ -262,4 +262,4 @@ __pycache__/
 
 
 tempkey.rsa
-**/wwwroot/*.bundle.js*
+OpenIdAuthority/wwwroot/dist.*
