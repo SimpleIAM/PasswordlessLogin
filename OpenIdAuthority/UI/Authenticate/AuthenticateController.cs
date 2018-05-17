@@ -91,7 +91,8 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
                         break;
                     case SendOneTimeCodeResult.ServiceFailure:
                     default:
-                        ModelState.AddModelError("Email", "Something went wrong.");
+                        var endUserErrorMessage = response.MessageForEndUser ?? "Something went wrong.";
+                        ModelState.AddModelError("Email", endUserErrorMessage);
                         break;
                 }
             }

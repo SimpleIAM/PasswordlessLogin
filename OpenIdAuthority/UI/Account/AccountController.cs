@@ -154,7 +154,8 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
                 default:
                 case SendOneTimeCodeResult.InvalidRequest:
                 case SendOneTimeCodeResult.ServiceFailure:
-                    ModelState.AddModelError("GetOneTimeCode", "Something went wrong and we were unable to send you a one time code");
+                    var endUserErrorMessage = response.MessageForEndUser ?? "Something went wrong and we were unable to send you a one time code";
+                    ModelState.AddModelError("GetOneTimeCode", endUserErrorMessage);
                     return false;
             }
         }
