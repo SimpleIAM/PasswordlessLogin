@@ -38,7 +38,7 @@ function analysePassword() {
 }
 
 function enableSubmitIfFormValid() {
-    const passwordStrongEnough = strength_bits > minStrength;
+    const passwordStrongEnough = strength_bits >= minStrength;
 
     const passwordsMatch = confirmPassEl.value === newPassEl.value;
     if (!passwordsMatch) {

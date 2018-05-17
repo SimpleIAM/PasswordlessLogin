@@ -1,10 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <PackageId>OpenIdAuthority</PackageId>
-    <Version>0.1.0</Version>
+    <PackageId>SimpleIAM.OpenIdAuthority</PackageId>
+    <Version>0.1.0-beta1</Version>
     <Authors>Ryan Foster</Authors>
     <Company>SimpleIAM.com</Company>
+    <Title>OpenID Authority</Title>
+    <Description>A simple OpenID Connect provider built on top of IdentityServer4</Description>
+    <PackageLicenseUrl>https://www.apache.org/licenses/LICENSE-2.0</PackageLicenseUrl>
+    <PackageProjectUrl>https://github.com/SimpleIAM/OpenIdAuthority</PackageProjectUrl>
+    <Copyright>Copyright (c) Ryan Foster</Copyright>
+    <PackageTags>OpenID Connect;IdentityServer4</PackageTags>
     <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>SimpleIAM.OpenIdAuthority</RootNamespace>
     <AssemblyName>SimpleIAM.OpenIdAuthority</AssemblyName>
