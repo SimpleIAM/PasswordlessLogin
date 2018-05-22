@@ -35,6 +35,10 @@ namespace Microsoft.Extensions.DependencyInjection
             configuration.Bind("IdProvider", idProviderConfig);
             services.AddSingleton(idProviderConfig);
 
+            var hostingConfig = new HostingConfig();
+            configuration.Bind("Hosting", hostingConfig);
+            services.AddSingleton(hostingConfig);
+
             var clientConfigs = configuration.GetSection("Apps").Get<List<ClientAppConfig>>() ?? new List<ClientAppConfig>();
             var clients = ClientConfigHelper.GetClientsFromConfig(clientConfigs);
             var apps = ClientConfigHelper.GetAppsFromClients(clients);

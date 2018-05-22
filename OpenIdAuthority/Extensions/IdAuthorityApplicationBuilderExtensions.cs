@@ -5,21 +5,34 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.FileProviders;
 using System;
 using System.Reflection;
+using Microsoft.AspNetCore.HttpOverrides;
+using SimpleIAM.OpenIdAuthority.Configuration;
+using System.Linq;
 
 namespace Microsoft.AspNetCore.Builder
 {
     public static class OpenIdAuthorityApplicationBuilderExtensions
     {
-        public static IApplicationBuilder UseOpenIdAuthority(this IApplicationBuilder app, IHostingEnvironment env)
+        public static IApplicationBuilder UseOpenIdAuthority(this IApplicationBuilder app, IHostingEnvironment env, HostingConfig hostingConfig)
         {
             if (app == null)
             {
                 throw new ArgumentNullException(nameof(app));
             }
 
+            hostingConfig = hostingConfig ?? new HostingConfig();
+
             if (env.IsDevelopment())
             {
-                app.UseDeveloperExceptionPage();
+                app.UseDeveloperExceptionPage();              
+            }
+
+            if(hostingConfig.BehindProxy)
+            {
+                app.UseForwardedHeaders(new ForwardedHeadersOptions
+                {
+                    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+                });
             }
 
             // Security
@@ -33,11 +46,31 @@ namespace Microsoft.AspNetCore.Builder
                 .DefaultSources(s => s.Self())
                 .ScriptSources(s => {
                     s.Self();
-                    s.CustomSources("sha256-VuNUSJ59bpCpw62HM2JG/hCyGiqoPN3NqGvNXQPU+rY=");
+                    var scriptSrcs = (hostingConfig.Csp.ScriptSources ?? new string[] { }).ToList();
+                    scriptSrcs.Add("sha256-VuNUSJ59bpCpw62HM2JG/hCyGiqoPN3NqGvNXQPU+rY=");
+                    s.CustomSources(scriptSrcs.ToArray());
                 })
                 .StyleSources(s => {
                     s.Self();
                     s.UnsafeInline();
+                    if (hostingConfig.Csp.StyleSources != null)
+                    {
+                        s.CustomSources(hostingConfig.Csp.StyleSources);
+                    }
+                })
+                .FontSources(s => {
+                    s.Self();
+                    if (hostingConfig.Csp.FontSources != null)
+                    {
+                        s.CustomSources(hostingConfig.Csp.FontSources);
+                    }
+                })
+                .ImageSources(s => {
+                    s.Self();
+                    if (hostingConfig.Csp.ImageSources != null)
+                    {
+                        s.CustomSources(hostingConfig.Csp.ImageSources);
+                    }
                 })
                 .FrameAncestors(s => s.None())
             );

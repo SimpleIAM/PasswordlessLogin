@@ -34,7 +34,8 @@ namespace SimpleIAM.OpenIdAuthority.Controllers
             return View(_appStore.GetApps());
         }
 
-        [Route("error")]
+        [HttpGet("error")]
+        [HttpPost("error")]
         public IActionResult Error()
         {
             return View();

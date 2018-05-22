@@ -16,6 +16,8 @@ namespace SimpleIAM.OpenIdAuthority.Configuration
         public int MaxSessionLengthMinutes { get; set; } = 44640; // 31 days
         public bool RememberUsernames { get; set; } = true;
         public int MinimumPasswordStrengthInBits { get; set; } = 40;
+        public bool BehindProxy { get; set; } = false;
+        public CspConfig Csp { get; set; } = new CspConfig();
 
         public string SignInAction {
             get {
