@@ -19,7 +19,7 @@ namespace SimpleIAM.OpenIdAuthority.Services.Email
             _emailService = emailService;
         }
 
-        public async Task<SendMessageResult> SendEmailAsync(string templateName, string to, Dictionary<string, string> fields)
+        public async Task<SendMessageResult> SendEmailAsync(string templateName, string to, IDictionary<string, string> fields)
         {
             if (_templates.TryGetValue(templateName, out EmailTemplate template))
             {

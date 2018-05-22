@@ -3,12 +3,12 @@
 
 using System.ComponentModel.DataAnnotations;
 
-namespace SimpleIAM.OpenIdAuthority.API.AuthenticateApi
+namespace SimpleIAM.OpenIdAuthority.API
 {
     public class SendCodeInputModel
     {
         [Required]
         public string Username { get; set; }
-        public string ContinueUrl { get; set; }
+        public string NextUrl { get; set; }
     }
 }

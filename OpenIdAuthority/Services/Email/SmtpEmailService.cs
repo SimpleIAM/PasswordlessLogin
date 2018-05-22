@@ -23,10 +23,10 @@ namespace SimpleIAM.OpenIdAuthority.Services.Email
         {
             var message = new MimeMessage
             {
-                Sender = new MailboxAddress(from),
+                Sender = MailboxAddress.Parse(from),
                 Subject = subject
             };
-            message.To.Add(new MailboxAddress(to));
+            message.To.Add(MailboxAddress.Parse(to));
             if (body?.Contains("<") == true)
             {
                 message.Body = new TextPart(TextFormat.Html)

@@ -8,6 +8,6 @@ namespace SimpleIAM.OpenIdAuthority.Services.Email
 {
     public interface IEmailTemplateService
     {
-        Task<SendMessageResult> SendEmailAsync(string templateName, string to, Dictionary<string, string> fields);        
+        Task<SendMessageResult> SendEmailAsync(string templateName, string to, IDictionary<string, string> fields);        
     }
 }

@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SimpleIAM.OpenIdAuthority.Configuration;
 using SimpleIAM.OpenIdAuthority.Entities;
+using SimpleIAM.OpenIdAuthority.Services.Message;
 using SimpleIAM.OpenIdAuthority.Services.OTC;
 using SimpleIAM.OpenIdAuthority.Services.Password;
 using SimpleIAM.OpenIdAuthority.Stores;
@@ -28,6 +29,7 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
         private readonly IIdentityServerInteractionService _interaction;
         private readonly IEventService _events;
         private readonly IOneTimeCodeService _oneTimeCodeService;
+        private readonly IMessageService _messageService;
         private readonly ISubjectStore _subjectStore;
         private readonly IClientStore _clientStore;
         private readonly IPasswordService _passwordService;
@@ -37,6 +39,7 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
             IIdentityServerInteractionService interaction,
             IEventService events,
             IOneTimeCodeService oneTimeCodeService,
+            IMessageService messageService,
             ISubjectStore subjectStore,
             IdProviderConfig config,
             IClientStore clientStore,
@@ -45,6 +48,7 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
             _interaction = interaction;
             _events = events;
             _oneTimeCodeService = oneTimeCodeService;
+            _messageService = messageService;
             _subjectStore = subjectStore;
             _clientStore = clientStore;
             _passwordService = passwordService;
@@ -73,29 +77,31 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> SignIn(string returnUrl, SignInInputModel model)
         {               
-            if (ModelState.IsValid)
+            var oneTimeCodeResponse = await _oneTimeCodeService.GetOneTimeCodeAsync(model.Email, TimeSpan.FromMinutes(5), returnUrl);
+            switch (oneTimeCodeResponse.Result)
             {
-                var response = await _oneTimeCodeService.SendOneTimeCodeAndLinkAsync(model.Email, TimeSpan.FromMinutes(5), returnUrl);
-
-                switch(response.Result)
-                {
-                    case SendOneTimeCodeResult.Sent:
+                case GetOneTimeCodeResult.Success:
+                    var response = await _messageService.SendOneTimeCodeAndLinkMessageAsync(model.Email, oneTimeCodeResponse.ShortCode, oneTimeCodeResponse.LongCode);
+                    if (response.MessageSent)
+                    {
                         SaveUsernameHint(model.Email);
                         AddPostRedirectValue("Email", model.Email);
                         return RedirectToAction("SignInCode");
-                    case SendOneTimeCodeResult.TooManyRequests:
-                        ModelState.AddModelError("Email", "A code has already been sent to this address. Please wait a few minutes before requesting a new code.");
-                        break;
-                    case SendOneTimeCodeResult.InvalidRequest:
-                        ModelState.AddModelError("Email", "Invalid address");
-                        break;
-                    case SendOneTimeCodeResult.ServiceFailure:
-                    default:
-                        var endUserErrorMessage = response.MessageForEndUser ?? "Something went wrong.";
+                    }
+                    else {
+                        var endUserErrorMessage = response.ErrorMessageForEndUser ?? "Something went wrong.";
                         ModelState.AddModelError("Email", endUserErrorMessage);
-                        break;
-                }
+                    }
+                    break;
+                case GetOneTimeCodeResult.TooManyRequests:
+                    ModelState.AddModelError("Email", "A code has already been sent to this address. Please wait a few minutes before requesting a new code.");
+                    break;
+                case GetOneTimeCodeResult.ServiceFailure:
+                default:
+                    ModelState.AddModelError("Email", "Something went wrong.");
+                    break;
             }
+
             var viewModel = await GetSignInViewModelAsync(returnUrl, model);
             return View(viewModel);
         }

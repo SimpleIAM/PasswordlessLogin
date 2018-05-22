@@ -74,5 +74,23 @@ namespace SimpleIAM.OpenIdAuthority.Services.Message
         {
             return SendMessageResult.Failed("Could not deliver message. Email address is not valid."); // non-email addresses not implemented
         }
+
+        public async Task<SendMessageResult> SendWelcomeMessageAsync(string clientId, string sendTo, string oneTimeCode, string longCode, IDictionary<string, string> additionalMailMergeValues)
+        {
+            if (!IsValidEmailAddress(sendTo))
+            {
+                return NotAnEmailAddress();
+            }
+
+            var link = _urlHelper.Action("SignInLink", "Authenticate", new { longCode = longCode.ToString() }, _httpContext.HttpContext.Request.Scheme);
+            var signInUrl = _urlHelper.Action("SignIn", "Authenticate", new { }, _httpContext.HttpContext.Request.Scheme);
+            var fields = additionalMailMergeValues ?? new Dictionary<string, string>();
+            fields["one_time_code"] = oneTimeCode;
+            fields["sign_in_link"] = link;
+            fields["sign_in_url"] = signInUrl;
+
+            return await _emailTemplateService.SendEmailAsync("Welcome", sendTo, fields);
+
+        }
     }
 }

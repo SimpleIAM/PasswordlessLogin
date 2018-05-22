@@ -18,5 +18,7 @@ namespace SimpleIAM.OpenIdAuthority.UI.Account
 
         [Required]
         public string ConfirmPassword { get; set; }
+
+        public string NextUrl { get; set; }
     }
 }

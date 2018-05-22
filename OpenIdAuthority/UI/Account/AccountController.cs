@@ -4,10 +4,12 @@
 using System;
 using System.Threading.Tasks;
 using IdentityServer4.Extensions;
+using IdentityServer4.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SimpleIAM.OpenIdAuthority.Configuration;
 using SimpleIAM.OpenIdAuthority.Services.Email;
+using SimpleIAM.OpenIdAuthority.Services.Message;
 using SimpleIAM.OpenIdAuthority.Services.OTC;
 using SimpleIAM.OpenIdAuthority.Services.Password;
 using SimpleIAM.OpenIdAuthority.Stores;
@@ -20,23 +22,29 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
     [Authorize]
     public class AccountController : BaseController
     {
+        private readonly IIdentityServerInteractionService _interaction;
         private readonly IEmailTemplateService _emailTemplateService;
         private readonly ISubjectStore _subjectStore;
         private readonly IPasswordService _passwordService;
         private readonly IOneTimeCodeService _oneTimeCodeService;
+        private readonly IMessageService _messageService;
         private readonly IdProviderConfig _config;
 
-        public AccountController(            
+        public AccountController(
+            IIdentityServerInteractionService interaction,
             IEmailTemplateService emailTemplateService,
             ISubjectStore subjectStore,
             IPasswordService passwordService,
             IOneTimeCodeService oneTimeCodeService,
+            IMessageService messageService,
             IdProviderConfig config)
         {
+            _interaction = interaction;
             _emailTemplateService = emailTemplateService;
             _subjectStore = subjectStore;
             _passwordService = passwordService;
             _oneTimeCodeService = oneTimeCodeService;
+            _messageService = messageService;
             _config = config;
         }
 
@@ -58,15 +66,19 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
         }
 
         [HttpGet("setpassword")]
-        public IActionResult SetPassword()
+        public IActionResult SetPassword(string nextUrl)
         {
-            var viewModel = GetSetPasswordViewModel();
+            var viewModel = GetSetPasswordViewModel(null, nextUrl);
             return View(viewModel);
         }
 
         [HttpPost("setpassword")]
-        public async Task<IActionResult> SetPassword(SetPasswordModel model)
+        public async Task<IActionResult> SetPassword(SetPasswordModel model, string skip)
         {
+            if(skip != null && model.NextUrl != null && (Url.IsLocalUrl(model.NextUrl) || _interaction.IsValidReturnUrl(model.NextUrl)))
+            {
+                return Redirect(model.NextUrl);
+            }
             var sub = User.GetSubjectId();
 
             var result = await _passwordService.SetPasswordAsync(sub, model.NewPassword);
@@ -74,6 +86,10 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
             {
                 case SetPasswordResult.Success:
                     AddPostRedirectMessage("Password successfully set");
+                    if(model.NextUrl != null && (Url.IsLocalUrl(model.NextUrl) || _interaction.IsValidReturnUrl(model.NextUrl)))
+                    {
+                        return Redirect(model.NextUrl);
+                    }
                     return RedirectToAction("MyAccount");
                 case SetPasswordResult.PasswordDoesNotMeetStrengthRequirements:
                     ModelState.AddModelError("NewPassword", "Password does not meet minimum password strength requirements (try something longer).");
@@ -142,29 +158,37 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
         {
             var email = User.GetDisplayName();
 
-            var response = await _oneTimeCodeService.SendOneTimeCodeAsync(email, TimeSpan.FromMinutes(5));
-            switch (response.Result)
+            var oneTimeCodeResponse = await _oneTimeCodeService.GetOneTimeCodeAsync(email, TimeSpan.FromMinutes(5));
+            switch (oneTimeCodeResponse.Result)
             {
-                case SendOneTimeCodeResult.Sent:
-                    AddPostRedirectMessage("We sent a one time code to your email address");
-                    return true;
-                case SendOneTimeCodeResult.TooManyRequests:
+                case GetOneTimeCodeResult.Success:
+                    var response = await _messageService.SendOneTimeCodeAndLinkMessageAsync(email, oneTimeCodeResponse.ShortCode, oneTimeCodeResponse.LongCode);
+                    if (!response.MessageSent)
+                    {
+                        var endUserErrorMessage = response.ErrorMessageForEndUser ?? "Something went wrong and we were unable to send you a one time code";
+                        ModelState.AddModelError("GetOneTimeCode", endUserErrorMessage);
+                        return false;
+                    }
+                    break;
+                case GetOneTimeCodeResult.TooManyRequests:
                     AddPostRedirectMessage("We recently sent a one time code to your email address. If you didn't get it, please go back and request a new code in a few minutes.");
                     return true;
+                case GetOneTimeCodeResult.ServiceFailure:
                 default:
-                case SendOneTimeCodeResult.InvalidRequest:
-                case SendOneTimeCodeResult.ServiceFailure:
-                    var endUserErrorMessage = response.MessageForEndUser ?? "Something went wrong and we were unable to send you a one time code";
-                    ModelState.AddModelError("GetOneTimeCode", endUserErrorMessage);
+                    ModelState.AddModelError("GetOneTimeCode", "Something went wrong and we were unable to send you a one time code");
                     return false;
             }
+
+            AddPostRedirectMessage("We sent a one time code to your email address");
+            return true;
         }
 
-        private SetPasswordModel GetSetPasswordViewModel(SetPasswordModel inputModel = null)
+        private SetPasswordModel GetSetPasswordViewModel(SetPasswordModel inputModel = null, string nextUrl = null)
         {
             var viewModel = new SetPasswordModel() {
                 MinimumPasswordStrengthInBits = _config.MinimumPasswordStrengthInBits,
-                OneTimeCode = inputModel?.OneTimeCode
+                OneTimeCode = inputModel?.OneTimeCode,
+                NextUrl = inputModel?.NextUrl ?? nextUrl
             };
             return viewModel;
         }

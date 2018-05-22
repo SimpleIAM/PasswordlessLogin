@@ -30,6 +30,14 @@ namespace SimpleIAM.OpenIdAuthority.Configuration
                     }
                 },
                 {
+                    "Welcome",
+                    new EmailTemplate()
+                    {
+                        Subject = "Please confirm your account",
+                        Body = "Thanks for registering!<br/><br />Please use this link to confirm your account and sign in:<br /><a href=\"{{sign_in_link}}\">{{sign_in_link}}</a><br /><br />Or you can use the one time code <strong>{{one_time_code}}</strong> to <a href=\"{{sign_in_url}}\">sign in</a>",
+                    }
+                },
+                {
                     "AccountNotFound",
                     new EmailTemplate()
                     {

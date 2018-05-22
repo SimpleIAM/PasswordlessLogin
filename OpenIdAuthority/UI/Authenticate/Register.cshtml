@@ -3,9 +3,9 @@
     ViewData["Title"] = "Register";
 }
 
-
 <div class="focusBox focusBox-centered">
     <h2 class="focusBox_title">Register</h2>
+    <openidauthority-register nexturl="@Model.ReturnUrl">
     <form method="post" asp-action="SignIn" class="form">
         <div class="field field-stacked form_row">
             <label asp-for="Email" class="field_label">Email</label>
@@ -22,8 +22,9 @@
             <input type="submit" value="Register" class="field_element field_element-fullWidth field_element-tall" />
         </div>
     </form>
-
-    <p class="hint">
-        <a asp-action="SignIn" asp-route-returnUrl="@Model.ReturnUrl">Sign in</a>
-    </p>
+    </openidauthority-register>
 </div>
+
+@section scripts {
+    <script src="~/dist.main.js" asp-append-version="true"></script>
+}

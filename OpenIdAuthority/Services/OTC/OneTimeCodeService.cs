@@ -2,12 +2,9 @@
 // Licensed under the Apache License, Version 2.0.
 
 using System;
-using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 using IdentityServer4.Models;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using SimpleIAM.OpenIdAuthority.Models;
 using SimpleIAM.OpenIdAuthority.Services.Message;
 using SimpleIAM.OpenIdAuthority.Services.Password;
@@ -30,16 +27,6 @@ namespace SimpleIAM.OpenIdAuthority.Services.OTC
             _oneTimeCodeStore = oneTimeCodeStore;
             _passwordHashService = passwordHashService;
             _messageService = messageService;
-        }
-
-        public async Task<SendOneTimeCodeResponse> SendOneTimeCodeAsync(string sendTo, TimeSpan validity)
-        {
-            return await SendOneTimeCodeInternalAsync(sendTo, validity);
-        }
-
-        public async Task<SendOneTimeCodeResponse> SendOneTimeCodeAndLinkAsync(string sendTo, TimeSpan validity, string redirectUrl = null)
-        {
-            return await SendOneTimeCodeInternalAsync(sendTo, validity, true, redirectUrl);
         }
 
         public async Task<CheckOneTimeCodeResponse> CheckOneTimeCodeAsync(string longCode)
@@ -97,7 +84,7 @@ namespace SimpleIAM.OpenIdAuthority.Services.OTC
             return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.CodeIncorrect);
         }
 
-        private async Task<SendOneTimeCodeResponse> SendOneTimeCodeInternalAsync(string sendTo, TimeSpan validity, bool includeLink = false, string redirectUrl = null)
+        public async Task<GetOneTimeCodeResponse> GetOneTimeCodeAsync(string sendTo, TimeSpan validity, string redirectUrl = null)
         {
             var otc = await _oneTimeCodeStore.GetOneTimeCodeAsync(sendTo);
             if (otc?.ExpiresUTC > DateTime.UtcNow.AddMinutes(2))
@@ -105,15 +92,15 @@ namespace SimpleIAM.OpenIdAuthority.Services.OTC
                 // if they locked the last code, they have to wait until it is almost expired
                 // if they didn't recieve the last code, unfortunately they still need to wait. We can't resent the code
                 // because it is hashed and we don't know what it is.
-                return new SendOneTimeCodeResponse(SendOneTimeCodeResult.TooManyRequests, 
-                    "A code has already been sent to this address. Please wait a few minutes before requesting a new code.");
+                return new GetOneTimeCodeResponse(GetOneTimeCodeResult.TooManyRequests);
             }
 
             var rngProvider = new RNGCryptoServiceProvider();
             var byteArray = new byte[8];
             rngProvider.GetBytes(byteArray);
             var longCode = BitConverter.ToUInt64(byteArray, 0);
-            var longCodeHash = GetFastHash(longCode.ToString());
+            var longCodeString = longCode.ToString();
+            var longCodeHash = GetFastHash(longCodeString);
             var shortCode = (longCode % 1000000).ToString("000000");
             var shortCodeHash = _passwordHashService.HashPassword(shortCode); // a fast hash salted with longCodeHash might be a sufficient alternative
 
@@ -128,28 +115,16 @@ namespace SimpleIAM.OpenIdAuthority.Services.OTC
             };
             await _oneTimeCodeStore.RemoveOneTimeCodeAsync(sendTo);
             var codeSaved = await _oneTimeCodeStore.AddOneTimeCodeAsync(otc);
-            if(!codeSaved)
+            if (!codeSaved)
             {
-                return new SendOneTimeCodeResponse(SendOneTimeCodeResult.ServiceFailure);
+                return new GetOneTimeCodeResponse(GetOneTimeCodeResult.ServiceFailure);
             }
 
-            SendMessageResult response;
-            if (includeLink) {
-                response = await _messageService.SendOneTimeCodeAndLinkMessageAsync(sendTo, shortCode, longCode.ToString());
-            }
-            else {
-                response = await _messageService.SendOneTimeCodeMessageAsync(sendTo, shortCode);
-            }
-
-            if (response.MessageSent)
+            return new GetOneTimeCodeResponse(GetOneTimeCodeResult.Success)
             {
-                return new SendOneTimeCodeResponse(SendOneTimeCodeResult.Sent);
-            }
-            else
-            {
-                return new SendOneTimeCodeResponse(SendOneTimeCodeResult.ServiceFailure, response.ErrorMessageForEndUser);
-            }
-
+                ShortCode = shortCode,
+                LongCode = longCodeString
+            };
         }
 
         private string GetFastHash(string longCode)

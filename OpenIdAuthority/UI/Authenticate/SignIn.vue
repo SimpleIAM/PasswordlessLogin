@@ -12,9 +12,9 @@
           >
         <span v-if="usernameError" class="field_error">{{usernameError}}</span>
       </section>
-      <section v-show="username.length && !showPasswordReset">
+      <section v-show="(savedUsernames.length == 0 || username.length) && !showPasswordReset">
         <div class="field field-stacked form_row">
-          <label class="field_label" for="password">Passphrase or one time code</label>
+          <label class="field_label" for="password">Password or one time code</label>
           <input class="field_element field_element-fullWidth signIn_password" ref="password" type="password" placeholder="**** / 123..." id="password" v-model="password">
           <span v-if="passwordError" class="field_error">{{passwordError}}</span>
         </div>
@@ -34,7 +34,7 @@
             <button 
               class="field_element field_element-tall signIn_oneTimeCodeButton"
               :type="password.length == 0 ? 'submit' : 'button'"
-              :disabled="password.length > 0"
+              :disabled="username.length == 0 || password.length > 0"
               >Get one time code
             </button>
           </div>
@@ -68,7 +68,7 @@
             href="#"
             class="signIn_cancelButton"
             @click.prevent="showPasswordReset = false"
-            >Cancel
+            >Sign in
           </a>
         </div>
       </section>
@@ -94,19 +94,22 @@
 </template>
 
 <script>
-import Vue from "vue";
+import Vue from 'vue';
+import api from '../Shared/api.js';
+
 var VueCookie = require('vue-cookie');
 
 Vue.use(VueCookie);
 
 export default {
+  props: ['nexturl'],
   data: function() {
     return {
       savedUsernames: [],
-      username: "",
-      password: "",
-      passwordError: "",
-      message: "",
+      username: '',
+      password: '',
+      passwordError: '',
+      message: '',
       staySignedIn: true,
       showPasswordReset: false
     };
@@ -159,9 +162,18 @@ export default {
       }
     },
     getOneTimeCode: function() {
-      //todo: call api, and then set the message below
-      this.message =
-        "We sent sent a one time code to your email or phone.";
+      api.sendOneTimeCode(this.username, this.nexturl)
+        .then(data => {
+          this.message = 'We sent sent a one time code to your email or phone.';
+        })
+        .catch(error => {
+          if(error.message) {
+            this.message = error.message;
+          }
+          else {
+            this.message = 'Something went wrong';
+          }
+        });
     },
     signIn: function() {
       if(this.signInEnabled) {

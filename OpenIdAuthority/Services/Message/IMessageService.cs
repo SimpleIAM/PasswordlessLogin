@@ -10,5 +10,7 @@ namespace SimpleIAM.OpenIdAuthority.Services.Message
         Task<SendMessageResult> SendAccountNotFoundMessageAsync(string sendTo);
         Task<SendMessageResult> SendOneTimeCodeMessageAsync(string sendTo, string oneTimeCode);
         Task<SendMessageResult> SendOneTimeCodeAndLinkMessageAsync(string sendTo, string oneTimeCode, string longCode);
+
+        Task<SendMessageResult> SendWelcomeMessageAsync(string clientId, string sendTo, string oneTimeCode, string longCode, IDictionary<string, string> additionalMailMergeValues);
     }
 }
