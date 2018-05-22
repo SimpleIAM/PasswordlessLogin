@@ -38,6 +38,14 @@ namespace SimpleIAM.OpenIdAuthority.Configuration
                     }
                 },
                 {
+                    "PasswordReset",
+                    new EmailTemplate()
+                    {
+                        Subject = "Password Reset",
+                        Body = "Use this link to reset your password: <br /><a href=\"{{password_reset_link}}\">{{password_reset_link}}</a>",
+                    }
+                },
+                {
                     "AccountNotFound",
                     new EmailTemplate()
                     {

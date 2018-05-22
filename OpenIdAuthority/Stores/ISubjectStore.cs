@@ -9,7 +9,7 @@ namespace SimpleIAM.OpenIdAuthority.Stores
     public interface ISubjectStore
     {
         Task<Subject> GetSubjectAsync(string subjectId);
-        Task<Subject> GetSubjectByEmailAsync(string email, bool createIfNotFound = false);
+        Task<Subject> GetSubjectByEmailAsync(string email);
         Task<Subject> AddSubjectAsync(Subject subject);
     }
 }

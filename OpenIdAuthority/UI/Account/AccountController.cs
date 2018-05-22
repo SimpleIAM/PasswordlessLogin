@@ -162,7 +162,7 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
             switch (oneTimeCodeResponse.Result)
             {
                 case GetOneTimeCodeResult.Success:
-                    var response = await _messageService.SendOneTimeCodeAndLinkMessageAsync(email, oneTimeCodeResponse.ShortCode, oneTimeCodeResponse.LongCode);
+                    var response = await _messageService.SendOneTimeCodeMessageAsync(email, oneTimeCodeResponse.ShortCode);
                     if (!response.MessageSent)
                     {
                         var endUserErrorMessage = response.ErrorMessageForEndUser ?? "Something went wrong and we were unable to send you a one time code";

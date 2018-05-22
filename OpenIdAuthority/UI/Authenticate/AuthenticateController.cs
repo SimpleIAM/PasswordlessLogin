@@ -68,44 +68,10 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
         [AllowAnonymous]
         public async Task<ActionResult> SignIn(string returnUrl)
         {
-            var viewModel = await GetSignInViewModelAsync(returnUrl);
+            var viewModel = await GetSignInPassViewModelAsync(returnUrl);
             return View(viewModel);
         }
-
-        [HttpPost("signin")]
-        [AllowAnonymous]
-        [ValidateAntiForgeryToken]
-        public async Task<ActionResult> SignIn(string returnUrl, SignInInputModel model)
-        {               
-            var oneTimeCodeResponse = await _oneTimeCodeService.GetOneTimeCodeAsync(model.Email, TimeSpan.FromMinutes(5), returnUrl);
-            switch (oneTimeCodeResponse.Result)
-            {
-                case GetOneTimeCodeResult.Success:
-                    var response = await _messageService.SendOneTimeCodeAndLinkMessageAsync(model.Email, oneTimeCodeResponse.ShortCode, oneTimeCodeResponse.LongCode);
-                    if (response.MessageSent)
-                    {
-                        SaveUsernameHint(model.Email);
-                        AddPostRedirectValue("Email", model.Email);
-                        return RedirectToAction("SignInCode");
-                    }
-                    else {
-                        var endUserErrorMessage = response.ErrorMessageForEndUser ?? "Something went wrong.";
-                        ModelState.AddModelError("Email", endUserErrorMessage);
-                    }
-                    break;
-                case GetOneTimeCodeResult.TooManyRequests:
-                    ModelState.AddModelError("Email", "A code has already been sent to this address. Please wait a few minutes before requesting a new code.");
-                    break;
-                case GetOneTimeCodeResult.ServiceFailure:
-                default:
-                    ModelState.AddModelError("Email", "Something went wrong.");
-                    break;
-            }
-
-            var viewModel = await GetSignInViewModelAsync(returnUrl, model);
-            return View(viewModel);
-        }
-
+        
         [HttpGet("signin/{longCode}")]
         [AllowAnonymous]
         public async Task<ActionResult> SignInLink(string longCode)
@@ -116,7 +82,7 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
                 switch(response.Result)
                 {
                     case CheckOneTimeCodeResult.Verified:
-                        var subject = await _subjectStore.GetSubjectByEmailAsync(response.SentTo, true); //todo: does this need to handle a phone number?
+                        var subject = await _subjectStore.GetSubjectByEmailAsync(response.SentTo); //todo: does this need to handle a phone number?
                         return await FinishSignIn(subject, null, response.RedirectUrl);
                     case CheckOneTimeCodeResult.Expired:
                         AddPostRedirectMessage("The sign in link expired.");
@@ -133,94 +99,6 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
             }
 
             return NotFound();
-        }
-
-        [HttpGet("signincode")]
-        [AllowAnonymous]
-        public async Task<ActionResult> SignInCode()
-        {
-            var viewModel = GetSignInCodeViewModel();
-            viewModel.Email = GetPostRedirectValue("Email");
-            return View(viewModel);
-        }
-
-        [HttpPost("signincode")]
-        [AllowAnonymous]
-        [ValidateAntiForgeryToken]
-        public async Task<ActionResult> SignInCode(SignInCodeInputModel model)
-        {
-            if (ModelState.IsValid)
-            {
-                model.OneTimeCode = model.OneTimeCode.Trim();
-                var response = await _oneTimeCodeService.CheckOneTimeCodeAsync(model.Email, model.OneTimeCode);
-                switch (response.Result)
-                {
-                    case CheckOneTimeCodeResult.Verified:
-                        var subject = await _subjectStore.GetSubjectByEmailAsync(model.Email, true); //todo: does this need to handle a phone number?
-                        return await FinishSignIn(subject, null, response.RedirectUrl);
-                    case CheckOneTimeCodeResult.Expired:
-                        AddPostRedirectMessage("The one time code already expired. Please request a new one.");
-                        AddPostRedirectValue("Email", model.Email);
-                        return RedirectToAction("SignIn");
-                    case CheckOneTimeCodeResult.CodeIncorrect:
-                    case CheckOneTimeCodeResult.NotFound:
-                        ModelState.AddModelError("OneTimeCode", "Invalid one time code");
-                        break;
-                    case CheckOneTimeCodeResult.ShortCodeLocked:
-                        ModelState.AddModelError("OneTimeCode", "The one time code is locked. Please request a new one after a few minutes. ");
-                        break;
-                    case CheckOneTimeCodeResult.ServiceFailure:
-                    default:
-                        AddPostRedirectMessage("Something went wrong.");
-                        return RedirectToAction("SignIn");
-                }
-            }
-            var viewModel = GetSignInCodeViewModel(model);
-            return View(viewModel);
-        }
-
-        [HttpGet("signinpass")]
-        [AllowAnonymous]
-        public async Task<ActionResult> SignInPass(string returnUrl)
-        {
-            var viewModel = await GetSignInPassViewModelAsync(returnUrl);
-            return View(viewModel);
-        }
-
-        [HttpPost("signinpass")]
-        [AllowAnonymous]
-        [ValidateAntiForgeryToken]
-        public async Task<ActionResult> SignInPass(string returnUrl, SignInPassInputModel model)
-        {
-            if (ModelState.IsValid)
-            {
-                var subject = await _subjectStore.GetSubjectByEmailAsync(model.Email, false);
-                if (subject == null)
-                {
-                    ModelState.AddModelError("Password", "The email address or password wasn't right");
-                }
-                else
-                {
-                    var checkPasswordResult = await _passwordService.CheckPasswordAsync(subject.SubjectId, model.Password);
-                    switch (checkPasswordResult)
-                    {
-                        case CheckPasswordResult.NotFound:
-                        case CheckPasswordResult.PasswordIncorrect:
-                            ModelState.AddModelError("Password", "The email address or password wasn't right");
-                            break;
-                        case CheckPasswordResult.TemporarilyLocked:
-                            ModelState.AddModelError("Password", "Your password is temporarily locked. Try again later or sign in with email.");
-                            break;
-                        case CheckPasswordResult.ServiceFailure:
-                            ModelState.AddModelError("Password", "Hmm. Something went wrong. Please try again.");
-                            break;
-                        case CheckPasswordResult.Success:
-                            return await FinishSignIn(subject, model.SessionLengthMinutes, returnUrl);
-                    }
-                }
-            }
-            var viewModel = await GetSignInPassViewModelAsync(returnUrl, model);
-            return View(viewModel);
         }
 
         [HttpGet("signout")]
@@ -265,8 +143,6 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
 
             await HttpContext.SignInAsync(subject.SubjectId, subject.Email, authProps);
 
-            SaveUsernameHint(subject.Email);
-
             if (Url.IsLocalUrl(returnUrl) || _interaction.IsValidReturnUrl(returnUrl))
             {
                 return Redirect(returnUrl);
@@ -280,22 +156,9 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
 
             var viewModel = new SignInViewModel()
             {
-                Email = model?.Email ?? context?.LoginHint ?? GetUsernameHint(),
+                Email = model?.Email ?? context?.LoginHint,
                 LeaveBlank = model?.LeaveBlank,
                 ReturnUrl = returnUrl,
-            };
-
-            return viewModel;
-        }
-
-        private SignInCodeViewModel GetSignInCodeViewModel(SignInCodeInputModel model = null)
-        {
-            var viewModel = new SignInCodeViewModel()
-            {
-                Email = model?.Email ?? GetUsernameHint(),
-                OneTimeCode = model?.OneTimeCode,
-                LeaveBlank = model?.LeaveBlank,
-                SessionLengthMinutes = model?.SessionLengthMinutes ?? _config.DefaultSessionLengthMinutes
             };
 
             return viewModel;
@@ -307,38 +170,13 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
 
             var viewModel = new SignInPassViewModel()
             {
-                Email = model?.Email ?? context?.LoginHint ?? GetUsernameHint(),
+                Email = model?.Email ?? context?.LoginHint,
                 LeaveBlank = model?.LeaveBlank,
                 SessionLengthMinutes = model?.SessionLengthMinutes ?? _config.DefaultSessionLengthMinutes,
                 ReturnUrl = returnUrl,
             };
 
             return viewModel;
-        }
-
-        private void SaveUsernameHint(string email)
-        {
-            if(_config.RememberUsernames)
-            {
-                var options = new CookieOptions
-                {
-                    Expires = DateTime.Now.AddYears(1),
-                    HttpOnly = true,
-                    SameSite = SameSiteMode.Strict,
-                    //Secure = true //todo: consider pros and cons of enabling this
-                };
-                Response.Cookies.Append("UsernameHint", email, options);
-            }
-        }
-
-        private string GetUsernameHint()
-        {
-            if (_config.RememberUsernames)
-            {
-                var usernameHint = Request.Cookies["UsernameHint"];
-                return usernameHint;
-            }
-            return null;
         }
     }
 }

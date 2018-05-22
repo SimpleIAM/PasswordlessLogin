@@ -50,7 +50,7 @@
         <div class="signIn_message" v-if="message">
           {{message}}
         </div>
-        <div v-if="!showPasswordReset" class="signIn_footer">
+        <div v-show="!showPasswordReset" class="signIn_footer">
           <a class="signIn_forgotPasswordLink" href="#" @click.prevent="forgotPasswordLinkClicked">Forgot password?</a>
         </div>
       </section>
@@ -62,6 +62,9 @@
             class="field_element field_element-fullWidth field_element-tall signIn_passwordResetButton"
             >Get password reset email
           </button>
+        </div>
+        <div class="signIn_message" v-if="message">
+          {{message}}
         </div>
         <div class="signIn_footer">
           <a 
@@ -164,7 +167,7 @@ export default {
     getOneTimeCode: function() {
       api.sendOneTimeCode(this.username, this.nexturl)
         .then(data => {
-          this.message = 'We sent sent a one time code to your email or phone.';
+          this.message = 'We sent sent a one time code to your email or phone';
         })
         .catch(error => {
           if(error.message) {
@@ -177,9 +180,37 @@ export default {
     },
     signIn: function() {
       if(this.signInEnabled) {
-        this.message = "Signing in..."
-        //before redirect, save cookie
-        this.saveUsernames();
+        let oneTimeCode = this.password.replace(' ', '');
+        if (/^[0-9]{6}$/.test(oneTimeCode)) {
+          api.authenticate(this.username, oneTimeCode, this.staySignedIn)
+            .then(data => {
+              this.saveUsernames();
+              window.location = data.nextUrl ? data.nextUrl : '/apps';
+            })
+            .catch(error => {
+              if(error.response.status == 401) {
+                this.password = '';
+              }
+              this.$nextTick(() => {
+                this.message = error.message ? error.message : 'Something went wrong';
+              });
+            });
+        }
+        else {
+          api.authenticatePassword(this.username, this.password, this.staySignedIn, this.nexturl)
+            .then(data => {
+              this.saveUsernames();
+              window.location = data.nextUrl ? data.nextUrl : '/apps';
+            })
+            .catch(error => {
+              if(error.response.status == 401) {
+                this.password = '';
+              }
+              this.$nextTick(() => {
+                this.message = error.message ? error.message : 'Something went wrong';
+              });
+            });
+        }
       }
     },
     forgotPasswordLinkClicked: function() {
@@ -187,9 +218,13 @@ export default {
       this.password = '';
     },
     getPasswordResetEmail: function() {
-      //todo:implement
-      this.message = "Check your email for password reset instructions";
-      this.showPasswordReset = false;      
+      api.sendPasswordResetMessage('', this.username, this.nexturl)
+        .then(data => {
+          this.message = data.message ? data.message : 'Check your email for password reset instructions';
+        })
+        .catch(error => {
+          this.message = error.message ? error.message : 'Something went wrong';
+        });
     },
     loadSavedUsernames() {
       this.savedUsernames = [];

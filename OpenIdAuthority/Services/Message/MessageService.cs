@@ -90,7 +90,22 @@ namespace SimpleIAM.OpenIdAuthority.Services.Message
             fields["sign_in_url"] = signInUrl;
 
             return await _emailTemplateService.SendEmailAsync("Welcome", sendTo, fields);
+        }
 
+        public async Task<SendMessageResult> SendPasswordResetMessageAsync(string clientId, string sendTo, string oneTimeCode, string longCode)
+        {
+            if (!IsValidEmailAddress(sendTo))
+            {
+                return NotAnEmailAddress();
+            }
+
+            var link = _urlHelper.Action("SignInLink", "Authenticate", new { longCode = longCode.ToString() }, _httpContext.HttpContext.Request.Scheme);
+            var signInUrl = _urlHelper.Action("SignIn", "Authenticate", new { }, _httpContext.HttpContext.Request.Scheme);
+            var fields = new Dictionary<string, string>();
+            fields["one_time_code"] = oneTimeCode;
+            fields["password_reset_link"] = link;
+
+            return await _emailTemplateService.SendEmailAsync("PasswordReset", sendTo, fields);
         }
     }
 }

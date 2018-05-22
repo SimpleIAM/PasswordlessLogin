@@ -34,13 +34,9 @@ namespace SimpleIAM.OpenIdAuthority.Stores
             return await _context.Subjects.FindAsync(subjectId);
         }
 
-        public async Task<Subject> GetSubjectByEmailAsync(string email, bool createIfNotFound = false)
+        public async Task<Subject> GetSubjectByEmailAsync(string email)
         {
             var subject = await _context.Subjects.SingleOrDefaultAsync(x => x.Email == email);
-            if(subject == null && createIfNotFound)
-            {
-                subject = await AddSubjectAsync(new Subject() { Email = email });
-            }
             return subject;
         }
     }
