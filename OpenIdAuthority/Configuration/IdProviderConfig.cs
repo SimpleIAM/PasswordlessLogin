@@ -3,32 +3,14 @@
 
 namespace SimpleIAM.OpenIdAuthority.Configuration
 {
-    public enum SignInMethod
-    {
-        Email,
-        Password
-    }
     public class IdProviderConfig
     {
         public string DisplayName { get; set; } = "OpenID Authority";
-        public SignInMethod DefaultSignInMethod { get; set; } = SignInMethod.Email;
         public int DefaultSessionLengthMinutes { get; set; } = 720; // 12 hours
         public int MaxSessionLengthMinutes { get; set; } = 44640; // 31 days
         public bool RememberUsernames { get; set; } = true;
         public int MinimumPasswordStrengthInBits { get; set; } = 40;
         public bool BehindProxy { get; set; } = false;
         public CspConfig Csp { get; set; } = new CspConfig();
-
-        public string SignInAction {
-            get {
-                switch(DefaultSignInMethod)
-                {
-                    case SignInMethod.Password:
-                        return "SignInPass";
-                    default:
-                        return "SignIn";
-                }
-            }
-        }
     }
 }

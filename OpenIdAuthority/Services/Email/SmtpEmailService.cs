@@ -21,13 +21,13 @@ namespace SimpleIAM.OpenIdAuthority.Services.Email
 
         public async Task<SendMessageResult> SendEmailAsync(string from, string to, string subject, string body)
         {
-            var message = new MimeMessage
-            {
-                Sender = MailboxAddress.Parse(from),
+            var message = new MimeMessage()
+            {                
                 Subject = subject
             };
+            message.From.Add(MailboxAddress.Parse(from));
             message.To.Add(MailboxAddress.Parse(to));
-            if (body?.Contains("<") == true)
+            if (body?.Contains("</") == true || body?.Contains("/>") == true)
             {
                 message.Body = new TextPart(TextFormat.Html)
                 {

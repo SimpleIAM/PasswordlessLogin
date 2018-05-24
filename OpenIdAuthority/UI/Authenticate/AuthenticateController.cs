@@ -64,6 +64,21 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
             return View(viewModel);
         }
 
+        [HttpGet("forgotpassword")]
+        [AllowAnonymous]
+        public async Task<ActionResult> ForgotPassword()
+        {
+            return View();
+        }
+
+        [HttpPost("forgotpassword")]
+        [AllowAnonymous]
+        public async Task<ActionResult> ForgotPassword(string username)
+        {
+            //todo: call api internally
+            return View();
+        }
+
         [HttpGet("signin")]
         [AllowAnonymous]
         public async Task<ActionResult> SignIn(string returnUrl)
@@ -143,7 +158,7 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
 
             await HttpContext.SignInAsync(subject.SubjectId, subject.Email, authProps);
 
-            if (Url.IsLocalUrl(returnUrl) || _interaction.IsValidReturnUrl(returnUrl))
+            if (_interaction.IsValidReturnUrl(returnUrl))
             {
                 return Redirect(returnUrl);
             }

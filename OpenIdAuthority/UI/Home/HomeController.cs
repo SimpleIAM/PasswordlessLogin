@@ -27,6 +27,18 @@ namespace SimpleIAM.OpenIdAuthority.Controllers
             return View();
         }
 
+        [HttpGet("privacy")]
+        public IActionResult Privacy()
+        {            
+            return View();
+        }
+
+        [HttpGet("terms")]
+        public IActionResult Terms()
+        {            
+            return View();
+        }
+
         [HttpGet("apps")]
         [Authorize]
         public IActionResult Apps()

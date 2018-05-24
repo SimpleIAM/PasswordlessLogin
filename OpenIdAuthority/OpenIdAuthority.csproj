@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <PackageId>SimpleIAM.OpenIdAuthority</PackageId>
-    <Version>0.1.0-beta3</Version>
+    <Version>0.1.0-beta4</Version>
     <Authors>Ryan Foster</Authors>
     <Company>SimpleIAM.com</Company>
     <Title>OpenID Authority</Title>
@@ -38,14 +38,9 @@
     <None Remove="UI\Account\SetPassword.cshtml" />
     <None Remove="UI\Authenticate\AccountSettings.cshtml" />
     <None Remove="UI\Authenticate\Register.cshtml" />
-    <None Remove="UI\Authenticate\SignInCode.cshtml" />
-    <None Remove="UI\Authenticate\SignInPass.cshtml" />
     <None Remove="UI\Home\Apps.cshtml" />
-    <None Remove="UI\Shared\_EmailHelp.cshtml" />
     <None Remove="UI\Shared\_MainMenu.cshtml" />
     <None Remove="UI\Shared\_PostRedirectMessages.cshtml" />
-    <None Remove="UI\Shared\_StaySignedIn.cshtml" />
-    <None Remove="UI\Shared\_StaySignedInDropdown.cshtml" />
     <None Remove="wwwroot\setpassword.js" />
     <None Remove="wwwroot\timezonize.js" />
     <None Remove="yarn.lock" />

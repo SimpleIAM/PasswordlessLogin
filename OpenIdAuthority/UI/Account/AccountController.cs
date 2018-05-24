@@ -75,7 +75,7 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
         [HttpPost("setpassword")]
         public async Task<IActionResult> SetPassword(SetPasswordModel model, string skip)
         {
-            if(skip != null && model.NextUrl != null && (Url.IsLocalUrl(model.NextUrl) || _interaction.IsValidReturnUrl(model.NextUrl)))
+            if(skip != null && model.NextUrl != null && (Url.IsLocalUrl(model.NextUrl) || true /*todo: validate that is is a url for a registered client? maybe use IRedirectUriValidator.IsRedirectUriValidAsync*/))
             {
                 return Redirect(model.NextUrl);
             }
@@ -86,7 +86,8 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
             {
                 case SetPasswordResult.Success:
                     AddPostRedirectMessage("Password successfully set");
-                    if(model.NextUrl != null && (Url.IsLocalUrl(model.NextUrl) || _interaction.IsValidReturnUrl(model.NextUrl)))
+                    
+                    if(model.NextUrl != null && (Url.IsLocalUrl(model.NextUrl) || true /*todo: validate that is is a url for a registered client?*/))
                     {
                         return Redirect(model.NextUrl);
                     }

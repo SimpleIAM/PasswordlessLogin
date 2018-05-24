@@ -280,7 +280,7 @@ namespace SimpleIAM.OpenIdAuthority.API
         
             await HttpContext.SignInAsync(subject.SubjectId, subject.Email, authProps);
 
-            if (Url.IsLocalUrl(returnUrl) || _interaction.IsValidReturnUrl(returnUrl))
+            if (_interaction.IsValidReturnUrl(returnUrl))
             {
                 return returnUrl;
             }

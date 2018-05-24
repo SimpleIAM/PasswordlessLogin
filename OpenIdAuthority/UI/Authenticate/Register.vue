@@ -12,18 +12,28 @@
           >
         <span v-if="emailError" class="field_error">{{emailError}}</span>
       </div>
+
+      <div class="field field-checkbox form_row">
+        <input 
+          class="field_element"
+          type="checkbox" 
+          id="consent" 
+          v-model="consent">
+        <label class="field_label" for="consent">I consent to the <a href="/privacy" target="_blank">privacy policy</a> and <a href="/terms" target="_blank">terms of service</a>.</label>
+      </div>
+
       <div class="field form_row">
         <button 
-          :disabled="!emailIsValid"            
+          :disabled="!emailIsValid || !consent"
           type="submit"
           class="field_element field_element-fullWidth field_element-tall register_button"
           >Register
         </button>
       </div>
-      <div class="register_message" v-if="message">
+      <div class="message message-notice register_message" v-if="message">
         {{message}}
       </div>
-      <div class="register_footer">
+      <div class="minorNav register_footer">
         <a href="/signin" class="register_signInLink">Sign in</a>
       </div>
     </form>
@@ -44,6 +54,7 @@ export default {
     return {
       email: '',
       emailError: '',
+      consent: false,
       message: ''
     };
   },
@@ -60,6 +71,7 @@ export default {
   },
   methods: {
     submitForm: function() {
+      this.message = "Please wait...";
       api.register('', this.email, this.nexturl ? this.nexturl : '/account/setpassword?nextUrl=/apps')
         .then(data => {
           this.message = 'Thanks for registering. Please check your email.';

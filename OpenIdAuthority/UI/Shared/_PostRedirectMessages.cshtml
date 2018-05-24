@@ -3,10 +3,10 @@
     if(messageData != null)
     {
         var messages = messageData.Split('|');
-        <div class="messages">
+        <div class="messages-legacy">
             @foreach(var message in messages)
             {
-                <div class="message">@message</div>
+                <div class="message-legacy">@message</div>
             }
         </div>
     }

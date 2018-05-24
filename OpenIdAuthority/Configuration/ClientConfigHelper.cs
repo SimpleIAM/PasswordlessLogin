@@ -28,9 +28,9 @@ namespace SimpleIAM.OpenIdAuthority.Configuration
                 ClientUri = baseUrl,
                 ClientSecrets = new Secret[] { new Secret(config.ClientSecret.Sha256()) },
                 AllowedGrantTypes = config.AppType == AppType.SPA ? new string[] { "implicit" } : new string[] { "authorization_code" },
-                RedirectUris = config.RedirectUris != null ? config.RedirectUris.Split('\n') : new string[] { $"{baseUrl}/signin-oidc" },
+                RedirectUris = config.RedirectUris != null ? config.RedirectUris.Split('\n') : new string[] { baseUrl, $"{baseUrl}/signin-oidc" },
                 FrontChannelLogoutUri = config.FrontChannelLogoutUri ?? $"{baseUrl}/signout-oidc",
-                PostLogoutRedirectUris = config.PostLogoutRedirectUris != null ? config.PostLogoutRedirectUris.Split('\n') : new string[] { $"{baseUrl}", $"{baseUrl}/", $"{baseUrl}/signout-callback-oidc" },
+                PostLogoutRedirectUris = config.PostLogoutRedirectUris != null ? config.PostLogoutRedirectUris.Split('\n') : new string[] { baseUrl, $"{baseUrl}/", $"{baseUrl}/signout-callback-oidc" },
                 AllowedScopes = new string[] { "openid", "profile" },
                 RequireConsent = false
             };

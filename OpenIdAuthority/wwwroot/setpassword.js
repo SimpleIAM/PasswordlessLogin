@@ -2,7 +2,9 @@
 const confirmPassEl = document.getElementById("ConfirmPassword");
 const strengthEl = document.getElementById("passwordstrengthbits");
 const feedbackEl = document.getElementById("passwordfeedback");
+const confirmErrorEl = document.getElementById("confirm-password-error");
 const setPasswordButtonEl = document.getElementById("setpassword");
+const skipButtonEl = document.getElementById("skip");
 const minStrength = newPassEl.dataset.minStrength || 0;
 let strength_bits = 0;
 
@@ -41,9 +43,10 @@ function enableSubmitIfFormValid() {
     const passwordStrongEnough = strength_bits >= minStrength;
 
     const passwordsMatch = confirmPassEl.value === newPassEl.value;
-    if (!passwordsMatch) {
-        //todo: warn
-    }
+    confirmErrorEl.innerText = passwordsMatch ? "" : "Passwords don't match";
 
     setPasswordButtonEl.disabled = !(passwordStrongEnough && passwordsMatch);
+    if(skipButtonEl) {
+        skipButtonEl.disabled = (confirmPassEl.value.length > 0);
+    }
 }

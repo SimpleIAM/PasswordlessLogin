@@ -12,12 +12,14 @@
     }
     <p>You have been signed out</p>
 
+    <div class="minorNav signIn_footer">
     @if (Model.PostLogoutRedirectUri != null)
     {
-        <p>Return to <a href="@Model.PostLogoutRedirectUri">@Model.AppName</a></p>
+        <text>Return to <a href="@Model.PostLogoutRedirectUri">@Model.AppName</a></text>
     }
     else
     {
-        <p><a asp-action="SignIn">Sign in</a></p>
+        <a asp-action="SignIn">Sign in</a>
     }
+    </div>
 </div>

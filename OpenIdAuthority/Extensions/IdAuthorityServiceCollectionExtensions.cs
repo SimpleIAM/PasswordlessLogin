@@ -62,7 +62,7 @@ namespace Microsoft.Extensions.DependencyInjection
 
             services.AddIdentityServer(options =>
             {
-                options.UserInteraction.LoginUrl = idProviderConfig.DefaultSignInMethod == SignInMethod.Email ? "/signin" : "/signinpass";
+                options.UserInteraction.LoginUrl = "/signin";
                 options.UserInteraction.LogoutUrl = "/signout";
                 options.UserInteraction.LogoutIdParameter = "id";
                 options.UserInteraction.ErrorUrl = "/error";

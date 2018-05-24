@@ -2,7 +2,7 @@
   <div class="signIn">
     <form @submit.prevent="submitForm" class="form">
       <section class="field field-stacked form_row">
-        <label class="field_label" for="username">Email, phone, or username</label>
+        <label class="field_label" for="username">Email</label>
         <input class="field_element field_element-fullWidth signIn_username"
           ref="username"
           id="username" 
@@ -22,7 +22,6 @@
         <div class="field field-checkbox form_row">
           <input 
             class="field_element"
-            :disabled="password.length == 0"
             type="checkbox" 
             id="stay-signed-in" 
             v-model="staySignedIn">
@@ -47,14 +46,14 @@
             </button>
           </div>
         </div>
-        <div class="signIn_message" v-if="message">
+        <div class="message message-notice signIn_message" v-if="message">
           {{message}}
         </div>
-        <div v-show="!showPasswordReset" class="signIn_footer">
-          <a class="signIn_forgotPasswordLink" href="#" @click.prevent="forgotPasswordLinkClicked">Forgot password?</a>
+        <div v-show="!showPasswordReset" class="minorNav signIn_footer">
+          <a class="signIn_forgotPasswordLink" href="/forgotpassword" @click.prevent="forgotPasswordLinkClicked">Forgot password?</a>
         </div>
       </section>
-      <section v-if="showPasswordReset"> 
+      <section v-if="showPasswordReset">
         <div class="field form_row">
           <button 
             :disabled="username.length == 0"            
@@ -63,14 +62,14 @@
             >Get password reset email
           </button>
         </div>
-        <div class="signIn_message" v-if="message">
+        <div class="message message-notice signIn_message" v-if="message">
           {{message}}
         </div>
-        <div class="signIn_footer">
+        <div class="minorNav signIn_footer">
           <a 
-            href="#"
-            class="signIn_cancelButton"
-            @click.prevent="showPasswordReset = false"
+            href="/signin"
+            class="signIn_goBackButton"
+            @click.prevent="forgotPasswordGoBackToSignIn"
             >Sign in
           </a>
         </div>
@@ -154,6 +153,7 @@ export default {
       });
     },
     submitForm: function() {
+      this.message = "Please wait...";
       if(this.showPasswordReset) {
         this.getPasswordResetEmail();
       }
@@ -168,6 +168,9 @@ export default {
       api.sendOneTimeCode(this.username, this.nexturl)
         .then(data => {
           this.message = 'We sent sent a one time code to your email or phone';
+          this.$nextTick(() => {
+            this.$refs.password.focus();
+          });
         })
         .catch(error => {
           if(error.message) {
@@ -216,6 +219,11 @@ export default {
     forgotPasswordLinkClicked: function() {
       this.showPasswordReset = true;
       this.password = '';
+      this.message = '';
+    },
+    forgotPasswordGoBackToSignIn: function() {
+      this.showPasswordReset = false;
+      this.message = '';
     },
     getPasswordResetEmail: function() {
       api.sendPasswordResetMessage('', this.username, this.nexturl)
