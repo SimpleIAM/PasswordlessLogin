@@ -11,8 +11,8 @@ Vue.customElement('openidauthority-account', () => new Promise((resolve) => {
 
 Vue.customElement('openidauthority-sign-in', () => new Promise((resolve) => {
   require(['./Authenticate/SignIn.vue'], (lazyComponent) => resolve(lazyComponent.default));
-}), { props: ['nexturl'] });
+}), { props: ['nextUrl', 'signInType', 'idPrefix', 'doNotRemember', 'doNotStaySignedIn'] });
 
 Vue.customElement('openidauthority-register', () => new Promise((resolve) => {
   require(['./Authenticate/Register.vue'], (lazyComponent) => resolve(lazyComponent.default));
-}), { props: ['nexturl'] });
+}), { props: ['nextUrl'] });

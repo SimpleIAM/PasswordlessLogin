@@ -750,6 +750,7 @@ ol > li {
 .minorNav a,
 .minorNav a:visited {
   color: #0000ee;
+  text-decoration: none;
 }
 
 .apps {
@@ -892,8 +893,12 @@ ol > li {
   display: block;
   text-align: center;
   font-size: 85%;
+  text-decoration: none;
 }
 
+.register_consentLabel a {
+  text-decoration:none;
+}
 .register_footer {  
   margin-top:20px;
 }

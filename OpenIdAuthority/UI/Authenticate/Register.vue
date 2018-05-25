@@ -19,7 +19,7 @@
           type="checkbox" 
           id="consent" 
           v-model="consent">
-        <label class="field_label" for="consent">I consent to the <a href="/privacy" target="_blank">privacy policy</a> and <a href="/terms" target="_blank">terms of service</a>.</label>
+        <label class="field_label register_consentLabel" for="consent">I consent to the <a href="/privacy" target="_blank">privacy policy</a> and <a href="/terms" target="_blank">terms of service</a>.</label>
       </div>
 
       <div class="field form_row">
@@ -49,7 +49,7 @@ var VueCookie = require('vue-cookie');
 Vue.use(VueCookie);
 
 export default {
-  props: ['nexturl'],
+  props: ['nextUrl'],
   data: function() {
     return {
       email: '',
@@ -72,7 +72,7 @@ export default {
   methods: {
     submitForm: function() {
       this.message = "Please wait...";
-      api.register('', this.email, this.nexturl ? this.nexturl : '/account/setpassword?nextUrl=/apps')
+      api.register('', this.email, this.nextUrl ? this.nextUrl : '/account/setpassword?nextUrl=/apps')
         .then(data => {
           this.message = 'Thanks for registering. Please check your email.';
         })

@@ -2,34 +2,39 @@
   <div class="signIn">
     <form @submit.prevent="submitForm" class="form">
       <section class="field field-stacked form_row">
-        <label class="field_label" for="username">Email</label>
+        <label class="field_label" :for="getId('username')">{{usernameText}}</label>
         <input class="field_element field_element-fullWidth signIn_username"
           ref="username"
-          id="username" 
+          :id="getId('username')"
           v-model="username" 
           type="text" 
-          placeholder="you@example.com"
-          >
+          placeholder="you@example.com">
         <span v-if="usernameError" class="field_error">{{usernameError}}</span>
       </section>
-      <section v-show="(savedUsernames.length == 0 || username.length) && !showPasswordReset">
+      <section v-show="!showSavedUsernames && !showPasswordReset">
         <div class="field field-stacked form_row">
-          <label class="field_label" for="password">Password or one time code</label>
-          <input class="field_element field_element-fullWidth signIn_password" ref="password" type="password" placeholder="**** / 123..." id="password" v-model="password">
+          <label class="field_label" :for="getId('password')">{{passwordText}}</label>
+          <input 
+            class="field_element field_element-fullWidth signIn_password" 
+            ref="password" 
+            type="password" 
+            :id="getId('password')"
+            :placeholder="passwordPlaceholderText" 
+            v-model="password">
           <span v-if="passwordError" class="field_error">{{passwordError}}</span>
         </div>
 
-        <div class="field field-checkbox form_row">
+        <div class="field field-checkbox form_row" v-if="!(doNotRemember && doNotStaySignedIn)">
           <input 
             class="field_element"
             type="checkbox" 
-            id="stay-signed-in" 
+            :id="getId('stay-signed-in')"
             v-model="staySignedIn">
-          <label class="field_label" for="stay-signed-in">Remember username and stay signed in</label>
+          <label class="field_label" :for="getId('stay-signed-in')">{{staySignedInText}}</label>
         </div>
 
         <div class="fields fields-flexSpaceBetween form_row">
-          <div class="field">
+          <div v-if="acceptCode" class="field">
             <button 
               class="field_element field_element-tall signIn_oneTimeCodeButton"
               :type="password.length == 0 ? 'submit' : 'button'"
@@ -75,7 +80,7 @@
         </div>
       </section>
     </form>
-    <section class="savedUsernames" v-if="savedUsernames.length && username.length == 0">
+    <section class="savedUsernames" v-if="showSavedUsernames">
       <header class="savedUsernames_header">
         <span class="savedUsernames_title">Saved Usernames</span>
       </header>
@@ -104,7 +109,13 @@ var VueCookie = require('vue-cookie');
 Vue.use(VueCookie);
 
 export default {
-  props: ['nexturl'],
+  props: {
+    nextUrl: String,
+    signInType: String,
+    idPrefix: String,
+    doNotRemember: Boolean,
+    doNotStaySignedIn: Boolean
+  },
   data: function() {
     return {
       savedUsernames: [],
@@ -129,6 +140,9 @@ export default {
     }
   },
   computed: {
+    showSavedUsernames: function() {
+      return !this.doNotRemember && this.savedUsernames.length && this.username.length == 0;
+    },
     usernameError: function() {
       if(this.username.length == 0) {
         return '';
@@ -143,9 +157,59 @@ export default {
     },
     signInEnabled: function() {
       return this.usernameIsValid && this.password.length > 0;
+    },
+    acceptPassword: function() {
+      return this.signInType !== 'code';
+    },
+    acceptCode: function() {
+      return this.signInType !== 'password';
+    },
+    usernameText: function() {
+      return 'Email';
+    },
+    passwordText: function() {
+      switch(this.signInType) {
+        case 'code':
+          return 'One time code';
+        case 'password':
+          return 'Password';
+        default:
+          return 'Password or one time code';
+      }
+    },
+    passwordPlaceholderText: function() {
+      switch(this.signInType) {
+        case 'code':
+          return '123...';
+        case 'password':
+          return 'password';
+        default:
+          return '****** / 123...';
+      }
+    },
+    staySignedInText: function() {
+      if(this.doNotRemember) {
+        return 'Stay signed in';
+      }
+      else if(this.doNotStaySignedIn) {
+        return 'Remember username';
+      }
+      else {
+        return 'Remember username and stay signed in';
+      }
     }
   },
   methods: {
+    getId: function(name) {
+      let prefix = '';
+      if(typeof this.signInType === 'string') {
+        prefix = this.signInType + '-';
+      }
+      if(typeof this.idPrefix === 'string') {
+        prefix = this.idPrefix + '-';
+      }
+      return prefix + name;
+    },
     selectUsername: function(name) {
       this.username = name;
       this.$nextTick(() => {
@@ -157,15 +221,18 @@ export default {
       if(this.showPasswordReset) {
         this.getPasswordResetEmail();
       }
-      else if(this.password.length == 0) {
+      else if(this.password.length > 0) {
+        this.signIn();
+      }
+      else if(this.signInType !== 'password') {
         this.getOneTimeCode();
       }
       else {
-        this.signIn();
+        this.message = '';
       }
     },
     getOneTimeCode: function() {
-      api.sendOneTimeCode(this.username, this.nexturl)
+      api.sendOneTimeCode(this.username, this.nextUrl)
         .then(data => {
           this.message = 'We sent sent a one time code to your email or phone';
           this.$nextTick(() => {
@@ -184,37 +251,39 @@ export default {
     signIn: function() {
       if(this.signInEnabled) {
         let oneTimeCode = this.password.replace(' ', '');
-        if (/^[0-9]{6}$/.test(oneTimeCode)) {
+        if (this.signInType == 'code' || /^[0-9]{6}$/.test(oneTimeCode)) {
           api.authenticate(this.username, oneTimeCode, this.staySignedIn)
             .then(data => {
-              this.saveUsernames();
-              window.location = data.nextUrl ? data.nextUrl : '/apps';
+              this.signInDone(data.nextUrl);
             })
             .catch(error => {
-              if(error.response.status == 401) {
-                this.password = '';
-              }
-              this.$nextTick(() => {
-                this.message = error.message ? error.message : 'Something went wrong';
-              });
+              this.signInFailed();
             });
         }
         else {
-          api.authenticatePassword(this.username, this.password, this.staySignedIn, this.nexturl)
+          api.authenticatePassword(this.username, this.password, this.staySignedIn, this.nextUrl)
             .then(data => {
-              this.saveUsernames();
-              window.location = data.nextUrl ? data.nextUrl : '/apps';
+              this.signInDone(data.nextUrl);
             })
             .catch(error => {
-              if(error.response.status == 401) {
-                this.password = '';
-              }
-              this.$nextTick(() => {
-                this.message = error.message ? error.message : 'Something went wrong';
-              });
+              this.signInFailed();
             });
         }
       }
+    },
+    signInDone: function(nextUrl) {
+      if(!doNotRemember) {
+        this.saveUsernames();
+      }
+      window.location = nextUrl ? nextUrl : '/apps';
+    },
+    signInFailed: function() {
+      if(error.response.status == 401) {
+        this.password = '';
+      }
+      this.$nextTick(() => {
+        this.message = error.message ? error.message : 'Something went wrong';
+      });
     },
     forgotPasswordLinkClicked: function() {
       this.showPasswordReset = true;
@@ -226,7 +295,7 @@ export default {
       this.message = '';
     },
     getPasswordResetEmail: function() {
-      api.sendPasswordResetMessage('', this.username, this.nexturl)
+      api.sendPasswordResetMessage('', this.username, this.nextUrl)
         .then(data => {
           this.message = data.message ? data.message : 'Check your email for password reset instructions';
         })
