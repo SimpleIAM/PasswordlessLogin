@@ -1,6 +1,7 @@
 ﻿import Vue from 'vue'
 import VueCustomElement from 'vue-custom-element'
 import 'document-register-element'
+import 'promise-polyfill/src/polyfill'
 
 Vue.use(VueCustomElement);
 

@@ -20,6 +20,7 @@
     "cross-env": "^5.1.4",
     "css-loader": "^0.28.11",
     "document-register-element": "^1.8.1",
+    "promise-polyfill": "^7.1.2",
     "vue": "^2.5.16",
     "vue-cookie": "^1.1.4",
     "vue-custom-element": "^3.0.6",
