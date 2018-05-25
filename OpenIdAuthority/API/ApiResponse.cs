@@ -21,6 +21,16 @@ namespace SimpleIAM.OpenIdAuthority.API
                 .ToDictionary(x => x.Key, x => x.Value.Errors.Select(e => e.ErrorMessage).ToArray())
                 .Where(em => em.Value.Count() > 0)
                 .ToDictionary(x => x.Key == "" ? "_" : x.Key, x => x.Value);
+            if(message == null) {
+                var kvp = Errors.FirstOrDefault();
+                Message = kvp.Value.FirstOrDefault();
+                if(Message != null && kvp.Key != null && kvp.Key != "_") {
+                    Message = $"{kvp.Key}: {Message}";
+                }
+            }
+            else {
+                Message = message;
+            }
         }
 
         public string Message { get; set; }

@@ -253,31 +253,23 @@ export default {
         let oneTimeCode = this.password.replace(' ', '');
         if (this.signInType == 'code' || /^[0-9]{6}$/.test(oneTimeCode)) {
           api.authenticate(this.username, oneTimeCode, this.staySignedIn)
-            .then(data => {
-              this.signInDone(data.nextUrl);
-            })
-            .catch(error => {
-              this.signInFailed();
-            });
+            .then(data => this.signInDone(data))
+            .catch(error => this.signInFailed(error));
         }
         else {
           api.authenticatePassword(this.username, this.password, this.staySignedIn, this.nextUrl)
-            .then(data => {
-              this.signInDone(data.nextUrl);
-            })
-            .catch(error => {
-              this.signInFailed();
-            });
+            .then(data => this.signInDone(data))
+            .catch(error => this.signInFailed(error));
         }
       }
     },
-    signInDone: function(nextUrl) {
-      if(!doNotRemember) {
+    signInDone: function(data) {
+      if(!this.doNotRemember) {
         this.saveUsernames();
       }
-      window.location = nextUrl ? nextUrl : '/apps';
+      window.location = typeof data.nextUrl === 'string' ? data.nextUrl : '/apps';
     },
-    signInFailed: function() {
+    signInFailed: function(error) {
       if(error.response.status == 401) {
         this.password = '';
       }
