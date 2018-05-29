@@ -5,7 +5,7 @@
 
 <div class="focusBox focusBox-centered">
     <h2 class="focusBox_title">Sign In</h2>
-    <openidauthority-sign-in next-url="@Model.ReturnUrl">
+    <openidauthority-sign-in next-url="@Model.ReturnUrl" login-hint="@Model.Email">
         <form method="post">
             <div class="field field-stacked form_row">
                 <label asp-for="Email" class="field_label">Email</label>
@@ -26,7 +26,6 @@
                 <input type="submit" value="Sign in" class="field_element field_element-fullWidth field_element-tall" />
             </div>
         </form>
-
     </openidauthority-sign-in>
 </div>
 

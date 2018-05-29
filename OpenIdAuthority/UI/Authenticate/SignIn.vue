@@ -111,6 +111,7 @@ Vue.use(VueCookie);
 export default {
   props: {
     nextUrl: String,
+    loginHint: String,
     signInType: String,
     idPrefix: String,
     doNotRemember: Boolean,
@@ -324,9 +325,17 @@ export default {
   },
   mounted: function() {
     this.loadSavedUsernames();
-    this.$nextTick(() => {
-      this.$refs.username.focus();
-    });
+    if(this.loginHint) {
+      this.username = this.loginHint;
+      this.$nextTick(() => {
+        this.$refs.password.focus();
+      });
+    }
+    else {
+      this.$nextTick(() => {
+        this.$refs.username.focus();
+      });      
+    }
   }
 };
 </script>
