@@ -7,6 +7,7 @@ using IdentityServer4.Events;
 using IdentityServer4.Services;
 using IdentityServer4.Stores;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SimpleIAM.OpenIdAuthority.Configuration;
@@ -19,6 +20,7 @@ using SimpleIAM.OpenIdAuthority.Stores;
 namespace SimpleIAM.OpenIdAuthority.API
 {
     [Route("api/v1")]
+    [EnableCors("CorsPolicy")]
     public class AuthenticateApiController : BaseApiController
     {
         private readonly IOneTimeCodeService _oneTimeCodeService;

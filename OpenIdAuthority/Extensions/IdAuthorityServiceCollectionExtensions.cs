@@ -97,6 +97,16 @@ namespace Microsoft.Extensions.DependencyInjection
                 return factory.GetUrlHelper(actionContext);
             });
 
+            var allowedOrigins = hostingConfig.CorsOrigins ?? new string[] { };
+            services.AddCors(options =>
+            {
+                options.AddPolicy("CorsPolicy", builder => builder
+                    .WithOrigins(allowedOrigins)
+                    .AllowAnyMethod()
+                    .AllowAnyHeader()
+                    .AllowCredentials());
+            });
+
             services.AddMvc();
 
             services.AddSingleton<ITempDataProvider, CookieTempDataProvider>();
