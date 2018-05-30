@@ -231,7 +231,7 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
                     return ServerError(result.ErrorMessageForEndUser);
                 }
             }
-            return BadRequest();
+            return ServerError("Hmm. Something went wrong. Please try again.");
         }
 
         public async Task<string> SignInUserAndGetNextUrl(HttpContext httpContext, string username, bool staySignedIn, string returnUrl)

@@ -11,7 +11,7 @@
           placeholder="you@example.com">
         <span v-if="usernameError" class="field_error">{{usernameError}}</span>
       </section>
-      <section v-show="!showSavedUsernames && !showPasswordReset">
+      <section v-show="!showSavedUsernames">
         <div class="field field-stacked form_row">
           <label class="field_label" :for="getId('password')">{{passwordText}}</label>
           <input 
@@ -54,31 +54,10 @@
         <div class="message message-notice signIn_message" v-if="message">
           {{message}}
         </div>
-        <div v-show="!showPasswordReset" class="minorNav signIn_footer">
-          <a class="signIn_forgotPasswordLink" href="/forgotpassword" @click.prevent="forgotPasswordLinkClicked">Forgot password?</a>
-        </div>
       </section>
-      <section v-if="showPasswordReset">
-        <div class="field form_row">
-          <button 
-            :disabled="username.length == 0"            
-            type="submit"
-            class="field_element field_element-fullWidth field_element-tall signIn_passwordResetButton"
-            >Get password reset email
-          </button>
-        </div>
-        <div class="message message-notice signIn_message" v-if="message">
-          {{message}}
-        </div>
-        <div class="minorNav signIn_footer">
-          <a 
-            href="/signin"
-            class="signIn_goBackButton"
-            @click.prevent="forgotPasswordGoBackToSignIn"
-            >Sign in
-          </a>
-        </div>
-      </section>
+      <div v-show="acceptPassword" class="minorNav signIn_footer">
+        <a class="signIn_forgotPasswordLink" href="/forgotpassword">Forgot password?</a>
+      </div>
     </form>
     <section class="savedUsernames" v-if="showSavedUsernames">
       <header class="savedUsernames_header">
@@ -124,8 +103,7 @@ export default {
       password: '',
       passwordError: '',
       message: '',
-      staySignedIn: true,
-      showPasswordReset: false
+      staySignedIn: true
     };
   },
   watch: {
@@ -219,10 +197,7 @@ export default {
     },
     submitForm: function() {
       this.message = "Please wait...";
-      if(this.showPasswordReset) {
-        this.getPasswordResetEmail();
-      }
-      else if(this.password.length > 0) {
+      if(this.password.length > 0) {
         this.signIn();
       }
       else if(this.signInType !== 'password') {
@@ -277,24 +252,6 @@ export default {
       this.$nextTick(() => {
         this.message = error.message ? error.message : 'Something went wrong';
       });
-    },
-    forgotPasswordLinkClicked: function() {
-      this.showPasswordReset = true;
-      this.password = '';
-      this.message = '';
-    },
-    forgotPasswordGoBackToSignIn: function() {
-      this.showPasswordReset = false;
-      this.message = '';
-    },
-    getPasswordResetEmail: function() {
-      api.sendPasswordResetMessage('', this.username, this.nextUrl)
-        .then(data => {
-          this.message = data.message ? data.message : 'Check your email for password reset instructions';
-        })
-        .catch(error => {
-          this.message = error.message ? error.message : 'Something went wrong';
-        });
     },
     loadSavedUsernames() {
       this.savedUsernames = [];

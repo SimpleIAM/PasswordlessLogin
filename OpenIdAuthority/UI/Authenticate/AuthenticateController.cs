@@ -71,13 +71,13 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
         [AllowAnonymous]
         public async Task<IActionResult> Register(RegisterInputModel model, bool consent, string leaveBlank)
         {
-            if (ModelState.IsValid)
+            if(leaveBlank != null) 
             {
-                if(leaveBlank != null) 
-                {
-                    ViewBag.Message = "You appear to be a spambot";
-                }
-                else if(!consent) 
+                ViewBag.Message = "You appear to be a spambot";
+            }
+            else if (ModelState.IsValid)
+            {
+                if(!consent) 
                 {
                     ViewBag.Message = "Please acknowledge your consent";
                 }
@@ -99,10 +99,18 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
 
         [HttpPost("forgotpassword")]
         [AllowAnonymous]
-        public async Task<ActionResult> ForgotPassword(string username)
+        public async Task<ActionResult> ForgotPassword(SendPasswordResetMessageInputModel model, string leaveBlank)
         {
-            //todo: call api internally
-            return View();
+            if(leaveBlank != null) 
+            {
+                ViewBag.Message = "You appear to be a spambot";
+            }
+            else if (ModelState.IsValid)
+            {
+                var result = await _authenticateOrchestrator.SendPasswordResetMessage(model);
+                ViewBag.Message = result.Message;
+            }
+            return View(model);
         }
 
         [HttpGet("signin")]
