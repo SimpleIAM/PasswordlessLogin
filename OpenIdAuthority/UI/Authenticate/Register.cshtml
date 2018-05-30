@@ -6,7 +6,7 @@
 <div class="focusBox focusBox-centered">
     <h2 class="focusBox_title">Register</h2>
     <openidauthority-register next-url="@Model.ReturnUrl">
-    <form method="post" asp-action="SignIn" class="form">
+    <form method="post" asp-action="Register" class="form">
         <div class="field field-stacked form_row">
             <label asp-for="Email" class="field_label">Email</label>
             <input class="field_element field_element-fullWidth" type="email" asp-for="Email" placeholder="email" autofocus />
@@ -18,7 +18,7 @@
             <span asp-validation-for="LeaveBlank" class="field_error"></span>
         </div>
         <div class="field form_row">
-            <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
+            <input type="hidden" name="nextUrl" value="@Model.ReturnUrl" />
             <input type="submit" value="Register" class="field_element field_element-fullWidth field_element-tall" />
         </div>
     </form>

@@ -12,6 +12,7 @@ using Microsoft.Extensions.Configuration;
 using SimpleIAM.OpenIdAuthority;
 using SimpleIAM.OpenIdAuthority.Configuration;
 using SimpleIAM.OpenIdAuthority.Entities;
+using SimpleIAM.OpenIdAuthority.Orchestrators;
 using SimpleIAM.OpenIdAuthority.Services.Email;
 using SimpleIAM.OpenIdAuthority.Services.Message;
 using SimpleIAM.OpenIdAuthority.Services.OTC;
@@ -84,6 +85,8 @@ namespace Microsoft.Extensions.DependencyInjection
             services.AddSingleton<IPasswordHashService>(new AspNetIdentityPasswordHashService(10000));
             services.AddTransient<IPasswordHashStore, DbPasswordHashStore>();
             services.AddTransient<IPasswordService, DefaultPasswordService>();
+
+            services.AddTransient<AuthenticateOrchestrator>();            
 
             services.AddEmbeddedViews();
 

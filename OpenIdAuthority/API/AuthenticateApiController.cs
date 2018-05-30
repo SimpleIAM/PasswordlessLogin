@@ -1,55 +1,22 @@
 ﻿// Copyright (c) Ryan Foster. All rights reserved. 
 // Licensed under the Apache License, Version 2.0.
 
-using System;
 using System.Threading.Tasks;
-using IdentityServer4.Events;
-using IdentityServer4.Services;
-using IdentityServer4.Stores;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Cors;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using SimpleIAM.OpenIdAuthority.Configuration;
-using SimpleIAM.OpenIdAuthority.Entities;
-using SimpleIAM.OpenIdAuthority.Services.Message;
-using SimpleIAM.OpenIdAuthority.Services.OTC;
-using SimpleIAM.OpenIdAuthority.Services.Password;
-using SimpleIAM.OpenIdAuthority.Stores;
+using SimpleIAM.OpenIdAuthority.Orchestrators;
 
 namespace SimpleIAM.OpenIdAuthority.API
 {
     [Route("api/v1")]
     [EnableCors("CorsPolicy")]
-    public class AuthenticateApiController : BaseApiController
+    public class AuthenticateApiController : Controller
     {
-        private readonly IOneTimeCodeService _oneTimeCodeService;
-        private readonly IMessageService _messageService;
-        private readonly ISubjectStore _subjectStore;
-        private readonly IClientStore _clientStore;
-        private readonly IIdentityServerInteractionService _interaction;
-        private readonly IEventService _events;
-        private readonly IPasswordService _passwordService;
-        private readonly IdProviderConfig _config;
+        private readonly AuthenticateOrchestrator _authenticateOrchestrator;
 
-        public AuthenticateApiController(
-            IOneTimeCodeService oneTimeCodeService,
-            IMessageService messageService,
-            ISubjectStore subjectStore,
-            IdProviderConfig config,
-            IClientStore clientStore,
-            IIdentityServerInteractionService interaction,
-            IEventService events,
-            IPasswordService passwordService)
+        public AuthenticateApiController(AuthenticateOrchestrator authenticateOrchestrator)
         {
-            _oneTimeCodeService = oneTimeCodeService;
-            _subjectStore = subjectStore;
-            _messageService = messageService;
-            _clientStore = clientStore;
-            _passwordService = passwordService;
-            _interaction = interaction;
-            _events = events;
-            _config = config;
+            _authenticateOrchestrator = authenticateOrchestrator;            
         }
 
         [HttpPost("register")]
@@ -57,97 +24,19 @@ namespace SimpleIAM.OpenIdAuthority.API
         {
             if (ModelState.IsValid)
             {
-                if(!string.IsNullOrEmpty(model.ApplicationId)) 
-                {
-                    var app = await _clientStore.FindEnabledClientByIdAsync(model.ApplicationId);
-                    if(app == null)
-                    {
-                        return BadRequest(new ApiResponse("Invalid application id"));
-                    }
-                }
-
-                var existingSubject = await _subjectStore.GetSubjectByEmailAsync(model.Email);
-                if(existingSubject == null) {
-                    var newSubject = new Subject()
-                    {
-                        Email = model.Email,
-                    };
-                    //todo: filter claims and add allowed claims
-                    newSubject = await _subjectStore.AddSubjectAsync(newSubject);
-                }
-                else
-                {
-                    //may want allow admins to configure a different email to send to existing users. However, it could be that the user
-                    // exists but just never got a welcome email...
-                }
-
-                var oneTimeCodeResponse = await _oneTimeCodeService.GetOneTimeCodeAsync(model.Email, TimeSpan.FromHours(24), model.NextUrl);
-                if(oneTimeCodeResponse.Result == GetOneTimeCodeResult.Success)
-                {
-                    var result = await _messageService.SendWelcomeMessageAsync(model.ApplicationId, model.Email, oneTimeCodeResponse.ShortCode, oneTimeCodeResponse.LongCode, model.MailMergeValues);
-                    if(result.MessageSent)
-                    {
-                        return Ok(new ApiResponse("Welcome email sent"));
-                    }
-                    else
-                    {
-                        return ServerError(new ApiResponse(result.ErrorMessageForEndUser));
-                    }
-                }
+                return (await _authenticateOrchestrator.Register(model)).ToJsonResult();
             }
-            return BadRequest(new ApiResponse(ModelState));
+            return new ActionResponse(ModelState).ToJsonResult();
         }
-        
+
         [HttpPost("send-one-time-code")]
-        //[ValidateAntiForgeryToken]
         public async Task<IActionResult> SendOneTimeCode([FromBody] SendCodeInputModel model)
         {
             if (ModelState.IsValid)
             {
-                // todo: support usernames/phone numbers
-                // Note: Need to keep messages generic as to not reveal whether an account exists or not. 
-                // If the username provide is not an email address or phone number, tell the user "we sent you a code if you have an account"
-                if (model.Username?.Contains("@") == true) // temporary rough email check
-                {
-                    var subject = await _subjectStore.GetSubjectByEmailAsync(model.Username);
-                    if (subject != null)
-                    {
-                        var oneTimeCodeResponse = await _oneTimeCodeService.GetOneTimeCodeAsync(model.Username, TimeSpan.FromMinutes(5), model.NextUrl);                       
-                        switch (oneTimeCodeResponse.Result)
-                        {
-                            case GetOneTimeCodeResult.Success:
-                                var response = await _messageService.SendOneTimeCodeAndLinkMessageAsync(model.Username, oneTimeCodeResponse.ShortCode, oneTimeCodeResponse.LongCode);
-                                if(!response.MessageSent)
-                                {
-                                    var endUserErrorMessage = response.ErrorMessageForEndUser ?? "Hmm, something went wrong. Can you try again?";
-                                    return ServerError(new ApiResponse(endUserErrorMessage));
-                                }
-                                break;
-                            case GetOneTimeCodeResult.TooManyRequests:
-                                return BadRequest(new ApiResponse("Please wait a few minutes before requesting a new code"));
-                            case GetOneTimeCodeResult.ServiceFailure:
-                            default:
-                                return ServerError(new ApiResponse("Hmm, something went wrong. Can you try again?"));
-                        }
-                    }
-                    else
-                    {
-                        // if valid email or phone number, send a message inviting them to register
-                        var result = await _messageService.SendAccountNotFoundMessageAsync(model.Username);
-                        if(!result.MessageSent)
-                        {
-                            return ServerError(new ApiResponse(result.ErrorMessageForEndUser));
-                        }
-                    }
-                    return Ok(new ApiResponse("Message sent. Please check your email."));
-
-                }
-                else
-                {
-                    BadRequest(new ApiResponse("Please enter a valid email address"));
-                }
+                return (await _authenticateOrchestrator.SendOneTimeCode(model)).ToJsonResult();
             }
-            return BadRequest(new ApiResponse(ModelState));
+            return new ActionResponse(ModelState).ToJsonResult();
         }
 
         [HttpPost("authenticate")]
@@ -155,70 +44,31 @@ namespace SimpleIAM.OpenIdAuthority.API
         {
             if (ModelState.IsValid)
             {
-                model.OneTimeCode = model.OneTimeCode.Replace(" ", "");
-                var response = await _oneTimeCodeService.CheckOneTimeCodeAsync(model.Username, model.OneTimeCode);
-                switch (response.Result)
+                var response = await _authenticateOrchestrator.Authenticate(model);
+                if(response.StatusCode == 200)
                 {
-                    case CheckOneTimeCodeResult.Verified:
-                        var subject = await _subjectStore.GetSubjectByEmailAsync(model.Username); //todo: handle non-email addresses
-                        if(subject != null)
-                        {
-                            var returnVal = new AuthenticateApiResponse()
-                            {
-                                NextUrl = await FinishSignIn(subject, model.StaySignedIn, response.RedirectUrl)
-                            };
-                            return Ok(returnVal);                            
-                        }
-                        return AuthenticationFailed(new ApiResponse("Invalid one time code"));
-                    case CheckOneTimeCodeResult.Expired:
-                        return AuthenticationFailed(new ApiResponse("Your one time code has expired. Please request a new one."));
-                    case CheckOneTimeCodeResult.CodeIncorrect:
-                    case CheckOneTimeCodeResult.NotFound:
-                        return AuthenticationFailed(new ApiResponse("Invalid one time code"));
-                    case CheckOneTimeCodeResult.ShortCodeLocked:
-                        return AuthenticationFailed(new ApiResponse("The one time code is locked. Please request a new one after a few minutes."));
-                    case CheckOneTimeCodeResult.ServiceFailure:
-                    default:
-                        return ServerError(new ApiResponse("Something went wrong."));
+                    var nextUrl = response.Message;
+                    return await SignInAndReturnAsync(model.Username, model.StaySignedIn, nextUrl);
                 }
+                return response.ToJsonResult();
             }
-            return BadRequest(new ApiResponse(ModelState));
+            return new ActionResponse(ModelState).ToJsonResult();
         }
 
-        //todo: don't respond to cross-origin request
+        [DisableCors]
         [HttpPost("authenticate-password")]
         public async Task<IActionResult> AuthenticatePassword([FromBody] AuthenticatePasswordInputModel model)
         {
             if (ModelState.IsValid)
             {
-                var subject = await _subjectStore.GetSubjectByEmailAsync(model.Username); //todo: handle non-email addresses
-                if(subject == null)
+                var response = await _authenticateOrchestrator.AuthenticatePassword(model);
+                if (response.StatusCode == 200)
                 {
-                    return AuthenticationFailed(new ApiResponse("The email address or password wasn't right"));
+                    return await SignInAndReturnAsync(model.Username, model.StaySignedIn, model.NextUrl);
                 }
-                else
-                {
-                    var checkPasswordResult = await _passwordService.CheckPasswordAsync(subject.SubjectId, model.Password);
-                    switch (checkPasswordResult)
-                    {
-                        case CheckPasswordResult.NotFound:
-                        case CheckPasswordResult.PasswordIncorrect:
-                            return AuthenticationFailed(new ApiResponse("The email address or password wasn't right"));
-                        case CheckPasswordResult.TemporarilyLocked:
-                            return AuthenticationFailed(new ApiResponse("Your password is temporarily locked. Use a one time code to sign in."));
-                        case CheckPasswordResult.ServiceFailure:
-                            return ServerError(new ApiResponse("Hmm. Something went wrong. Please try again."));
-                        case CheckPasswordResult.Success:
-                            var returnVal = new AuthenticateApiResponse()
-                            {
-                                NextUrl = await FinishSignIn(subject, model.StaySignedIn, model.NextUrl)
-                            };
-                            return Ok(returnVal);                            
-                    }
-                }
-
+                return response.ToJsonResult();
             }
-            return BadRequest(new ApiResponse(ModelState));
+            return new ActionResponse(ModelState).ToJsonResult();
         }
 
         [HttpPost("send-password-reset-message")]
@@ -226,67 +76,19 @@ namespace SimpleIAM.OpenIdAuthority.API
         {
             if (ModelState.IsValid)
             {
-                if(!string.IsNullOrEmpty(model.ApplicationId)) 
-                {
-                    var app = await _clientStore.FindEnabledClientByIdAsync(model.ApplicationId);
-                    if(app == null)
-                    {
-                        return BadRequest(new ApiResponse("Invalid application id"));
-                    }
-                }
-
-                var subject = await _subjectStore.GetSubjectByEmailAsync(model.Username); //todo: support non-email addresses
-                if(subject == null) 
-                {
-                    // if valid email or phone number, send a message inviting them to register
-                    if(model.Username.Contains("@")) {
-                        var result = await _messageService.SendAccountNotFoundMessageAsync(model.Username);
-                        if(!result.MessageSent)
-                        {
-                            return ServerError(new ApiResponse(result.ErrorMessageForEndUser));
-                        }
-                    }
-                    return Ok(new ApiResponse("Check your email for password reset instructions."));
-                }
-
-                var nextUrl = string.IsNullOrEmpty(model.NextUrl) ? "/account/setpassword?nextUrl=/apps" : "/account/setpassword?nextUrl=" + model.NextUrl;
-                var oneTimeCodeResponse = await _oneTimeCodeService.GetOneTimeCodeAsync(model.Username, TimeSpan.FromMinutes(5), nextUrl);
-                if(oneTimeCodeResponse.Result == GetOneTimeCodeResult.Success)
-                {
-                    var result = await _messageService.SendPasswordResetMessageAsync(model.ApplicationId, model.Username, oneTimeCodeResponse.ShortCode, oneTimeCodeResponse.LongCode);
-                    if(result.MessageSent)
-                    {
-                        return Ok(new ApiResponse("Check your email for password reset instructions."));
-                    }
-                    else
-                    {
-                        return ServerError(new ApiResponse(result.ErrorMessageForEndUser));
-                    }
-                }
+                return (await _authenticateOrchestrator.SendPasswordResetMessage(model)).ToJsonResult();
             }
-            return BadRequest(new ApiResponse(ModelState));
+            return new ActionResponse(ModelState).ToJsonResult();
         }
 
-        private async Task<string> FinishSignIn(Subject subject, bool staySignedIn, string returnUrl)
+        private async Task<IActionResult> SignInAndReturnAsync(string username, bool staySignedIn, string nextUrl)
         {
-            await _events.RaiseAsync(new UserLoginSuccessEvent(subject.Email, subject.SubjectId, subject.Email));
-
-            var authProps = (AuthenticationProperties)null;
-            if(staySignedIn) {
-                authProps = new AuthenticationProperties
-                {
-                    IsPersistent = true,
-                    ExpiresUtc = DateTimeOffset.UtcNow.Add(TimeSpan.FromMinutes(_config.MaxSessionLengthMinutes))
-                };
-            }
-        
-            await HttpContext.SignInAsync(subject.SubjectId, subject.Email, authProps);
-
-            if (_interaction.IsValidReturnUrl(returnUrl))
+            var verifiedNextUrl = await _authenticateOrchestrator.SignInUserAndGetNextUrl(HttpContext, username, staySignedIn, nextUrl);
+            return new JsonResult(new
             {
-                return returnUrl;
-            }
-            return "/apps";
+                Message = "",
+                NextUrl = verifiedNextUrl
+            });
         }
     }
 }

@@ -12,8 +12,10 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using SimpleIAM.OpenIdAuthority.API;
 using SimpleIAM.OpenIdAuthority.Configuration;
 using SimpleIAM.OpenIdAuthority.Entities;
+using SimpleIAM.OpenIdAuthority.Orchestrators;
 using SimpleIAM.OpenIdAuthority.Services.Message;
 using SimpleIAM.OpenIdAuthority.Services.OTC;
 using SimpleIAM.OpenIdAuthority.Services.Password;
@@ -34,8 +36,10 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
         private readonly IClientStore _clientStore;
         private readonly IPasswordService _passwordService;
         private readonly IdProviderConfig _config;
+        private readonly AuthenticateOrchestrator _authenticateOrchestrator;
 
         public AuthenticateController(
+            AuthenticateOrchestrator authenticateOrchestrator,
             IIdentityServerInteractionService interaction,
             IEventService events,
             IOneTimeCodeService oneTimeCodeService,
@@ -45,6 +49,7 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
             IClientStore clientStore,
             IPasswordService passwordService)
         {
+            _authenticateOrchestrator = authenticateOrchestrator;
             _interaction = interaction;
             _events = events;
             _oneTimeCodeService = oneTimeCodeService;
@@ -62,6 +67,18 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
             var viewModel = await GetSignInViewModelAsync(returnUrl);
             viewModel.Email = null;
             return View(viewModel);
+        }
+
+        [HttpPost("register")]
+        [AllowAnonymous]
+        public async Task<IActionResult> Register(RegisterInputModel model)
+        {
+            if (ModelState.IsValid)
+            {
+                var result = await _authenticateOrchestrator.Register(model);
+                return View(result);
+            }
+            return View();
         }
 
         [HttpGet("forgotpassword")]
