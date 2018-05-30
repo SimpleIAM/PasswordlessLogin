@@ -33,9 +33,6 @@
       <div class="message message-notice register_message" v-if="message">
         {{message}}
       </div>
-      <div class="minorNav register_footer">
-        <a href="/signin" class="register_signInLink">Sign in</a>
-      </div>
     </form>
   </div>
 </template>
@@ -74,15 +71,10 @@ export default {
       this.message = "Please wait...";
       api.register('', this.email, this.nextUrl ? this.nextUrl : '/account/setpassword?nextUrl=/apps')
         .then(data => {
-          this.message = 'Thanks for registering. Please check your email.';
+          this.message = data.message ? data.message : 'Success';
         })
-        .catch(error => {
-          if(error.message) {
-            this.message = error.message;
-          }
-          else {
-            this.message = 'Something went wrong';
-          }
+        .catch(error => {          
+          this.message = error.message ? error.message : 'Something went wrong';         
         });
     }
   },

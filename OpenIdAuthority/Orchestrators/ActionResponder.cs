@@ -5,23 +5,23 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
 {
     public abstract class ActionResponder
     {
-        protected ActionResponse Ok(string message = "")
+        protected ActionResponse Ok(string message = null)
         {
             return new ActionResponse(message, 200);
         }
-        protected ActionResponse BadRequest(string message = "")
+        protected ActionResponse BadRequest(string message = null)
         {
             return new ActionResponse(message, 400);
         }
-        protected ActionResponse Unauthenticated(string message = "")
+        protected ActionResponse Unauthenticated(string message = null)
         {
             return new ActionResponse(message, 401);
         }
-        protected ActionResponse Conflict(string message = "")
+        protected ActionResponse Conflict(string message = null)
         {
             return new ActionResponse(message, 409);
         }
-        protected ActionResponse ServerError(string message = "")
+        protected ActionResponse ServerError(string message = null)
         {
             return new ActionResponse(message, 500);
         }

@@ -1,28 +1,39 @@
-﻿@model SimpleIAM.OpenIdAuthority.UI.Authenticate.SignInViewModel
+﻿@model SimpleIAM.OpenIdAuthority.Orchestrators.RegisterInputModel
 @{
     ViewData["Title"] = "Register";
 }
 
 <div class="focusBox focusBox-centered">
     <h2 class="focusBox_title">Register</h2>
-    <openidauthority-register next-url="@Model.ReturnUrl">
+    <openidauthority-register next-url="@Model.NextUrl">
     <form method="post" asp-action="Register" class="form">
         <div class="field field-stacked form_row">
             <label asp-for="Email" class="field_label">Email</label>
-            <input class="field_element field_element-fullWidth" type="email" asp-for="Email" placeholder="email" autofocus />
+            <input class="field_element field_element-fullWidth register_email" type="email" asp-for="Email" placeholder="you@example.com" autofocus />
             <span asp-validation-for="Email" class="field_error"></span>
         </div>
-        <div class="field field-stacked form-row" style="display:none">
-            <label asp-for="LeaveBlank" class="field_label">Leave blank</label>
-            <input class="field_element field_element-fullWidth" type="text" asp-for="LeaveBlank" placeholder="leave blank" autocomplete="off" />
-            <span asp-validation-for="LeaveBlank" class="field_error"></span>
+        <div class="field field-checkbox form_row">
+          <input name="consent" class="field_element" type="checkbox" id="consent" value="true" />
+          <label class="field_label register_consentLabel" for="consent">I consent to the <a href="/privacy" target="_blank">privacy policy</a> and <a href="/terms" target="_blank">terms of service</a>.</label>
+        </div>
+        <div style="display:none">
+            <input type="text" name="leaveBlank" placeholder="leave blank" autocomplete="off" />
         </div>
         <div class="field form_row">
-            <input type="hidden" name="nextUrl" value="@Model.ReturnUrl" />
-            <input type="submit" value="Register" class="field_element field_element-fullWidth field_element-tall" />
+            <input type="hidden" name="nextUrl" value="@Model.NextUrl" />
+            <input type="submit" value="Register" class="field_element field_element-fullWidth field_element-tall register_button" />
         </div>
     </form>
+    @if (ViewBag.Message != null)
+    {
+    <div class="message message-notice register_message" v-if="message">
+      @ViewBag.Message
+    </div>
+    }
     </openidauthority-register>
+    <div class="minorNav register_footer">
+        <a href="/signin" class="register_signInLink">Sign in</a>
+    </div>
 </div>
 
 @section scripts {

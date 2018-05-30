@@ -64,21 +64,30 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
         [AllowAnonymous]
         public async Task<ActionResult> Register(string returnUrl)
         {
-            var viewModel = await GetSignInViewModelAsync(returnUrl);
-            viewModel.Email = null;
-            return View(viewModel);
+            return View(new RegisterInputModel());
         }
 
         [HttpPost("register")]
         [AllowAnonymous]
-        public async Task<IActionResult> Register(RegisterInputModel model)
+        public async Task<IActionResult> Register(RegisterInputModel model, bool consent, string leaveBlank)
         {
             if (ModelState.IsValid)
             {
-                var result = await _authenticateOrchestrator.Register(model);
-                return View(result);
+                if(leaveBlank != null) 
+                {
+                    ViewBag.Message = "You appear to be a spambot";
+                }
+                else if(!consent) 
+                {
+                    ViewBag.Message = "Please acknowledge your consent";
+                }
+                else 
+                {
+                    var result = await _authenticateOrchestrator.Register(model);
+                    ViewBag.Message = result.Message;
+                }
             }
-            return View();
+            return View(model);
         }
 
         [HttpGet("forgotpassword")]

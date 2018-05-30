@@ -74,20 +74,24 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
                 // exists but just never got a welcome email...
             }
 
-            var oneTimeCodeResponse = await _oneTimeCodeService.GetOneTimeCodeAsync(model.Email, TimeSpan.FromHours(24), model.NextUrl);
-            if(oneTimeCodeResponse.Result == GetOneTimeCodeResult.Success)
-            {
-                var result = await _messageService.SendWelcomeMessageAsync(model.ApplicationId, model.Email, oneTimeCodeResponse.ShortCode, oneTimeCodeResponse.LongCode, model.MailMergeValues);
-                if(result.MessageSent)
-                {
-                    return Ok("Welcome email sent");
-                }
-                else
-                {
-                    return ServerError(result.ErrorMessageForEndUser);
-                }
+            var oneTimeCodeResponse = await _oneTimeCodeService.GetOneTimeCodeAsync(model.Email, TimeSpan.FromHours(24), model.NextUrl); //todo: potential security issue? - don't generate a code that is vaild for 24hr, only a link
+            switch(oneTimeCodeResponse.Result) {
+                case GetOneTimeCodeResult.Success:
+                    var result = await _messageService.SendWelcomeMessageAsync(model.ApplicationId, model.Email, oneTimeCodeResponse.ShortCode, oneTimeCodeResponse.LongCode, model.MailMergeValues);
+                    if(result.MessageSent)
+                    {
+                        return Ok("Thanks for registering. Please check your email.");
+                    }
+                    else
+                    {
+                        return ServerError(result.ErrorMessageForEndUser);
+                    }
+                case GetOneTimeCodeResult.TooManyRequests:
+                    return BadRequest("Please wait a few minutes and try again");
+                case GetOneTimeCodeResult.ServiceFailure:
+                default:
+                    return ServerError("Hmm, something went wrong. Can you try again?");
             }
-            return BadRequest();
         }
         
         public async Task<ActionResponse> SendOneTimeCode(SendCodeInputModel model)

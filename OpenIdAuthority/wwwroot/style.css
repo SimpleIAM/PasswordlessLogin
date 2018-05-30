@@ -825,6 +825,9 @@ ol > li {
   font-size: 95%;
   color: #b00;
 }
+.field_error:empty {
+  display:none;
+}
 .field-checkbox .field_element {
   vertical-align: middle;
 }
