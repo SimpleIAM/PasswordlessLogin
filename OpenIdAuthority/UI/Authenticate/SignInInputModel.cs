@@ -8,11 +8,16 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
     public class SignInInputModel
     {
         [Required]
-        [EmailAddress]
-        [RegularExpression(@".+\@.+\..+", ErrorMessage = "Enter a valid email address")]
-        public string Email { get; set; }
+        public string Username { get; set; }
 
-        [RegularExpression("^$", ErrorMessage = "Leave blank unless you're a spambot")]
+        public string Password { get; set; }
+
+        public bool StaySignedIn { get; set; }
+        
+        public string NextUrl { get; set; }
+
         public string LeaveBlank { get; set; }
+
+        public string Action { get; set; }
     }
 }

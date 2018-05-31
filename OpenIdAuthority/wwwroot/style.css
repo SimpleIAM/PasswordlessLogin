@@ -792,6 +792,21 @@ ol > li {
   margin: 2rem auto;
 }
 
+@keyframes delayedFadeIn {
+  0% {
+    opacity:0;
+  }
+  50% {
+    opacity:0;
+  }
+  100% {
+    opacity:1;
+  }
+}
+.focusBox-delayedFadeIn {
+  animation: delayedFadeIn 0.5s;
+}
+
 /* form */
 .form_row {
   margin: 12px 0;

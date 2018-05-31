@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 using System;
+using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using IdentityServer4.Events;
@@ -83,8 +84,8 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
                 }
                 else 
                 {
-                    var result = await _authenticateOrchestrator.Register(model);
-                    ViewBag.Message = result.Message;
+                    var response = await _authenticateOrchestrator.Register(model);
+                    ViewBag.Message = response.Message;
                 }
             }
             return View(model);
@@ -107,8 +108,8 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
             }
             else if (ModelState.IsValid)
             {
-                var result = await _authenticateOrchestrator.SendPasswordResetMessage(model);
-                ViewBag.Message = result.Message;
+                var response = await _authenticateOrchestrator.SendPasswordResetMessage(model);
+                ViewBag.Message = response.Message;
             }
             return View(model);
         }
@@ -117,8 +118,81 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
         [AllowAnonymous]
         public async Task<ActionResult> SignIn(string returnUrl)
         {
-            var viewModel = await GetSignInPassViewModelAsync(returnUrl);
+            var context = await _interaction.GetAuthorizationContextAsync(returnUrl);
+
+            var viewModel = new SignInInputModel()
+            {
+                Username = context?.LoginHint,
+                NextUrl = returnUrl,
+            };
+
             return View(viewModel);
+        }
+
+        [HttpPost("signin")]
+        [AllowAnonymous]
+        public async Task<ActionResult> SignIn(SignInInputModel model)
+        {
+            if(model.LeaveBlank != null) 
+            {
+                ViewBag.Message = "You appear to be a spambot";
+            }
+            else if (ModelState.IsValid)
+            {
+                if(model.Action == "getcode" || (model.Action == "submit" && model.Password == null))
+                {
+                    var input = new SendCodeInputModel() {
+                        Username = model.Username,
+                        NextUrl = model.NextUrl
+                    };
+                    var response = await _authenticateOrchestrator.SendOneTimeCode(input);
+                    ViewBag.Message = response.Message;
+                }
+                else if(model.Password == null) 
+                {
+                    ModelState.AddModelError("Password", "Password or one time code required");
+                }
+                else
+                {
+                    var oneTimeCode = model.Password.Replace(" ", "");
+                    if(oneTimeCode.Length == 6 && oneTimeCode.All(Char.IsDigit)) 
+                    {
+                        var input = new AuthenticateInputModel()
+                        {
+                            Username = model.Username,
+                            OneTimeCode = oneTimeCode,
+                            StaySignedIn = model.StaySignedIn
+                        };
+                        var response = await _authenticateOrchestrator.Authenticate(input);
+                        if (response.StatusCode == 200)
+                        {
+                            var nextUrl = response.Message;
+                            var verifiedNextUrl = await _authenticateOrchestrator.SignInUserAndGetNextUrl(HttpContext, model.Username, model.StaySignedIn, nextUrl);
+                            return Redirect(verifiedNextUrl);                            
+                        }
+                        ViewBag.Message = response.Message;
+                    }
+                    else
+                    {
+                        var input = new AuthenticatePasswordInputModel()
+                        {
+                            Username = model.Username,
+                            Password = model.Password,
+                            StaySignedIn = model.StaySignedIn,
+                            NextUrl = model.NextUrl
+                        };
+                        var response = await _authenticateOrchestrator.AuthenticatePassword(input);
+                        if (response.StatusCode == 200)
+                        {
+                            var nextUrl = response.Message;
+                            var verifiedNextUrl = await _authenticateOrchestrator.SignInUserAndGetNextUrl(HttpContext, model.Username, model.StaySignedIn, nextUrl);
+                            return Redirect(verifiedNextUrl);
+                        }
+                        ViewBag.Message = response.Message;
+                    }
+                }
+            }
+            return View(model);
         }
         
         [HttpGet("signin/{longCode}")]
@@ -197,35 +271,6 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
                 return Redirect(returnUrl);
             }
             return RedirectToAction("Apps", "Home");
-        }
-
-        private async Task<SignInViewModel> GetSignInViewModelAsync(string returnUrl, SignInInputModel model = null)
-        {
-            var context = await _interaction.GetAuthorizationContextAsync(returnUrl);
-
-            var viewModel = new SignInViewModel()
-            {
-                Email = model?.Email ?? context?.LoginHint,
-                LeaveBlank = model?.LeaveBlank,
-                ReturnUrl = returnUrl,
-            };
-
-            return viewModel;
-        }
-
-        private async Task<SignInPassViewModel> GetSignInPassViewModelAsync(string returnUrl = null, SignInPassInputModel model = null)
-        {
-            var context = await _interaction.GetAuthorizationContextAsync(returnUrl);
-
-            var viewModel = new SignInPassViewModel()
-            {
-                Email = model?.Email ?? context?.LoginHint,
-                LeaveBlank = model?.LeaveBlank,
-                SessionLengthMinutes = model?.SessionLengthMinutes ?? _config.DefaultSessionLengthMinutes,
-                ReturnUrl = returnUrl,
-            };
-
-            return viewModel;
         }
     }
 }

@@ -86,7 +86,7 @@ namespace SimpleIAM.OpenIdAuthority.API
             var verifiedNextUrl = await _authenticateOrchestrator.SignInUserAndGetNextUrl(HttpContext, username, staySignedIn, nextUrl);
             return new JsonResult(new
             {
-                Message = "",
+                Message = (string)null,
                 NextUrl = verifiedNextUrl
             });
         }
