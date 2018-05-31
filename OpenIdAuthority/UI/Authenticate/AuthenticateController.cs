@@ -1,8 +1,6 @@
 ﻿// Copyright (c) Ryan Foster. All rights reserved. 
 // Licensed under the Apache License, Version 2.0.
 
-using System;
-using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using IdentityServer4.Events;
@@ -10,33 +8,21 @@ using IdentityServer4.Extensions;
 using IdentityServer4.Services;
 using IdentityServer4.Stores;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using SimpleIAM.OpenIdAuthority.API;
-using SimpleIAM.OpenIdAuthority.Configuration;
-using SimpleIAM.OpenIdAuthority.Entities;
 using SimpleIAM.OpenIdAuthority.Orchestrators;
-using SimpleIAM.OpenIdAuthority.Services.Message;
 using SimpleIAM.OpenIdAuthority.Services.OTC;
-using SimpleIAM.OpenIdAuthority.Services.Password;
-using SimpleIAM.OpenIdAuthority.Stores;
 using SimpleIAM.OpenIdAuthority.UI.Shared;
 
 namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
 {
     [Route("")]
-    [Authorize]
     public class AuthenticateController : BaseController
     {
         private readonly IIdentityServerInteractionService _interaction;
         private readonly IEventService _events;
         private readonly IOneTimeCodeService _oneTimeCodeService;
-        private readonly IMessageService _messageService;
-        private readonly ISubjectStore _subjectStore;
         private readonly IClientStore _clientStore;
-        private readonly IPasswordService _passwordService;
-        private readonly IdProviderConfig _config;
         private readonly AuthenticateOrchestrator _authenticateOrchestrator;
 
         public AuthenticateController(
@@ -44,33 +30,23 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
             IIdentityServerInteractionService interaction,
             IEventService events,
             IOneTimeCodeService oneTimeCodeService,
-            IMessageService messageService,
-            ISubjectStore subjectStore,
-            IdProviderConfig config,
-            IClientStore clientStore,
-            IPasswordService passwordService)
+            IClientStore clientStore)
         {
             _authenticateOrchestrator = authenticateOrchestrator;
             _interaction = interaction;
             _events = events;
             _oneTimeCodeService = oneTimeCodeService;
-            _messageService = messageService;
-            _subjectStore = subjectStore;
             _clientStore = clientStore;
-            _passwordService = passwordService;
-            _config = config;
         }
 
         [HttpGet("register")]
-        [AllowAnonymous]
-        public async Task<ActionResult> Register(string returnUrl)
+        public ActionResult Register(string returnUrl)
         {
             return View(new RegisterInputModel());
         }
 
         [HttpPost("register")]
-        [AllowAnonymous]
-        public async Task<IActionResult> Register(RegisterInputModel model, bool consent, string leaveBlank)
+        public async Task<ActionResult> Register(RegisterInputModel model, bool consent, string leaveBlank)
         {
             if(leaveBlank != null) 
             {
@@ -84,7 +60,7 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
                 }
                 else 
                 {
-                    var response = await _authenticateOrchestrator.Register(model);
+                    var response = await _authenticateOrchestrator.RegisterAsync(model);
                     ViewBag.Message = response.Message;
                 }
             }
@@ -92,14 +68,12 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
         }
 
         [HttpGet("forgotpassword")]
-        [AllowAnonymous]
-        public async Task<ActionResult> ForgotPassword()
+        public ActionResult ForgotPassword()
         {
             return View();
         }
 
         [HttpPost("forgotpassword")]
-        [AllowAnonymous]
         public async Task<ActionResult> ForgotPassword(SendPasswordResetMessageInputModel model, string leaveBlank)
         {
             if(leaveBlank != null) 
@@ -108,19 +82,18 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
             }
             else if (ModelState.IsValid)
             {
-                var response = await _authenticateOrchestrator.SendPasswordResetMessage(model);
+                var response = await _authenticateOrchestrator.SendPasswordResetMessageAsync(model);
                 ViewBag.Message = response.Message;
             }
             return View(model);
         }
 
         [HttpGet("signin")]
-        [AllowAnonymous]
         public async Task<ActionResult> SignIn(string returnUrl)
         {
             var context = await _interaction.GetAuthorizationContextAsync(returnUrl);
 
-            var viewModel = new SignInInputModel()
+            var viewModel = new AuthenticatePasswordInputModel()
             {
                 Username = context?.LoginHint,
                 NextUrl = returnUrl,
@@ -130,102 +103,55 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
         }
 
         [HttpPost("signin")]
-        [AllowAnonymous]
-        public async Task<ActionResult> SignIn(SignInInputModel model)
-        {
-            if(model.LeaveBlank != null) 
+        public async Task<ActionResult> SignIn(AuthenticatePasswordInputModel model, string action, string leaveBlank)
+        {            
+            if (leaveBlank != null) 
             {
                 ViewBag.Message = "You appear to be a spambot";
             }
+            else if (model.Username != null && (action == "getcode" || (action != "signin" && model.Password == null)))
+            {
+                ModelState.ClearValidationState("Password");
+                var input = new SendCodeInputModel()
+                {
+                    Username = model.Username,
+                    NextUrl = model.NextUrl
+                };
+                var response = await _authenticateOrchestrator.SendOneTimeCodeAsync(input);
+                ViewBag.Message = response.Message;
+            }
             else if (ModelState.IsValid)
             {
-                if(model.Action == "getcode" || (model.Action == "submit" && model.Password == null))
+                var response = await _authenticateOrchestrator.AuthenticateAsync(model);
+                if (response.StatusCode == 301)
                 {
-                    var input = new SendCodeInputModel() {
-                        Username = model.Username,
-                        NextUrl = model.NextUrl
-                    };
-                    var response = await _authenticateOrchestrator.SendOneTimeCode(input);
-                    ViewBag.Message = response.Message;
+                    await _authenticateOrchestrator.SignInUserAsync(HttpContext, model.Username, model.StaySignedIn);
+                    return Redirect(response.RedirectUrl);
                 }
-                else if(model.Password == null) 
-                {
-                    ModelState.AddModelError("Password", "Password or one time code required");
-                }
-                else
-                {
-                    var oneTimeCode = model.Password.Replace(" ", "");
-                    if(oneTimeCode.Length == 6 && oneTimeCode.All(Char.IsDigit)) 
-                    {
-                        var input = new AuthenticateInputModel()
-                        {
-                            Username = model.Username,
-                            OneTimeCode = oneTimeCode,
-                            StaySignedIn = model.StaySignedIn
-                        };
-                        var response = await _authenticateOrchestrator.Authenticate(input);
-                        if (response.StatusCode == 200)
-                        {
-                            var nextUrl = response.Message;
-                            var verifiedNextUrl = await _authenticateOrchestrator.SignInUserAndGetNextUrl(HttpContext, model.Username, model.StaySignedIn, nextUrl);
-                            return Redirect(verifiedNextUrl);                            
-                        }
-                        ViewBag.Message = response.Message;
-                    }
-                    else
-                    {
-                        var input = new AuthenticatePasswordInputModel()
-                        {
-                            Username = model.Username,
-                            Password = model.Password,
-                            StaySignedIn = model.StaySignedIn,
-                            NextUrl = model.NextUrl
-                        };
-                        var response = await _authenticateOrchestrator.AuthenticatePassword(input);
-                        if (response.StatusCode == 200)
-                        {
-                            var nextUrl = response.Message;
-                            var verifiedNextUrl = await _authenticateOrchestrator.SignInUserAndGetNextUrl(HttpContext, model.Username, model.StaySignedIn, nextUrl);
-                            return Redirect(verifiedNextUrl);
-                        }
-                        ViewBag.Message = response.Message;
-                    }
-                }
+                ViewBag.Message = response.Message;
             }
             return View(model);
         }
         
         [HttpGet("signin/{longCode}")]
-        [AllowAnonymous]
         public async Task<ActionResult> SignInLink(string longCode)
         {
-            if(longCode != null && longCode.Length < 36)
+            var response = await _authenticateOrchestrator.AuthenticateLongCodeAsync(longCode);
+            switch(response.StatusCode)
             {
-                var response = await _oneTimeCodeService.CheckOneTimeCodeAsync(longCode);
-                switch(response.Result)
-                {
-                    case CheckOneTimeCodeResult.Verified:
-                        var subject = await _subjectStore.GetSubjectByEmailAsync(response.SentTo); //todo: does this need to handle a phone number?
-                        return await FinishSignIn(subject, null, response.RedirectUrl);
-                    case CheckOneTimeCodeResult.Expired:
-                        AddPostRedirectMessage("The sign in link expired.");
-                        return RedirectToAction("SignIn");
-                    case CheckOneTimeCodeResult.CodeIncorrect:
-                    case CheckOneTimeCodeResult.NotFound:
-                        AddPostRedirectMessage("The sign in link is invalid.");
-                        return RedirectToAction("SignIn");
-                    case CheckOneTimeCodeResult.ServiceFailure:
-                    default:
-                        AddPostRedirectMessage("Something went wrong.");
-                        return RedirectToAction("SignIn");
-                }
+                case 301:
+                    var username = response.Message;
+                    await _authenticateOrchestrator.SignInUserAsync(HttpContext, username, false);
+                    return Redirect(response.RedirectUrl);
+                case 404:
+                    return NotFound();
+                default:
+                    AddPostRedirectMessage(response.Message);
+                    return RedirectToAction("SignIn");
             }
-
-            return NotFound();
         }
 
         [HttpGet("signout")]
-        [AllowAnonymous]
         public async Task<ActionResult> SignOut(string id)
         {
             var context = await _interaction.GetLogoutContextAsync(id);
@@ -245,32 +171,7 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
                 SignOutIFrameUrl = context?.SignOutIFrameUrl
             };
 
-            return View(viewModel);
-        }
-
-        private async Task<ActionResult> FinishSignIn(Subject subject, int? sessionLengthMinutes, string returnUrl)
-        {
-            await _events.RaiseAsync(new UserLoginSuccessEvent(subject.Email, subject.SubjectId, subject.Email));
-
-            // handle custom session length
-            var authProps = (AuthenticationProperties)null;
-            var sessionLengthMinutesInt = sessionLengthMinutes ?? 0;
-            if (sessionLengthMinutes > 0 && sessionLengthMinutes < _config.MaxSessionLengthMinutes)
-            {
-                authProps = new AuthenticationProperties
-                {
-                    IsPersistent = true,
-                    ExpiresUtc = DateTimeOffset.UtcNow.Add(TimeSpan.FromMinutes(sessionLengthMinutesInt))
-                };
-            };
-
-            await HttpContext.SignInAsync(subject.SubjectId, subject.Email, authProps);
-
-            if (_interaction.IsValidReturnUrl(returnUrl))
-            {
-                return Redirect(returnUrl);
-            }
-            return RedirectToAction("Apps", "Home");
+            return View("SignedOut", viewModel);
         }
     }
 }

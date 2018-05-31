@@ -69,7 +69,7 @@ export default {
   methods: {
     submitForm: function() {
       this.message = "Please wait...";
-      api.register('', this.email, this.nextUrl ? this.nextUrl : '/account/setpassword?nextUrl=/apps')
+      api.register('', this.email, this.nextUrl)
         .then(data => {
           this.message = data.message ? data.message : 'Success';
         })

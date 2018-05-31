@@ -1,4 +1,4 @@
-﻿@model SimpleIAM.OpenIdAuthority.UI.Authenticate.SignInInputModel
+﻿@model SimpleIAM.OpenIdAuthority.Orchestrators.AuthenticatePasswordInputModel
 @{
     ViewData["Title"] = "Sign In";
 }
@@ -22,7 +22,8 @@
                 <label for="stay-signed-in" class="field_label">Stay signed in</label>
             </div>
             <div style="display:none">
-                <input type="text" asp-for="LeaveBlank" placeholder="leave blank" autocomplete="off" />
+                <input type="text" name="leaveBlank" placeholder="leave blank" autocomplete="off" />
+                <input type="hidden" asp-for="NextUrl" />
             </div>
             <button type="submit" name="action" value="submit" tabindex="-1" style="position:absolute; left: -10000px;"></button>
             <div class="fields fields-flexSpaceBetween form_row">

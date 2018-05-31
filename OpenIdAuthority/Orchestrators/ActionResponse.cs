@@ -1,14 +1,17 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿// Copyright (c) Ryan Foster. All rights reserved. 
+// Licensed under the Apache License, Version 2.0.
+
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace SimpleIAM.OpenIdAuthority.Orchestrators
 {
     public class ActionResponse
     {
+        public ActionResponse() { }
+
         public ActionResponse(string message = null, int statusCode = 200)
         {
             Message = message;
@@ -31,7 +34,8 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
 
             var kvp = Errors.FirstOrDefault();
             Message = kvp.Value.FirstOrDefault();
-            if(Message != null && kvp.Key != null && kvp.Key != "_") {
+            if (Message != null && kvp.Key != null && kvp.Key != "_")
+            {
                 Message = $"{kvp.Key}: {Message}";
             }
         }
@@ -41,6 +45,8 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
         public string Message { get; set; }
 
         public Dictionary<string, string[]> Errors { get; set; }
+
+        public string RedirectUrl { get; set; }
 
         public JsonResult ToJsonResult()
         {

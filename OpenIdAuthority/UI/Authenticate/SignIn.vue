@@ -243,7 +243,12 @@ export default {
       if(!this.doNotRemember) {
         this.saveUsernames();
       }
-      window.location = typeof data.nextUrl === 'string' ? data.nextUrl : '/apps';
+      if (typeof data.nextUrl === 'string') {
+        window.location = data.nextUrl;
+      }
+      else {
+        window.reload();
+      }
     },
     signInFailed: function(error) {
       if(error.response.status == 401) {

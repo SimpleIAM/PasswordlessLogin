@@ -9,6 +9,10 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
         {
             return new ActionResponse(message, 200);
         }
+        protected ActionResponse Redirect(string url)
+        {
+            return new ActionResponse(301) { RedirectUrl = url };
+        }
         protected ActionResponse BadRequest(string message = null)
         {
             return new ActionResponse(message, 400);
@@ -16,6 +20,10 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
         protected ActionResponse Unauthenticated(string message = null)
         {
             return new ActionResponse(message, 401);
+        }
+        protected ActionResponse NotFound(string message = null)
+        {
+            return new ActionResponse(message, 404);
         }
         protected ActionResponse Conflict(string message = null)
         {

@@ -24,7 +24,7 @@ namespace SimpleIAM.OpenIdAuthority.API
         {
             if (ModelState.IsValid)
             {
-                return (await _authenticateOrchestrator.Register(model)).ToJsonResult();
+                return (await _authenticateOrchestrator.RegisterAsync(model)).ToJsonResult();
             }
             return new ActionResponse(ModelState).ToJsonResult();
         }
@@ -34,7 +34,7 @@ namespace SimpleIAM.OpenIdAuthority.API
         {
             if (ModelState.IsValid)
             {
-                return (await _authenticateOrchestrator.SendOneTimeCode(model)).ToJsonResult();
+                return (await _authenticateOrchestrator.SendOneTimeCodeAsync(model)).ToJsonResult();
             }
             return new ActionResponse(ModelState).ToJsonResult();
         }
@@ -44,11 +44,10 @@ namespace SimpleIAM.OpenIdAuthority.API
         {
             if (ModelState.IsValid)
             {
-                var response = await _authenticateOrchestrator.Authenticate(model);
-                if(response.StatusCode == 200)
+                var response = await _authenticateOrchestrator.AuthenticateCodeAsyc(model);
+                if(response.StatusCode == 301)
                 {
-                    var nextUrl = response.Message;
-                    return await SignInAndReturnAsync(model.Username, model.StaySignedIn, nextUrl);
+                    return await SignInAndReturnAsync(model.Username, model.StaySignedIn, response.RedirectUrl);
                 }
                 return response.ToJsonResult();
             }
@@ -61,10 +60,10 @@ namespace SimpleIAM.OpenIdAuthority.API
         {
             if (ModelState.IsValid)
             {
-                var response = await _authenticateOrchestrator.AuthenticatePassword(model);
-                if (response.StatusCode == 200)
+                var response = await _authenticateOrchestrator.AuthenticatePasswordAsync(model);
+                if (response.StatusCode == 301)
                 {
-                    return await SignInAndReturnAsync(model.Username, model.StaySignedIn, model.NextUrl);
+                    return await SignInAndReturnAsync(model.Username, model.StaySignedIn, response.RedirectUrl);
                 }
                 return response.ToJsonResult();
             }
@@ -76,18 +75,18 @@ namespace SimpleIAM.OpenIdAuthority.API
         {
             if (ModelState.IsValid)
             {
-                return (await _authenticateOrchestrator.SendPasswordResetMessage(model)).ToJsonResult();
+                return (await _authenticateOrchestrator.SendPasswordResetMessageAsync(model)).ToJsonResult();
             }
             return new ActionResponse(ModelState).ToJsonResult();
         }
 
         private async Task<IActionResult> SignInAndReturnAsync(string username, bool staySignedIn, string nextUrl)
         {
-            var verifiedNextUrl = await _authenticateOrchestrator.SignInUserAndGetNextUrl(HttpContext, username, staySignedIn, nextUrl);
+            await _authenticateOrchestrator.SignInUserAsync(HttpContext, username, staySignedIn);
             return new JsonResult(new
             {
                 Message = (string)null,
-                NextUrl = verifiedNextUrl
+                NextUrl = nextUrl
             });
         }
     }
