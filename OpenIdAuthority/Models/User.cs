@@ -1,12 +1,16 @@
 ﻿// Copyright (c) Ryan Foster. All rights reserved. 
 // Licensed under the Apache License, Version 2.0.
 
-namespace SimpleIAM.OpenIdAuthority.Entities
+using System.Collections.Generic;
+
+namespace SimpleIAM.OpenIdAuthority.Models
 {
-    public class Subject
+    public class User
     {
         public string SubjectId { get; set; }
 
         public string Email { get; set; }
+
+        public IEnumerable<UserClaim> Claims { get; set; } = new UserClaim[] { };
     }
 }

@@ -11,20 +11,35 @@ namespace SimpleIAM.OpenIdAuthority.Entities
             : base(options)
         { }
 
-        public DbSet<Subject> Subjects { get; set; }
+        public DbSet<User> Users { get; set; }
+        public DbSet<UserClaim> Claims { get; set; }
         public DbSet<OneTimeCode> OneTimeCodes { get; set; }
         public DbSet<PasswordHash> PasswordHashes { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<Subject>(subject =>
+            modelBuilder.Entity<User>(user =>
             {
-                subject.HasKey(x => x.SubjectId);
+                user.HasKey(x => x.SubjectId);
 
-                subject.Property(x => x.SubjectId).HasMaxLength(36).IsRequired();
-                subject.Property(x => x.Email).HasMaxLength(254).IsRequired();
+                user.Property(x => x.SubjectId).HasMaxLength(36).IsRequired();
+                user.Property(x => x.Email).HasMaxLength(254).IsRequired();
 
-                subject.HasIndex(x => x.Email).IsUnique();
+                user.HasIndex(x => x.Email).IsUnique();
+
+                user.HasMany(x => x.Claims).WithOne().HasForeignKey(x => x.SubjectId);
+            });
+
+            modelBuilder.Entity<UserClaim>(uc =>
+            {
+                uc.HasKey(x => x.Id);
+
+                uc.Property(x => x.SubjectId).HasMaxLength(36).IsRequired();
+                uc.Property(x => x.Type).HasMaxLength(255).IsRequired();
+                uc.Property(x => x.Value).HasMaxLength(4000).IsRequired();
+
+                uc.HasIndex(x => x.SubjectId);
+                uc.HasIndex(x => x.Type);
             });
 
             modelBuilder.Entity<OneTimeCode>(otc =>

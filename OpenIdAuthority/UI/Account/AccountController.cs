@@ -24,7 +24,7 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
     {
         private readonly IIdentityServerInteractionService _interaction;
         private readonly IEmailTemplateService _emailTemplateService;
-        private readonly ISubjectStore _subjectStore;
+        private readonly IUserStore _userStore;
         private readonly IPasswordService _passwordService;
         private readonly IOneTimeCodeService _oneTimeCodeService;
         private readonly IMessageService _messageService;
@@ -33,7 +33,7 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
         public AccountController(
             IIdentityServerInteractionService interaction,
             IEmailTemplateService emailTemplateService,
-            ISubjectStore subjectStore,
+            IUserStore userStore,
             IPasswordService passwordService,
             IOneTimeCodeService oneTimeCodeService,
             IMessageService messageService,
@@ -41,7 +41,7 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
         {
             _interaction = interaction;
             _emailTemplateService = emailTemplateService;
-            _subjectStore = subjectStore;
+            _userStore = userStore;
             _passwordService = passwordService;
             _oneTimeCodeService = oneTimeCodeService;
             _messageService = messageService;

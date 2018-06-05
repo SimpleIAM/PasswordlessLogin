@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SimpleIAM.OpenIdAuthority.Configuration;
-using SimpleIAM.OpenIdAuthority.Entities;
+using SimpleIAM.OpenIdAuthority.Models;
 using SimpleIAM.OpenIdAuthority.Services.Message;
 using SimpleIAM.OpenIdAuthority.Services.OTC;
 using SimpleIAM.OpenIdAuthority.Services.Password;
@@ -23,7 +23,7 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
     {
         private readonly IOneTimeCodeService _oneTimeCodeService;
         private readonly IMessageService _messageService;
-        private readonly ISubjectStore _subjectStore;
+        private readonly IUserStore _userStore;
         private readonly IClientStore _clientStore;
         private readonly IIdentityServerInteractionService _interaction;
         private readonly IEventService _events;
@@ -34,7 +34,7 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
         public AuthenticateOrchestrator(
             IOneTimeCodeService oneTimeCodeService,
             IMessageService messageService,
-            ISubjectStore subjectStore,
+            IUserStore userStore,
             IdProviderConfig config,
             IClientStore clientStore,
             IIdentityServerInteractionService interaction,
@@ -43,7 +43,7 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
             IUrlHelper urlHelper)
         {
             _oneTimeCodeService = oneTimeCodeService;
-            _subjectStore = subjectStore;
+            _userStore = userStore;
             _messageService = messageService;
             _clientStore = clientStore;
             _passwordService = passwordService;
@@ -65,15 +65,15 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
             }
 
             TimeSpan linkValidity;
-            var existingSubject = await _subjectStore.GetSubjectByEmailAsync(model.Email);
-            if (existingSubject == null)
+            var existingUser = await _userStore.GetUserByEmailAsync(model.Email);
+            if (existingUser == null)
             {
-                var newSubject = new Subject()
+                var newUser = new User()
                 {
                     Email = model.Email,
+                    Claims = model.Claims?.Select(x => new UserClaim() { Type = x.Key, Value = x.Value }) //todo: filter these to claim types that are allowed to be set by user
                 };
-                //todo: filter claims and add allowed claims
-                newSubject = await _subjectStore.AddSubjectAsync(newSubject);
+                newUser = await _userStore.AddUserAsync(newUser);
                 linkValidity = TimeSpan.FromHours(24);
             }
             else
@@ -117,8 +117,8 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
             // If the username provide is not an email address or phone number, tell the user "we sent you a code if you have an account"
             if (model.Username?.Contains("@") == true) // temporary rough email check
             {
-                var subject = await _subjectStore.GetSubjectByEmailAsync(model.Username);
-                if (subject != null)
+                var user = await _userStore.GetUserByEmailAsync(model.Username);
+                if (user != null)
                 {
                     var oneTimeCodeResponse = await _oneTimeCodeService.GetOneTimeCodeAsync(model.Username, TimeSpan.FromMinutes(5), model.NextUrl);
                     switch (oneTimeCodeResponse.Result)
@@ -182,8 +182,8 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
             switch (response.Result)
             {
                 case CheckOneTimeCodeResult.Verified:
-                    var subject = await _subjectStore.GetSubjectByEmailAsync(model.Username); //todo: handle non-email addresses
-                    if (subject != null)
+                    var user = await _userStore.GetUserByEmailAsync(model.Username); //todo: handle non-email addresses
+                    if (user != null)
                     {
                         return Redirect(ValidatedNextUrl(response.RedirectUrl));
                     }
@@ -203,14 +203,14 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
 
         public async Task<ActionResponse> AuthenticatePasswordAsync(AuthenticatePasswordInputModel model)
         {
-            var subject = await _subjectStore.GetSubjectByEmailAsync(model.Username); //todo: handle non-email addresses
-            if (subject == null)
+            var user = await _userStore.GetUserByEmailAsync(model.Username); //todo: handle non-email addresses
+            if (user == null)
             {
                 return Unauthenticated("The email address or password wasn't right");
             }
             else
             {
-                var checkPasswordResult = await _passwordService.CheckPasswordAsync(subject.SubjectId, model.Password);
+                var checkPasswordResult = await _passwordService.CheckPasswordAsync(user.SubjectId, model.Password);
                 switch (checkPasswordResult)
                 {
                     case CheckPasswordResult.NotFound:
@@ -261,8 +261,8 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
                 }
             }
 
-            var subject = await _subjectStore.GetSubjectByEmailAsync(model.Username); //todo: support non-email addresses
-            if (subject == null)
+            var user = await _userStore.GetUserByEmailAsync(model.Username); //todo: support non-email addresses
+            if (user == null)
             {
                 // if valid email or phone number, send a message inviting them to register
                 if (model.Username.Contains("@"))
@@ -294,9 +294,9 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
 
         public async Task SignInUserAsync(HttpContext httpContext, string username, bool staySignedIn)
         {
-            var subject = await _subjectStore.GetSubjectByEmailAsync(username); //todo: support non-email addresses
+            var user = await _userStore.GetUserByEmailAsync(username); //todo: support non-email addresses
 
-            await _events.RaiseAsync(new UserLoginSuccessEvent(subject.Email, subject.SubjectId, subject.Email));
+            await _events.RaiseAsync(new UserLoginSuccessEvent(user.Email, user.SubjectId, user.Email));
 
             var authProps = (AuthenticationProperties)null;
             if (staySignedIn)
@@ -308,7 +308,7 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
                 };
             }
 
-            await httpContext.SignInAsync(subject.SubjectId, subject.Email, authProps);
+            await httpContext.SignInAsync(user.SubjectId, user.Email, authProps);
         }
 
         private string ValidatedNextUrl(string nextUrl)

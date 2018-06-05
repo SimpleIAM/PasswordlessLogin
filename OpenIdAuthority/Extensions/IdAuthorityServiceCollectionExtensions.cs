@@ -62,7 +62,7 @@ namespace Microsoft.Extensions.DependencyInjection
             services.AddDbContext<OpenIdAuthorityDbContext>(options => options.UseSqlServer(connection));
             services.AddTransient<IOneTimeCodeStore, DbOneTimeCodeStore>();
             services.AddTransient<IOneTimeCodeService, OneTimeCodeService>();
-            services.AddTransient<ISubjectStore, DbSubjectStore>();
+            services.AddTransient<IUserStore, DbUserStore>();
             services.AddTransient<IMessageService, MessageService>();
 
             services.AddIdentityServer(options =>
