@@ -7,7 +7,5 @@ namespace SimpleIAM.OpenIdAuthority.Configuration
     {
         public bool BehindProxy { get; set; } = false;
         public CspConfig Csp { get; set; } = new CspConfig();
-
-        public string[] CorsOrigins { get; set; }
     }
 }

@@ -19,5 +19,6 @@ namespace SimpleIAM.OpenIdAuthority.Configuration
         public string FrontChannelLogoutUri { get; set; }
         public string PostLogoutRedirectUris { get; set; }
         public string ClientSecret { get; set; }
+        public string[] AllowedScopes { get; set; }
     }
 }

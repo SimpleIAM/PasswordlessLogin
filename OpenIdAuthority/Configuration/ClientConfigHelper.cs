@@ -20,6 +20,11 @@ namespace SimpleIAM.OpenIdAuthority.Configuration
         public static Client GetClientFromConfig(ClientAppConfig config)
         {
             var baseUrl = (config.Uri ?? "").TrimEnd('/');
+            var allowedScopes = new List<string>() { "openid" };
+            if (config.AllowedScopes != null)
+            {
+                allowedScopes.AddRange(config.AllowedScopes);
+            }
 
             var client = new Client()
             {
@@ -31,9 +36,14 @@ namespace SimpleIAM.OpenIdAuthority.Configuration
                 RedirectUris = config.RedirectUris != null ? config.RedirectUris.Split('\n') : new string[] { baseUrl, $"{baseUrl}/signin-oidc" },
                 FrontChannelLogoutUri = config.FrontChannelLogoutUri ?? $"{baseUrl}/signout-oidc",
                 PostLogoutRedirectUris = config.PostLogoutRedirectUris != null ? config.PostLogoutRedirectUris.Split('\n') : new string[] { baseUrl, $"{baseUrl}/", $"{baseUrl}/signout-callback-oidc" },
-                AllowedScopes = new string[] { "openid", "profile" },
+                AllowedScopes = allowedScopes.Distinct().ToArray(),
                 RequireConsent = false
             };
+            if(config.AppType == AppType.SPA)
+            {
+                client.AllowedCorsOrigins.Add(baseUrl);
+                client.AllowAccessTokensViaBrowser = true;
+            }
 
             return client;
         }

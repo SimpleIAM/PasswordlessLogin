@@ -74,6 +74,8 @@ namespace Microsoft.AspNetCore.Builder
                 })
                 .FrameAncestors(s => s.None())
             );
+            app.UseMiddleware<SimpleIAM.OpenIdAuthority.Extensions.CspHeaderOverridesMiddleware>();
+
             var compositeFileProvider = new CompositeFileProvider(
                 new EmbeddedFileProvider(typeof(OpenIdAuthorityApplicationBuilderExtensions).GetTypeInfo().Assembly, "SimpleIAM.OpenIdAuthority.wwwroot"),
                 env.WebRootFileProvider

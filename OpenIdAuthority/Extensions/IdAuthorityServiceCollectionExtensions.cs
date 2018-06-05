@@ -20,6 +20,7 @@ using SimpleIAM.OpenIdAuthority.Services.Password;
 using SimpleIAM.OpenIdAuthority.Stores;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
@@ -46,11 +47,14 @@ namespace Microsoft.Extensions.DependencyInjection
             var appStore = new InMemoryAppStore(apps);
             services.AddSingleton<IAppStore>(appStore);
 
-            var idScopes = configuration.GetSection("IdScopes").Get<List<IdentityResource>>() ?? new List<IdentityResource>();
+            var idScopeConfig = configuration.GetSection("IdScopes").Get<List<IdScopeConfig>>() ?? new List<IdScopeConfig>();
+            var idScopes = idScopeConfig.Select(x=> new IdentityResource(x.Name, x.DisplayName ?? x.Name, x.ClaimTypes) { Required = x.Required }).ToList();
             idScopes.AddRange(new List<IdentityResource>() {
                 new IdentityResources.OpenId(),
                 new IdentityResources.Profile(),
                 new IdentityResources.Email(),
+                new IdentityResources.Phone(),
+                new IdentityResources.Address(),
             });
 
             var connection = configuration.GetConnectionString("OpenIdAuthority");
@@ -100,15 +104,18 @@ namespace Microsoft.Extensions.DependencyInjection
                 return factory.GetUrlHelper(actionContext);
             });
 
-            var allowedOrigins = hostingConfig.CorsOrigins ?? new string[] { };
-            services.AddCors(options =>
+            var allowedOrigins = clients.SelectMany(x => x.AllowedCorsOrigins).Distinct().ToArray();
+            if (allowedOrigins.Length > 0)
             {
-                options.AddPolicy("CorsPolicy", builder => builder
-                    .WithOrigins(allowedOrigins)
-                    .AllowAnyMethod()
-                    .AllowAnyHeader()
-                    .AllowCredentials());
-            });
+                services.AddCors(options =>
+                {
+                    options.AddPolicy("CorsPolicy", builder => builder
+                        .WithOrigins(allowedOrigins)
+                        .AllowAnyMethod()
+                        .AllowAnyHeader()
+                        .AllowCredentials());
+                });
+            }
 
             services.AddMvc();
 
