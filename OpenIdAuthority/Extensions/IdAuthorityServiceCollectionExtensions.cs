@@ -13,6 +13,7 @@ using SimpleIAM.OpenIdAuthority;
 using SimpleIAM.OpenIdAuthority.Configuration;
 using SimpleIAM.OpenIdAuthority.Entities;
 using SimpleIAM.OpenIdAuthority.Orchestrators;
+using SimpleIAM.OpenIdAuthority.Services;
 using SimpleIAM.OpenIdAuthority.Services.Email;
 using SimpleIAM.OpenIdAuthority.Services.Message;
 using SimpleIAM.OpenIdAuthority.Services.OTC;
@@ -75,6 +76,7 @@ namespace Microsoft.Extensions.DependencyInjection
             })
                 .AddDeveloperSigningCredential() //todo: replace
                 .AddInMemoryClients(clients)
+                .AddProfileService<ProfileService>()                
                 .AddInMemoryIdentityResources(idScopes);
 
             var smtpConfig = new SmtpConfig();
