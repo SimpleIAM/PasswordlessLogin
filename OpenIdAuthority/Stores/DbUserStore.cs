@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using SimpleIAM.OpenIdAuthority.Entities;
+using SimpleIAM.OpenIdAuthority.Models;
 
 namespace SimpleIAM.OpenIdAuthority.Stores
 {
@@ -23,7 +24,7 @@ namespace SimpleIAM.OpenIdAuthority.Stores
             var dbUser = new Entities.User()
             {
                 SubjectId = user.SubjectId ?? Guid.NewGuid().ToString("N"),
-                Email = user.Email                
+                Email = user.Email
             };
             dbUser.Claims = user.Claims?.Select(x => new Entities.UserClaim() { SubjectId = dbUser.SubjectId, Type = x.Type, Value = x.Value }).ToList();
             await _context.AddAsync(dbUser);
@@ -48,13 +49,25 @@ namespace SimpleIAM.OpenIdAuthority.Stores
                 return (await _context.Users.Include(x => x.Claims).SingleOrDefaultAsync(x => x.Email == email))?.ToModel();
             }
             return (await _context.Users.SingleOrDefaultAsync(x => x.Email == email))?.ToModel();
-            //var user = await _context.Users.SingleOrDefaultAsync(x => x.Email == email);
-            //if (user != null && fetchClaims)
-            //{
-            //    var claims = await _context.Claims.Where(x => x.SubjectId == user.SubjectId).ToListAsync();
-            //    return user.ToModel(claims);
-            //}
-            //return user.ToModel();
+        }
+
+        public async Task<Models.User> PatchUserAsync(string subjectId, ILookup<string, string> Properties)
+        {
+            foreach (var values in Properties)
+            {
+                if (values.Key == "email")
+                {
+                    //todo: special processing
+                }
+                else
+                {
+                    _context.Claims.RemoveRange(_context.Claims.Where(x => x.SubjectId == subjectId && x.Type == values.Key));
+                    _context.Claims.AddRange(values.Where(x => x != null).Select(x=> new Entities.UserClaim() { SubjectId = subjectId, Type = values.Key, Value = x }));
+                }
+            }
+            //todo: condider using a transaction?
+            await _context.SaveChangesAsync();
+            return await GetUserAsync(subjectId);
         }
     }
 }

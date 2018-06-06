@@ -18,6 +18,12 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
             StatusCode = statusCode;
         }
 
+        public ActionResponse(object content, int statusCode = 200)
+        {
+            Content = content;
+            StatusCode = statusCode;
+        }
+
         public ActionResponse(int statusCode)
         {
             StatusCode = statusCode;
@@ -44,12 +50,18 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
 
         public string Message { get; set; }
 
+        public object Content { get; set; }
+
         public Dictionary<string, string[]> Errors { get; set; }
 
         public string RedirectUrl { get; set; }
 
         public JsonResult ToJsonResult()
         {
+            if(Content != null)
+            {
+                return new JsonResult(Content) { StatusCode = StatusCode };
+            }
             return new JsonResult(new { Message, Errors }) { StatusCode = StatusCode };
         }
     }

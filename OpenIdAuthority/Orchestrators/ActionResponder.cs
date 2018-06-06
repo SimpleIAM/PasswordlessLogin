@@ -21,6 +21,10 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
         {
             return new ActionResponse(message, 401);
         }
+        protected ActionResponse PermissionDenied(string message = null)
+        {
+            return new ActionResponse(message, 403);
+        }
         protected ActionResponse NotFound(string message = null)
         {
             return new ActionResponse(message, 404);

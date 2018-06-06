@@ -92,7 +92,8 @@ namespace Microsoft.Extensions.DependencyInjection
             services.AddTransient<IPasswordHashStore, DbPasswordHashStore>();
             services.AddTransient<IPasswordService, DefaultPasswordService>();
 
-            services.AddTransient<AuthenticateOrchestrator>();            
+            services.AddTransient<AuthenticateOrchestrator>();
+            services.AddTransient<UserOrchestrator>();
 
             services.AddEmbeddedViews();
 

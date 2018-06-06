@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 using SimpleIAM.OpenIdAuthority.Models;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace SimpleIAM.OpenIdAuthority.Stores
@@ -11,5 +12,6 @@ namespace SimpleIAM.OpenIdAuthority.Stores
         Task<User> GetUserAsync(string subjectId, bool fetchClaims = false);
         Task<User> GetUserByEmailAsync(string email, bool fetchClaims = false);
         Task<User> AddUserAsync(User user);
+        Task<User> PatchUserAsync(string subjectId, ILookup<string, string> Properties);
     }
 }
