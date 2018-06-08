@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <PackageId>SimpleIAM.OpenIdAuthority</PackageId>
-    <Version>0.1.0-beta9</Version>
+    <Version>0.1.0-beta12</Version>
     <Authors>Ryan Foster</Authors>
     <Company>SimpleIAM.com</Company>
     <Title>OpenID Authority</Title>
@@ -14,6 +14,9 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>SimpleIAM.OpenIdAuthority</RootNamespace>
     <AssemblyName>SimpleIAM.OpenIdAuthority</AssemblyName>
+    <!--<PreserveCompilationContext>true</PreserveCompilationContext>
+    <MvcRazorCompileOnPublish>true</MvcRazorCompileOnPublish>
+    <MvcRazorExcludeRefAssembliesFromPublish>false</MvcRazorExcludeRefAssembliesFromPublish>-->
   </PropertyGroup>
 
   <ItemGroup>
@@ -52,20 +55,18 @@
     <PackageReference Include="Microsoft.AspNetCore.Cryptography.KeyDerivation" Version="2.1.0" />
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics" Version="2.1.0" />
     <PackageReference Include="Microsoft.AspNetCore.HttpOverrides" Version="2.1.0" />
+    <PackageReference Include="Microsoft.AspNetCore.HttpsPolicy" Version="2.1.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc" Version="2.1.0" />
     <PackageReference Include="Microsoft.AspNetCore.StaticFiles" Version="2.1.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="2.1.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="2.1.0" />
     <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="2.1.0" />
+    <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="2.1.0" PrivateAssets="All" />
     <PackageReference Include="NWebsec.AspNetCore.Middleware" Version="2.0.0" />
   </ItemGroup>
 
   <ItemGroup>
     <Folder Include="Properties\" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <DotNetCliToolReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Tools" Version="2.0.3" />
   </ItemGroup>
 
 </Project>

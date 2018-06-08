@@ -1,7 +1,7 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp2.0</TargetFramework>
+    <TargetFramework>netcoreapp2.1</TargetFramework>
     <RootNamespace>OpenIdAuthorityStarterApp</RootNamespace>
     <AssemblyName>SimpleIAM.OpenIdAuthority.StarterApp</AssemblyName>
     <UserSecretsId>a3507b1f-21b1-4d94-ab1b-c8f2c292a474</UserSecretsId>

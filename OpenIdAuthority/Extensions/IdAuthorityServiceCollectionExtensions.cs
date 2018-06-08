@@ -120,7 +120,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 });
             }
 
-            services.AddMvc();
+            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
 
             services.AddSingleton<ITempDataProvider, CookieTempDataProvider>();
 

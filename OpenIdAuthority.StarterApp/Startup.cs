@@ -23,6 +23,13 @@ namespace OpenIdAuthorityStarterApp
 
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddHsts(options =>
+            {
+                options.Preload = false;
+                options.IncludeSubDomains = false;
+                options.MaxAge = TimeSpan.FromDays(1);
+            });
+
             services.AddOpenIdAuthority(Configuration);
 
             // override services here
@@ -34,6 +41,9 @@ namespace OpenIdAuthorityStarterApp
 
         public void Configure(IApplicationBuilder app, IHostingEnvironment env, HostingConfig hostingConfig)
         {
+
+            app.UseHsts();
+            app.UseHttpsRedirection();
             app.UseOpenIdAuthority(env, hostingConfig);
             app.UseSwagger();
             app.UseSwaggerUI(c =>
