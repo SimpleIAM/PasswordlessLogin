@@ -7,6 +7,7 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
 {
     public class SendCodeInputModel
     {
+        public string ApplicationId { get; set; }
         [Required]
         public string Username { get; set; }
         public string NextUrl { get; set; }

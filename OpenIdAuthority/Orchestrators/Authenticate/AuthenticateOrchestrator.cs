@@ -55,13 +55,9 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
 
         public async Task<ActionResponse> RegisterAsync(RegisterInputModel model)
         {
-            if (!string.IsNullOrEmpty(model.ApplicationId))
+            if (!await ApplicationIdIsNullOrValidAsync(model.ApplicationId))
             {
-                var app = await _clientStore.FindEnabledClientByIdAsync(model.ApplicationId);
-                if (app == null)
-                {
-                    return BadRequest("Invalid application id");
-                }
+                return BadRequest("Invalid application id");
             }
 
             TimeSpan linkValidity;
@@ -93,7 +89,7 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
             switch (oneTimeCodeResponse.Result)
             {
                 case GetOneTimeCodeResult.Success:
-                    var result = await _messageService.SendWelcomeMessageAsync(model.ApplicationId, model.Email, oneTimeCodeResponse.ShortCode, oneTimeCodeResponse.LongCode, model.MailMergeValues);
+                    var result = await _messageService.SendWelcomeMessageAsync(model.ApplicationId, model.Email, oneTimeCodeResponse.ShortCode, oneTimeCodeResponse.LongCode, model.Claims);
                     if (result.MessageSent)
                     {
                         return Ok("Thanks for registering. Please check your email.");
@@ -112,6 +108,11 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
 
         public async Task<ActionResponse> SendOneTimeCodeAsync(SendCodeInputModel model)
         {
+            if (!await ApplicationIdIsNullOrValidAsync(model.ApplicationId))
+            {
+                return BadRequest("Invalid application id");
+            }
+
             // todo: support usernames/phone numbers
             // Note: Need to keep messages generic as to not reveal whether an account exists or not. 
             // If the username provide is not an email address or phone number, tell the user "we sent you a code if you have an account"
@@ -124,7 +125,7 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
                     switch (oneTimeCodeResponse.Result)
                     {
                         case GetOneTimeCodeResult.Success:
-                            var response = await _messageService.SendOneTimeCodeAndLinkMessageAsync(model.Username, oneTimeCodeResponse.ShortCode, oneTimeCodeResponse.LongCode);
+                            var response = await _messageService.SendOneTimeCodeAndLinkMessageAsync(model.ApplicationId, model.Username, oneTimeCodeResponse.ShortCode, oneTimeCodeResponse.LongCode);
                             if (!response.MessageSent)
                             {
                                 var endUserErrorMessage = response.ErrorMessageForEndUser ?? "Hmm, something went wrong. Can you try again?";
@@ -141,7 +142,7 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
                 else
                 {
                     // if valid email or phone number, send a message inviting them to register
-                    var result = await _messageService.SendAccountNotFoundMessageAsync(model.Username);
+                    var result = await _messageService.SendAccountNotFoundMessageAsync(model.ApplicationId, model.Username);
                     if (!result.MessageSent)
                     {
                         return ServerError(result.ErrorMessageForEndUser);
@@ -167,7 +168,7 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
                     OneTimeCode = oneTimeCode,
                     StaySignedIn = model.StaySignedIn
                 };
-                return await AuthenticateCodeAsyc(input);
+                return await AuthenticateCodeAsync(input);
             }
             else
             {
@@ -252,13 +253,9 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
 
         public async Task<ActionResponse> SendPasswordResetMessageAsync(SendPasswordResetMessageInputModel model)
         {
-            if (!string.IsNullOrEmpty(model.ApplicationId))
+            if (!await ApplicationIdIsNullOrValidAsync(model.ApplicationId))
             {
-                var app = await _clientStore.FindEnabledClientByIdAsync(model.ApplicationId);
-                if (app == null)
-                {
-                    return BadRequest("Invalid application id");
-                }
+                return BadRequest("Invalid application id");
             }
 
             var user = await _userStore.GetUserByEmailAsync(model.Username); //todo: support non-email addresses
@@ -267,7 +264,7 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
                 // if valid email or phone number, send a message inviting them to register
                 if (model.Username.Contains("@"))
                 {
-                    var result = await _messageService.SendAccountNotFoundMessageAsync(model.Username);
+                    var result = await _messageService.SendAccountNotFoundMessageAsync(model.ApplicationId, model.Username);
                     if (!result.MessageSent)
                     {
                         return ServerError(result.ErrorMessageForEndUser);
@@ -324,6 +321,16 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
         {
             var setPasswordUrl = _urlHelper.Action("SetPassword", "Account");
             return $"{setPasswordUrl}?nextUrl={nextUrl}";
+        }
+
+        private async Task<bool> ApplicationIdIsNullOrValidAsync(string applicationId)
+        {
+            if(applicationId == null)
+            {
+                return true;
+            }
+            var app = await _clientStore.FindEnabledClientByIdAsync(applicationId);
+            return app != null;
         }
     }
 }

@@ -1,6 +1,8 @@
 ﻿// Copyright (c) Ryan Foster. All rights reserved. 
 // Licensed under the Apache License, Version 2.0.
 
+using System.Collections.Generic;
+
 namespace SimpleIAM.OpenIdAuthority.Configuration
 {
     public enum AppType
@@ -20,5 +22,6 @@ namespace SimpleIAM.OpenIdAuthority.Configuration
         public string PostLogoutRedirectUris { get; set; }
         public string ClientSecret { get; set; }
         public string[] AllowedScopes { get; set; }
+        public IDictionary<string, string> CustomProperties { get; set; }
     }
 }

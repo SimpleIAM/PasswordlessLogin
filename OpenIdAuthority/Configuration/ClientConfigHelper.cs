@@ -3,10 +3,8 @@
 
 using IdentityServer4.Models;
 using SimpleIAM.OpenIdAuthority.Models;
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace SimpleIAM.OpenIdAuthority.Configuration
 {
@@ -37,7 +35,8 @@ namespace SimpleIAM.OpenIdAuthority.Configuration
                 FrontChannelLogoutUri = config.FrontChannelLogoutUri ?? $"{baseUrl}/signout-oidc",
                 PostLogoutRedirectUris = config.PostLogoutRedirectUris != null ? config.PostLogoutRedirectUris.Split('\n') : new string[] { baseUrl, $"{baseUrl}/", $"{baseUrl}/signout-callback-oidc" },
                 AllowedScopes = allowedScopes.Distinct().ToArray(),
-                RequireConsent = false
+                RequireConsent = false,
+                Properties = config.CustomProperties ?? new Dictionary<string, string>(),
             };
             if(config.AppType == AppType.SPA)
             {

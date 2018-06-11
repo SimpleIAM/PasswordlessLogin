@@ -17,8 +17,6 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
 
         public Dictionary<string, string> Claims {get; set;}
 
-        public Dictionary<string, string> MailMergeValues {get; set;}
-
         public bool InviteToSetPasword { get; set; } = true;
 
         public string NextUrl { get; set; }

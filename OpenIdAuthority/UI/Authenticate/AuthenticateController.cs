@@ -112,8 +112,10 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
             else if (model.Username != null && (action == "getcode" || (action != "signin" && model.Password == null)))
             {
                 ModelState.ClearValidationState("Password");
+                var context = await _interaction.GetAuthorizationContextAsync(model.NextUrl);
                 var input = new SendCodeInputModel()
                 {
+                    ApplicationId = context?.ClientId,
                     Username = model.Username,
                     NextUrl = model.NextUrl
                 };
