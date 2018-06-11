@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 using IdentityServer4.Models;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
@@ -9,6 +10,7 @@ using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.FileProviders;
 using SimpleIAM.OpenIdAuthority;
 using SimpleIAM.OpenIdAuthority.Configuration;
 using SimpleIAM.OpenIdAuthority.Entities;
@@ -21,13 +23,15 @@ using SimpleIAM.OpenIdAuthority.Services.Password;
 using SimpleIAM.OpenIdAuthority.Stores;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
     public static class OpenIdAuthorityServiceCollectionExtensions
     {
-        public static IServiceCollection AddOpenIdAuthority(this IServiceCollection services, IConfiguration configuration)
+        public static IServiceCollection AddOpenIdAuthority(this IServiceCollection services, IConfiguration configuration, IHostingEnvironment env)
         {
             if (services == null)
             {
@@ -84,7 +88,16 @@ namespace Microsoft.Extensions.DependencyInjection
             services.AddSingleton(smtpConfig);
             services.AddTransient<IEmailService, SmtpEmailService>();
 
-            var emailTemplates = ProcessEmailTemplates.GetTemplatesFromMailConfig(configuration.GetSection("Mail"));
+            IFileProvider templateFileProvider = new EmbeddedFileProvider(typeof(OpenIdAuthorityServiceCollectionExtensions).GetTypeInfo().Assembly, "SimpleIAM.OpenIdAuthority.EmailTemplates");
+            var emailTemplateOverrideFolder = Path.Combine(env.ContentRootPath, "EmailTemplates");
+            if (Directory.Exists(emailTemplateOverrideFolder))
+            {
+                templateFileProvider = new CompositeFileProvider(
+                    new PhysicalFileProvider(emailTemplateOverrideFolder),
+                    templateFileProvider
+                );
+            }
+            var emailTemplates = EmailTemplateProcessor.GetTemplatesFromMailConfig(configuration.GetSection("Mail"), templateFileProvider);
             services.AddSingleton(emailTemplates);
             services.AddTransient<IEmailTemplateService, EmailTemplateService>();
 

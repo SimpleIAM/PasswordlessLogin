@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿// Copyright (c) Ryan Foster. All rights reserved. 
+// Licensed under the Apache License, Version 2.0.
+
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SimpleIAM.OpenIdAuthority.Configuration;
@@ -14,23 +12,18 @@ namespace OpenIdAuthorityStarterApp
 {
     public class Startup
     {
-        public Startup(IConfiguration configuration)
+        public Startup(IConfiguration configuration, IHostingEnvironment env)
         {
             Configuration = configuration;
+            _env = env;
         }
 
+        private IHostingEnvironment _env { get; }
         public IConfiguration Configuration { get; }
 
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddHsts(options =>
-            {
-                options.Preload = false;
-                options.IncludeSubDomains = false;
-                options.MaxAge = TimeSpan.FromDays(1);
-            });
-
-            services.AddOpenIdAuthority(Configuration);
+            services.AddOpenIdAuthority(Configuration, _env);
 
             // override services here
             services.AddSwaggerGen(c =>
@@ -41,8 +34,6 @@ namespace OpenIdAuthorityStarterApp
 
         public void Configure(IApplicationBuilder app, IHostingEnvironment env, HostingConfig hostingConfig)
         {
-
-            app.UseHsts();
             app.UseHttpsRedirection();
             app.UseOpenIdAuthority(env, hostingConfig);
             app.UseSwagger();

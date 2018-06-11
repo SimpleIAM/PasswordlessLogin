@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <PackageId>SimpleIAM.OpenIdAuthority</PackageId>
-    <Version>0.1.0-beta12</Version>
+    <Version>0.2.0-beta1</Version>
     <Authors>Ryan Foster</Authors>
     <Company>SimpleIAM.com</Company>
     <Title>OpenID Authority</Title>
@@ -14,9 +14,6 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>SimpleIAM.OpenIdAuthority</RootNamespace>
     <AssemblyName>SimpleIAM.OpenIdAuthority</AssemblyName>
-    <!--<PreserveCompilationContext>true</PreserveCompilationContext>
-    <MvcRazorCompileOnPublish>true</MvcRazorCompileOnPublish>
-    <MvcRazorExcludeRefAssembliesFromPublish>false</MvcRazorExcludeRefAssembliesFromPublish>-->
   </PropertyGroup>
 
   <ItemGroup>
@@ -28,6 +25,7 @@
   <ItemGroup>
     <EmbeddedResource Include="**\*.cshtml" />
     <EmbeddedResource Include="wwwroot\**" />
+    <EmbeddedResource Include="EmailTemplates\*.html" />
   </ItemGroup>
 
   <ItemGroup>
@@ -36,6 +34,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Remove="EmailTemplates\AccountNotFound.html" />
+    <None Remove="EmailTemplates\OneTimeCode.html" />
+    <None Remove="EmailTemplates\PasswordReset.html" />
+    <None Remove="EmailTemplates\SignInWithEmail.html" />
     <None Remove="UI\Account\GetOneTimeCode.cshtml" />
     <None Remove="UI\Account\RemovePassword.cshtml" />
     <None Remove="UI\Account\SetPassword.cshtml" />
