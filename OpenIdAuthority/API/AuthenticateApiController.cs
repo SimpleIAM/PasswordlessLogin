@@ -44,7 +44,7 @@ namespace SimpleIAM.OpenIdAuthority.API
         {
             if (ModelState.IsValid)
             {
-                var response = await _authenticateOrchestrator.AuthenticateCodeAsyc(model);
+                var response = await _authenticateOrchestrator.AuthenticateCodeAsync(model);
                 if(response.StatusCode == 301)
                 {
                     return await SignInAndReturnAsync(model.Username, model.StaySignedIn, response.RedirectUrl);

@@ -13,7 +13,7 @@ namespace SimpleIAM.OpenIdAuthority.Configuration
     {
         public static EmailTemplates GetTemplatesFromMailConfig(IConfigurationSection configuration, IFileProvider fileProvider)
         {
-            var defaultFrom = configuration.GetValue<string>("DefaultFrom");
+            var from = configuration.GetValue<string>("From");
             var templates = new EmailTemplates()
             {
                 { "OneTimeCode", new EmailTemplate() },
@@ -24,7 +24,7 @@ namespace SimpleIAM.OpenIdAuthority.Configuration
             };
             foreach(var template in templates)
             {
-                template.Value.From = defaultFrom;
+                template.Value.From = from;
 
                 var fileInfo = fileProvider.GetFileInfo($"{template.Key}.html");
                 if(fileInfo.Exists)

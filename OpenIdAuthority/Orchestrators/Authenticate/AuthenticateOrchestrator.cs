@@ -176,7 +176,7 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
             }
         }
 
-        public async Task<ActionResponse> AuthenticateCodeAsyc(AuthenticateInputModel model)
+        public async Task<ActionResponse> AuthenticateCodeAsync(AuthenticateInputModel model)
         {
             model.OneTimeCode = model.OneTimeCode.Replace(" ", "");
             var response = await _oneTimeCodeService.CheckOneTimeCodeAsync(model.Username, model.OneTimeCode);
