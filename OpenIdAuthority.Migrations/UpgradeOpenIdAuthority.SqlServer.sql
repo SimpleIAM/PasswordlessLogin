@@ -235,3 +235,53 @@ END;
 
 GO
 
+IF NOT EXISTS(SELECT * FROM [__EFMigrationsHistory] WHERE [MigrationId] = N'20180613000752_AdditionalFactors')
+BEGIN
+    EXEC sp_rename N'[OneTimeCodes].[ShortCodeHash]', N'ShortCode', N'COLUMN';
+END;
+
+GO
+
+IF NOT EXISTS(SELECT * FROM [__EFMigrationsHistory] WHERE [MigrationId] = N'20180613000752_AdditionalFactors')
+BEGIN
+    EXEC sp_rename N'[OneTimeCodes].[LongCodeHash]', N'LongCode', N'COLUMN';
+END;
+
+GO
+
+IF NOT EXISTS(SELECT * FROM [__EFMigrationsHistory] WHERE [MigrationId] = N'20180613000752_AdditionalFactors')
+BEGIN
+    ALTER TABLE [OneTimeCodes] ADD [ClientNonceHash] nvarchar(max) NULL;
+END;
+
+GO
+
+IF NOT EXISTS(SELECT * FROM [__EFMigrationsHistory] WHERE [MigrationId] = N'20180613000752_AdditionalFactors')
+BEGIN
+    ALTER TABLE [OneTimeCodes] ADD [SentCount] int NOT NULL DEFAULT 0;
+END;
+
+GO
+
+IF NOT EXISTS(SELECT * FROM [__EFMigrationsHistory] WHERE [MigrationId] = N'20180613000752_AdditionalFactors')
+BEGIN
+    CREATE TABLE [AuthorizedDevices] (
+        [Id] int NOT NULL IDENTITY,
+        [SubjectId] nvarchar(36) NOT NULL,
+        [DeviceIdHash] nvarchar(max) NOT NULL,
+        [Description] nvarchar(100) NULL,
+        [AddedOn] datetime2 NOT NULL,
+        CONSTRAINT [PK_AuthorizedDevices] PRIMARY KEY ([Id])
+    );
+END;
+
+GO
+
+IF NOT EXISTS(SELECT * FROM [__EFMigrationsHistory] WHERE [MigrationId] = N'20180613000752_AdditionalFactors')
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20180613000752_AdditionalFactors', N'2.1.0-rtm-30799');
+END;
+
+GO
+

@@ -13,6 +13,7 @@ namespace SimpleIAM.OpenIdAuthority.Services.OTC
         }
 
         public GetOneTimeCodeResult Result { get; set; }
+        public string ClientNonce { get; set; }
         public string ShortCode { get; set; }
         public string LongCode { get; set; }
     }

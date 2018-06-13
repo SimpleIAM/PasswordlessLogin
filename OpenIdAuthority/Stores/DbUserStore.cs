@@ -6,7 +6,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using SimpleIAM.OpenIdAuthority.Entities;
-using SimpleIAM.OpenIdAuthority.Models;
 
 namespace SimpleIAM.OpenIdAuthority.Stores
 {

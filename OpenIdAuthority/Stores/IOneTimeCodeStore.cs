@@ -13,6 +13,7 @@ namespace SimpleIAM.OpenIdAuthority.Stores
         Task<OneTimeCode> GetOneTimeCodeByLongCodeAsync(string longCodeHash);
         Task<bool> AddOneTimeCodeAsync(OneTimeCode oneTimeCode);
         Task<bool> UpdateOneTimeCodeFailureAsync(string sentTo, int failureCount);
+        Task<bool> UpdateOneTimeCodeSentCountAsync(string sentTo, int sentCount, string newRedirectUrl = null);
         Task<bool> ExpireOneTimeCodeAsync(string sentTo);
         Task<bool> RemoveOneTimeCodeAsync(string sentTo);
     }

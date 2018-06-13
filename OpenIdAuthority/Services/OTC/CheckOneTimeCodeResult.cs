@@ -5,7 +5,8 @@ namespace SimpleIAM.OpenIdAuthority.Services.OTC
 {
     public enum CheckOneTimeCodeResult
     {
-        Verified,
+        VerifiedOnAuthorizedDevice,
+        VerifiedOnNewDevice,
         Expired,
         CodeIncorrect,
         ShortCodeLocked,

@@ -9,7 +9,7 @@ namespace SimpleIAM.OpenIdAuthority.Services.OTC
     public interface IOneTimeCodeService
     {
         Task<GetOneTimeCodeResponse> GetOneTimeCodeAsync(string sendTo, TimeSpan validity, string redirectUrl = null);
-        Task<CheckOneTimeCodeResponse> CheckOneTimeCodeAsync(string longCode);
-        Task<CheckOneTimeCodeResponse> CheckOneTimeCodeAsync(string sentTo, string shortCode);
+        Task<CheckOneTimeCodeResponse> CheckOneTimeCodeAsync(string longCode, string deviceId, string clientNonce);
+        Task<CheckOneTimeCodeResponse> CheckOneTimeCodeAsync(string sentTo, string shortCode, string deviceId, string clientNonce);
     }
 }

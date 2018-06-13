@@ -4,40 +4,38 @@
 using System;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
-using IdentityServer4.Models;
 using SimpleIAM.OpenIdAuthority.Models;
 using SimpleIAM.OpenIdAuthority.Services.Message;
-using SimpleIAM.OpenIdAuthority.Services.Password;
 using SimpleIAM.OpenIdAuthority.Stores;
+
 
 namespace SimpleIAM.OpenIdAuthority.Services.OTC
 {
     public class OneTimeCodeService : IOneTimeCodeService
     {
         private readonly IOneTimeCodeStore _oneTimeCodeStore;
-        private readonly IPasswordHashService _passwordHashService;
         private readonly IMessageService _messageService;
+        private readonly IAuthorizedDeviceService _authorizedDeviceService;
 
         public OneTimeCodeService(
             IOneTimeCodeStore oneTimeCodeStore,
-            IPasswordHashService passwordHashService,
-            IMessageService messageService
+            IMessageService messageService,
+            IAuthorizedDeviceService authorizedDeviceService
             )
         {
             _oneTimeCodeStore = oneTimeCodeStore;
-            _passwordHashService = passwordHashService;
             _messageService = messageService;
+            _authorizedDeviceService = authorizedDeviceService;
         }
 
-        public async Task<CheckOneTimeCodeResponse> CheckOneTimeCodeAsync(string longCode)
+        public async Task<CheckOneTimeCodeResponse> CheckOneTimeCodeAsync(string longCode, string deviceId, string clientNonce)
         {
             if(string.IsNullOrEmpty(longCode) || longCode.Length > 36 )
             {
                 return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.CodeIncorrect);
             }
 
-            var longCodeHash = GetFastHash(longCode);
-            var otc = await _oneTimeCodeStore.GetOneTimeCodeByLongCodeAsync(longCodeHash);
+            var otc = await _oneTimeCodeStore.GetOneTimeCodeByLongCodeAsync(longCode);
 
             if(otc == null)
             {
@@ -47,12 +45,10 @@ namespace SimpleIAM.OpenIdAuthority.Services.OTC
             {
                 return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.Expired);
             }
-
-            await _oneTimeCodeStore.ExpireOneTimeCodeAsync(otc.SentTo);
-            return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.Verified, otc.SentTo, otc.RedirectUrl);
+            return await CheckAdditionalFactorsAsync(otc, deviceId, clientNonce);
         }
 
-        public async Task<CheckOneTimeCodeResponse> CheckOneTimeCodeAsync(string sentTo, string shortCode)
+        public async Task<CheckOneTimeCodeResponse> CheckOneTimeCodeAsync(string sentTo, string shortCode, string deviceId, string clientNonce)
         {
             var otc = await _oneTimeCodeStore.GetOneTimeCodeAsync(sentTo);
             if (otc == null)
@@ -66,17 +62,15 @@ namespace SimpleIAM.OpenIdAuthority.Services.OTC
 
             if (!string.IsNullOrEmpty(shortCode) && shortCode.Length <= 8)
             {
-                if (otc.FailedAttemptCount > 1)
+                if (otc.FailedAttemptCount >= 3)
                 {
-                    // maximum of 2 attempts during code validity period to prevent guessing attacks
+                    // maximum of 3 attempts during code validity period to prevent guessing attacks
                     // long code remains valid, preventing account lockout attacks (and giving a fumbling but valid user another way in)
                     return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.ShortCodeLocked); 
                 }
-                var checkResult = _passwordHashService.CheckPasswordHash(otc.ShortCodeHash, shortCode);
-                if (checkResult == CheckPaswordHashResult.Matches || checkResult == CheckPaswordHashResult.MatchesNeedsRehash)
+                if (shortCode == otc.ShortCode)
                 {
-                    await _oneTimeCodeStore.ExpireOneTimeCodeAsync(sentTo);
-                    return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.Verified, sentTo, otc.RedirectUrl);
+                    return await CheckAdditionalFactorsAsync(otc, deviceId, clientNonce);
                 }
             }
 
@@ -84,34 +78,69 @@ namespace SimpleIAM.OpenIdAuthority.Services.OTC
             return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.CodeIncorrect);
         }
 
+        private async Task<CheckOneTimeCodeResponse> CheckAdditionalFactorsAsync(OneTimeCode otc, string deviceId, string clientNonce)
+        {
+            await _oneTimeCodeStore.ExpireOneTimeCodeAsync(otc.SentTo);
+
+            if (await _authorizedDeviceService.DeviceIsAuthorized(otc.SentTo, deviceId))
+            {
+                return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.VerifiedOnAuthorizedDevice, otc.SentTo, otc.RedirectUrl);
+            }
+
+            if (FastHashService.ValidateHash(otc.ClientNonceHash, clientNonce, otc.SentTo))
+            {
+                return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.VerifiedOnNewDevice, otc.SentTo, otc.RedirectUrl);
+            }
+            // if code is correct, but the device id and client nonce are incorrect or missing, expire the code and return Expired
+            return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.Expired, otc.SentTo, otc.RedirectUrl);
+        }
+
         public async Task<GetOneTimeCodeResponse> GetOneTimeCodeAsync(string sendTo, TimeSpan validity, string redirectUrl = null)
         {
             var otc = await _oneTimeCodeStore.GetOneTimeCodeAsync(sendTo);
-            if (otc?.ExpiresUTC > DateTime.UtcNow.AddMinutes(2))
+
+            if (otc != null && otc.ExpiresUTC > DateTime.UtcNow.AddMinutes(2) && otc.ExpiresUTC < DateTime.UtcNow.AddMinutes(10))
             {
-                // if they locked the last code, they have to wait until it is almost expired
-                // if they didn't recieve the last code, unfortunately they still need to wait. We can't resent the code
-                // because it is hashed and we don't know what it is.
-                return new GetOneTimeCodeResponse(GetOneTimeCodeResult.TooManyRequests);
+                // existing code has 2-10 minutes of validity remaining, so resend it
+                // if less than 2 minutes, user might not have time to use it
+                // if more than 10 minutes (e.g. first code sent to new user), user could lock the code and be locked out for a long time
+                if (otc.SentCount >= 4)
+                {
+                    return new GetOneTimeCodeResponse(GetOneTimeCodeResult.TooManyRequests);
+                }
+                await _oneTimeCodeStore.UpdateOneTimeCodeSentCountAsync(sendTo, otc.SentCount + 1, redirectUrl);
+                return new GetOneTimeCodeResponse(GetOneTimeCodeResult.Success)
+                {
+                    ClientNonce = null, // only given out when code is first generated
+                    ShortCode = otc.ShortCode,
+                    LongCode = otc.LongCode
+                };
             }
 
             var rngProvider = new RNGCryptoServiceProvider();
             var byteArray = new byte[8];
+
             rngProvider.GetBytes(byteArray);
-            var longCode = BitConverter.ToUInt64(byteArray, 0);
-            var longCodeString = longCode.ToString();
-            var longCodeHash = GetFastHash(longCodeString);
-            var shortCode = (longCode % 1000000).ToString("000000");
-            var shortCodeHash = _passwordHashService.HashPassword(shortCode); // a fast hash salted with longCodeHash might be a sufficient alternative
+            var clientNonceUInt = BitConverter.ToUInt64(byteArray, 0);
+            var clientNonce = clientNonceUInt.ToString();
+            var clientNonceHash = FastHashService.GetHash(clientNonce, sendTo);
+
+            rngProvider.GetBytes(byteArray);
+            var longCodeUInt = BitConverter.ToUInt64(byteArray, 0);
+            var longCode = longCodeUInt.ToString();
+
+            var shortCode = (longCodeUInt % 1000000).ToString("000000");
 
             otc = new OneTimeCode()
             {
                 SentTo = sendTo,
-                ShortCodeHash = shortCodeHash,
+                ClientNonceHash = clientNonceHash,
+                ShortCode = shortCode,
                 ExpiresUTC = DateTime.UtcNow.Add(validity),
-                LongCodeHash = longCodeHash,
+                LongCode = longCode,
                 RedirectUrl = redirectUrl,
                 FailedAttemptCount = 0,
+                SentCount = 1
             };
             await _oneTimeCodeStore.RemoveOneTimeCodeAsync(sendTo);
             var codeSaved = await _oneTimeCodeStore.AddOneTimeCodeAsync(otc);
@@ -122,14 +151,10 @@ namespace SimpleIAM.OpenIdAuthority.Services.OTC
 
             return new GetOneTimeCodeResponse(GetOneTimeCodeResult.Success)
             {
+                ClientNonce = clientNonce,
                 ShortCode = shortCode,
-                LongCode = longCodeString
+                LongCode = longCode
             };
-        }
-
-        private string GetFastHash(string longCode)
-        {
-            return longCode.Sha256();
         }
     }
 }

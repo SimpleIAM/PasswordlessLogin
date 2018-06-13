@@ -15,6 +15,7 @@ namespace SimpleIAM.OpenIdAuthority.Entities
         public DbSet<UserClaim> Claims { get; set; }
         public DbSet<OneTimeCode> OneTimeCodes { get; set; }
         public DbSet<PasswordHash> PasswordHashes { get; set; }
+        public DbSet<AuthorizedDevice> AuthorizedDevices { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -47,8 +48,8 @@ namespace SimpleIAM.OpenIdAuthority.Entities
                 otc.HasKey(x => x.SentTo);
 
                 otc.Property(x => x.SentTo).HasMaxLength(254).IsRequired();
-                otc.Property(x => x.ShortCodeHash);
-                otc.Property(x => x.LongCodeHash);
+                otc.Property(x => x.ShortCode);
+                otc.Property(x => x.LongCode);
                 otc.Property(x => x.ExpiresUTC).IsRequired();
                 otc.Property(x => x.RedirectUrl).HasMaxLength(2048);
             });
@@ -61,6 +62,16 @@ namespace SimpleIAM.OpenIdAuthority.Entities
                 ph.Property(x => x.LastChangedUTC).IsRequired();
                 ph.Property(x => x.Hash).IsRequired();
                 ph.Property(x => x.FailedAttemptCount).IsRequired();
+            });
+
+            modelBuilder.Entity<AuthorizedDevice>(ad =>
+            {
+                ad.HasKey(x => x.Id);
+
+                ad.Property(x => x.SubjectId).HasMaxLength(36).IsRequired();
+                ad.Property(x => x.DeviceIdHash).IsRequired();
+                ad.Property(x => x.Description).HasMaxLength(100);
+                ad.Property(x => x.AddedOn).IsRequired();
             });
         }
     }

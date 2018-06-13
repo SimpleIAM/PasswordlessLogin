@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SimpleIAM.OpenIdAuthority.Configuration;
 using SimpleIAM.OpenIdAuthority.Models;
+using SimpleIAM.OpenIdAuthority.Services;
 using SimpleIAM.OpenIdAuthority.Services.Message;
 using SimpleIAM.OpenIdAuthority.Services.OTC;
 using SimpleIAM.OpenIdAuthority.Services.Password;
@@ -90,14 +91,7 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
             {
                 case GetOneTimeCodeResult.Success:
                     var result = await _messageService.SendWelcomeMessageAsync(model.ApplicationId, model.Email, oneTimeCodeResponse.ShortCode, oneTimeCodeResponse.LongCode, model.Claims);
-                    if (result.MessageSent)
-                    {
-                        return Ok("Thanks for registering. Please check your email.");
-                    }
-                    else
-                    {
-                        return ServerError(result.ErrorMessageForEndUser);
-                    }
+                    return ReturnAppropriateResponse(result, oneTimeCodeResponse.ClientNonce, "Thanks for registering. Please check your email.");
                 case GetOneTimeCodeResult.TooManyRequests:
                     return BadRequest("Please wait a few minutes and try again");
                 case GetOneTimeCodeResult.ServiceFailure:
@@ -125,13 +119,8 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
                     switch (oneTimeCodeResponse.Result)
                     {
                         case GetOneTimeCodeResult.Success:
-                            var response = await _messageService.SendOneTimeCodeAndLinkMessageAsync(model.ApplicationId, model.Username, oneTimeCodeResponse.ShortCode, oneTimeCodeResponse.LongCode);
-                            if (!response.MessageSent)
-                            {
-                                var endUserErrorMessage = response.ErrorMessageForEndUser ?? "Hmm, something went wrong. Can you try again?";
-                                return ServerError(endUserErrorMessage);
-                            }
-                            break;
+                            var result = await _messageService.SendOneTimeCodeAndLinkMessageAsync(model.ApplicationId, model.Username, oneTimeCodeResponse.ShortCode, oneTimeCodeResponse.LongCode);
+                            return ReturnAppropriateResponse(result, oneTimeCodeResponse.ClientNonce, "Message sent. Please check your email.");
                         case GetOneTimeCodeResult.TooManyRequests:
                             return BadRequest("Please wait a few minutes before requesting a new code");
                         case GetOneTimeCodeResult.ServiceFailure:
@@ -147,9 +136,8 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
                     {
                         return ServerError(result.ErrorMessageForEndUser);
                     }
+                    return Ok("Message sent. Please check your email.");
                 }
-                return Ok("Message sent. Please check your email.");
-
             }
             else
             {
@@ -157,7 +145,7 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
             }
         }
 
-        public async Task<ActionResponse> AuthenticateAsync(AuthenticatePasswordInputModel model)
+        public async Task<ActionResponse> AuthenticateAsync(AuthenticatePasswordInputModel model, string deviceId, string clientNonce)
         {
             var oneTimeCode = model.Password.Replace(" ", "");
             if (oneTimeCode.Length == 6 && oneTimeCode.All(Char.IsDigit))
@@ -168,25 +156,26 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
                     OneTimeCode = oneTimeCode,
                     StaySignedIn = model.StaySignedIn
                 };
-                return await AuthenticateCodeAsync(input);
+                return await AuthenticateCodeAsync(input, deviceId, clientNonce);
             }
             else
             {
-                return await AuthenticatePasswordAsync(model);
+                return await AuthenticatePasswordAsync(model, deviceId);
             }
         }
 
-        public async Task<ActionResponse> AuthenticateCodeAsync(AuthenticateInputModel model)
+        public async Task<ActionResponse> AuthenticateCodeAsync(AuthenticateInputModel model, string deviceId, string clientNonce)
         {
             model.OneTimeCode = model.OneTimeCode.Replace(" ", "");
-            var response = await _oneTimeCodeService.CheckOneTimeCodeAsync(model.Username, model.OneTimeCode);
+            var response = await _oneTimeCodeService.CheckOneTimeCodeAsync(model.Username, model.OneTimeCode, deviceId, clientNonce);
             switch (response.Result)
             {
-                case CheckOneTimeCodeResult.Verified:
+                case CheckOneTimeCodeResult.VerifiedOnNewDevice:
+                case CheckOneTimeCodeResult.VerifiedOnAuthorizedDevice:
                     var user = await _userStore.GetUserByEmailAsync(model.Username); //todo: handle non-email addresses
                     if (user != null)
                     {
-                        return Redirect(ValidatedNextUrl(response.RedirectUrl));
+                        return SaveDeviceIdAndRedirect(response);
                     }
                     return Unauthenticated("Invalid one time code");
                 case CheckOneTimeCodeResult.Expired:
@@ -202,8 +191,9 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
             }
         }
 
-        public async Task<ActionResponse> AuthenticatePasswordAsync(AuthenticatePasswordInputModel model)
+        public async Task<ActionResponse> AuthenticatePasswordAsync(AuthenticatePasswordInputModel model, string deviceId)
         {
+            // todo: if device is not authorized need to do a partial login and send a code by email
             var user = await _userStore.GetUserByEmailAsync(model.Username); //todo: handle non-email addresses
             if (user == null)
             {
@@ -228,16 +218,16 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
             }
         }
 
-        public async Task<ActionResponse> AuthenticateLongCodeAsync(string longCode)
+        public async Task<ActionResponse> AuthenticateLongCodeAsync(string longCode, string deviceId, string clientNonce)
         {
             if (longCode != null && longCode.Length < 36)
             {
-                var response = await _oneTimeCodeService.CheckOneTimeCodeAsync(longCode);
+                var response = await _oneTimeCodeService.CheckOneTimeCodeAsync(longCode, deviceId, clientNonce);
                 switch (response.Result)
                 {
-                    case CheckOneTimeCodeResult.Verified:
-                        // Username returned via Message field
-                        return new ActionResponse(response.SentTo, 301) { RedirectUrl = ValidatedNextUrl(response.RedirectUrl) };
+                    case CheckOneTimeCodeResult.VerifiedOnAuthorizedDevice:
+                    case CheckOneTimeCodeResult.VerifiedOnNewDevice:
+                        return SaveDeviceIdAndRedirect(response);
                     case CheckOneTimeCodeResult.Expired:
                         return Unauthenticated("The sign in link expired.");
                     case CheckOneTimeCodeResult.CodeIncorrect:
@@ -277,14 +267,7 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
             if (oneTimeCodeResponse.Result == GetOneTimeCodeResult.Success)
             {
                 var result = await _messageService.SendPasswordResetMessageAsync(model.ApplicationId, model.Username, oneTimeCodeResponse.ShortCode, oneTimeCodeResponse.LongCode);
-                if (result.MessageSent)
-                {
-                    return Ok("Check your email for password reset instructions.");
-                }
-                else
-                {
-                    return ServerError(result.ErrorMessageForEndUser);
-                }
+                return ReturnAppropriateResponse(result, oneTimeCodeResponse.ClientNonce, "Check your email for password reset instructions.");
             }
             return ServerError("Hmm. Something went wrong. Please try again.");
         }
@@ -306,6 +289,36 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
             }
 
             await httpContext.SignInAsync(user.SubjectId, user.Email, authProps);
+        }
+
+        private ActionResponse ReturnAppropriateResponse(SendMessageResult sendMessageResult, string clientNonce, string successMessage)
+        {
+            ActionResponse actionResponse;
+            if (sendMessageResult.MessageSent)
+            {
+                actionResponse = Ok(successMessage);
+            }
+            else
+            {
+                actionResponse = ServerError(sendMessageResult.ErrorMessageForEndUser);
+            }
+
+            if (clientNonce != null)
+            {
+                actionResponse.Content = new SetClientNonceCommand() { ClientNonce = clientNonce };
+            }
+            return actionResponse;
+        }
+
+        private ActionResponse SaveDeviceIdAndRedirect(CheckOneTimeCodeResponse response)
+        {
+            // Returning username via Message field (it is needed when validating a long code)
+            var actionResponse = new ActionResponse(response.SentTo, 301) { RedirectUrl = ValidatedNextUrl(response.RedirectUrl) };
+            if (response.Result == CheckOneTimeCodeResult.VerifiedOnNewDevice)
+            {
+                actionResponse.Content = new SetDeviceIdCommand();
+            }
+            return actionResponse;
         }
 
         private string ValidatedNextUrl(string nextUrl)

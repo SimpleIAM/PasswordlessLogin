@@ -16,8 +16,10 @@ namespace SimpleIAM.OpenIdAuthority
                 SentTo = source.SentTo,
                 ExpiresUTC = source.ExpiresUTC,
                 FailedAttemptCount = source.FailedAttemptCount,
-                LongCodeHash = source.LongCodeHash,
-                ShortCodeHash = source.ShortCodeHash,
+                ClientNonceHash = source.ClientNonceHash,
+                LongCode = source.LongCode,
+                ShortCode = source.ShortCode,
+                SentCount = source.SentCount,
                 RedirectUrl = source.RedirectUrl,
             };
         }
@@ -29,8 +31,10 @@ namespace SimpleIAM.OpenIdAuthority
                 SentTo = source.SentTo,
                 ExpiresUTC = source.ExpiresUTC,
                 FailedAttemptCount = source.FailedAttemptCount,
-                LongCodeHash = source.LongCodeHash,
-                ShortCodeHash = source.ShortCodeHash,
+                ClientNonceHash = source.ClientNonceHash,
+                LongCode = source.LongCode,
+                ShortCode = source.ShortCode,
+                SentCount = source.SentCount,
                 RedirectUrl = source.RedirectUrl,
             };
         }
@@ -104,6 +108,16 @@ namespace SimpleIAM.OpenIdAuthority
             }
             target.Properties = properties.ToLookup(x => x.Key, x => x.Value);
             return target;
+        }
+
+        public static Models.AuthorizedDevice ToModel(this Entities.AuthorizedDevice source)
+        {
+            return new Models.AuthorizedDevice
+            {
+                RecordId = source.Id,
+                Description = source.Description,
+                AddedOn = source.AddedOn,
+            };
         }
 
         public static string NormalizeEmptyString(string input)

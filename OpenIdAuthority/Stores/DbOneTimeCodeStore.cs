@@ -25,7 +25,7 @@ namespace SimpleIAM.OpenIdAuthority.Stores
 
         public async Task<Models.OneTimeCode> GetOneTimeCodeByLongCodeAsync(string longCodeHash)
         {
-            var record = await _context.OneTimeCodes.SingleOrDefaultAsync(x => x.LongCodeHash == longCodeHash);
+            var record = await _context.OneTimeCodes.SingleOrDefaultAsync(x => x.LongCode == longCodeHash);
             return record?.ToModel();
         }
 
@@ -38,6 +38,31 @@ namespace SimpleIAM.OpenIdAuthority.Stores
 
         }
 
+        public async Task<bool> UpdateOneTimeCodeSentCountAsync(string sentTo, int sentCount, string newRedirectUrl = null)
+        {
+            var count = 0;
+            var record = await _context.OneTimeCodes.FindAsync(sentTo);
+            if (record != null)
+            {
+                record.SentCount = sentCount;
+                _context.Entry(record).Property(x => x.FailedAttemptCount).IsModified = false;
+                _context.Entry(record).Property(x => x.ExpiresUTC).IsModified = false;
+                _context.Entry(record).Property(x => x.LongCode).IsModified = false;
+                _context.Entry(record).Property(x => x.ShortCode).IsModified = false;
+                _context.Entry(record).Property(x => x.ClientNonceHash).IsModified = false;
+                if (newRedirectUrl != null)
+                {
+                    record.RedirectUrl = newRedirectUrl;
+                }
+                else
+                {
+                    _context.Entry(record).Property(x => x.RedirectUrl).IsModified = false;
+                }
+                count = await _context.SaveChangesAsync();
+            }
+            return count > 0;
+        }
+
         public async Task<bool> UpdateOneTimeCodeFailureAsync(string sentTo, int failureCount)
         {
             var count = 0;
@@ -46,7 +71,9 @@ namespace SimpleIAM.OpenIdAuthority.Stores
             {
                 record.FailedAttemptCount = failureCount;
                 _context.Entry(record).Property(x => x.ExpiresUTC).IsModified = false;
-                _context.Entry(record).Property(x => x.LongCodeHash).IsModified = false;
+                _context.Entry(record).Property(x => x.LongCode).IsModified = false;
+                _context.Entry(record).Property(x => x.ShortCode).IsModified = false;
+                _context.Entry(record).Property(x => x.ClientNonceHash).IsModified = false;
                 _context.Entry(record).Property(x => x.RedirectUrl).IsModified = false;
                 count = await _context.SaveChangesAsync();
             }
