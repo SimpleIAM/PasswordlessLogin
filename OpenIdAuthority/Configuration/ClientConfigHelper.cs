@@ -40,7 +40,7 @@ namespace SimpleIAM.OpenIdAuthority.Configuration
             };
             if(config.AppType == AppType.SPA)
             {
-                client.AllowedCorsOrigins.Add(baseUrl);
+                client.AllowedCorsOrigins.Add(baseUrl); //todo: consider enabling cors for server side apps too
                 client.AllowAccessTokensViaBrowser = true;
             }
 

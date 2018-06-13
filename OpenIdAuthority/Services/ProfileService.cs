@@ -29,7 +29,9 @@ namespace SimpleIAM.OpenIdAuthority.Services
 
                 if (user != null)
                 {
-                    var claims = user.Claims.Select(x => new Claim(x.Type, x.Value));
+                    var claims = user.Claims.Select(x => new Claim(x.Type, x.Value)).ToList();
+                    claims.Add(new Claim("email", user.Email));
+                    claims.Add(new Claim("email_verified", "true"));
                     context.AddRequestedClaims(claims);
                 }
             }
