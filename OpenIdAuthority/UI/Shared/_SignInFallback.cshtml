@@ -1,0 +1,36 @@
+﻿@model SimpleIAM.OpenIdAuthority.Orchestrators.AuthenticatePasswordInputModel
+<form method="post">
+    <div class="field field-stacked form_row">
+        <label asp-for="Username" class="field_label">Email</label>
+        <input class="field_element field_element-fullWidth" type="text" asp-for="Username" placeholder="you@example.com" autofocus />
+        <span asp-validation-for="Username" class="field_error"></span>
+    </div>
+    <div class="field field-stacked form_row">
+        <label asp-for="Password" class="field_label">Password or one time code</label>
+        <input class="field_element field_element-fullWidth" type="password" asp-for="Password" placeholder="****** / 123..." />
+        <span asp-validation-for="Password" class="field_error"></span>
+    </div>
+    <div class="field field-checkbox form_row">
+        <input name="staySignedIn" type="checkbox" id="stay-signed-in" class="field_element" value="true" checked>
+        <label for="stay-signed-in" class="field_label">Stay signed in</label>
+    </div>
+    <div style="display:none">
+        <input type="text" name="leaveBlank" placeholder="leave blank" autocomplete="off" />
+        <input type="hidden" asp-for="NextUrl" />
+    </div>
+    <button type="submit" name="action" value="submit" tabindex="-1" style="position:absolute; left: -10000px;"></button>
+    <div class="fields fields-flexSpaceBetween form_row">
+        <div class="field">
+            <button type="submit" class="field_element field_element-tall signIn_signInButton" name="action" value="signin">Sign in</button>
+        </div>
+        <div class="field">
+            <button type="submit" class="field_element field_element-tall signIn_oneTimeCodeButton" name="action" value="getcode">Get one time code</button>
+        </div>
+    </div>
+</form>
+@if (ViewBag.Message != null)
+{
+<div class="message message-notice signIn_message">
+    @ViewBag.Message
+</div>
+}

@@ -34,20 +34,20 @@
         </div>
 
         <div class="fields fields-flexSpaceBetween form_row">
-          <div v-if="acceptCode" class="field">
-            <button 
-              class="field_element field_element-tall signIn_oneTimeCodeButton"
-              :type="password.length == 0 ? 'submit' : 'button'"
-              :disabled="username.length == 0 || password.length > 0"
-              >Get one time code
-            </button>
-          </div>
           <div class="field">
             <button 
               class="field_element field_element-tall signIn_signInButton"
               type="submit"
               :disabled="!signInEnabled"
               >Sign in
+            </button>
+          </div>
+          <div v-if="acceptCode" class="field">
+            <button 
+              class="field_element field_element-tall signIn_oneTimeCodeButton"
+              :type="password.length == 0 ? 'submit' : 'button'"
+              :disabled="username.length == 0 || password.length > 0"
+              >Get one time code
             </button>
           </div>
         </div>
