@@ -114,7 +114,7 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
             {
                 ViewBag.Message = "You appear to be a spambot";
             }
-            else if (model.Username != null && (action == "getcode" || (action != "signin" && model.Password == null)))
+            else if (model.Username != null && (action == "getcode" || (action == "submit" && model.Password == null)))
             {
                 ModelState.ClearValidationState("Password");
                 var context = await _interaction.GetAuthorizationContextAsync(model.NextUrl);

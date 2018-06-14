@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.FileProviders;
 using SimpleIAM.OpenIdAuthority;
 using SimpleIAM.OpenIdAuthority.Configuration;
@@ -50,7 +51,7 @@ namespace Microsoft.Extensions.DependencyInjection
             var clients = ClientConfigHelper.GetClientsFromConfig(clientConfigs);
             var apps = ClientConfigHelper.GetAppsFromClients(clients);
             var appStore = new InMemoryAppStore(apps);
-            services.AddSingleton<IAppStore>(appStore);
+            services.TryAddSingleton<IAppStore>(appStore);
 
             var idScopeConfig = configuration.GetSection("IdScopes").Get<List<IdScopeConfig>>() ?? new List<IdScopeConfig>();
             var idScopes = idScopeConfig.Select(x=> new IdentityResource(x.Name, x.DisplayName ?? x.Name, x.ClaimTypes) { Required = x.Required }).ToList();
@@ -62,15 +63,15 @@ namespace Microsoft.Extensions.DependencyInjection
                 new IdentityResources.Address(),
             });
 
-            var connection = configuration.GetConnectionString("OpenIdAuthority");
+            var connection = configuration.GetConnectionString("DefaultConnection");
 
             services.AddDbContext<OpenIdAuthorityDbContext>(options => options.UseSqlServer(connection));
-            services.AddTransient<IOneTimeCodeStore, DbOneTimeCodeStore>();
-            services.AddTransient<IOneTimeCodeService, OneTimeCodeService>();
-            services.AddTransient<IUserStore, DbUserStore>();
-            services.AddTransient<IAuthorizedDeviceStore, DbAuthorizedDeviceStore>();
-            services.AddTransient<IAuthorizedDeviceService, AuthorizedDeviceService>();            
-            services.AddTransient<IMessageService, MessageService>();
+            services.TryAddTransient<IOneTimeCodeStore, DbOneTimeCodeStore>();
+            services.TryAddTransient<IOneTimeCodeService, OneTimeCodeService>();
+            services.TryAddTransient<IUserStore, DbUserStore>();
+            services.TryAddTransient<IAuthorizedDeviceStore, DbAuthorizedDeviceStore>();
+            services.TryAddTransient<IAuthorizedDeviceService, AuthorizedDeviceService>();            
+            services.TryAddTransient<IMessageService, MessageService>();
 
             services.AddIdentityServer(options =>
             {
@@ -87,8 +88,8 @@ namespace Microsoft.Extensions.DependencyInjection
 
             var smtpConfig = new SmtpConfig();
             configuration.Bind("Mail:Smtp", smtpConfig);
-            services.AddSingleton(smtpConfig);
-            services.AddTransient<IEmailService, SmtpEmailService>();
+            services.TryAddSingleton(smtpConfig);
+            services.TryAddTransient<IEmailService, SmtpEmailService>();
 
             IFileProvider templateFileProvider = new EmbeddedFileProvider(typeof(OpenIdAuthorityServiceCollectionExtensions).GetTypeInfo().Assembly, "SimpleIAM.OpenIdAuthority.EmailTemplates");
             var emailTemplateOverrideFolder = Path.Combine(env.ContentRootPath, "EmailTemplates");
@@ -100,23 +101,23 @@ namespace Microsoft.Extensions.DependencyInjection
                 );
             }
             var emailTemplates = EmailTemplateProcessor.GetTemplatesFromMailConfig(configuration.GetSection("Mail"), templateFileProvider);
-            services.AddSingleton(emailTemplates);
-            services.AddTransient<IEmailTemplateService, EmailTemplateService>();
+            services.TryAddSingleton(emailTemplates);
+            services.TryAddTransient<IEmailTemplateService, EmailTemplateService>();
 
-            services.AddSingleton<IPasswordHashService>(new AspNetIdentityPasswordHashService(10000));
-            services.AddTransient<IPasswordHashStore, DbPasswordHashStore>();
-            services.AddTransient<IPasswordService, DefaultPasswordService>();
+            services.TryAddSingleton<IPasswordHashService>(new AspNetIdentityPasswordHashService(10000));
+            services.TryAddTransient<IPasswordHashStore, DbPasswordHashStore>();
+            services.TryAddTransient<IPasswordService, DefaultPasswordService>();
 
-            services.AddTransient<AuthenticateOrchestrator>();
-            services.AddTransient<UserOrchestrator>();
+            services.TryAddTransient<AuthenticateOrchestrator>();
+            services.TryAddTransient<UserOrchestrator>();
 
             services.AddEmbeddedViews();
 
-            services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+            services.TryAddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 
             // IUrlHelper
-            services.AddSingleton<IActionContextAccessor, ActionContextAccessor>();
-            services.AddScoped<IUrlHelper>(x => {
+            services.TryAddSingleton<IActionContextAccessor, ActionContextAccessor>();
+            services.TryAddScoped<IUrlHelper>(x => {
                 var actionContext = x.GetRequiredService<IActionContextAccessor>().ActionContext;
                 var factory = x.GetRequiredService<IUrlHelperFactory>();
                 return factory.GetUrlHelper(actionContext);
@@ -137,7 +138,7 @@ namespace Microsoft.Extensions.DependencyInjection
 
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
 
-            services.AddSingleton<ITempDataProvider, CookieTempDataProvider>();
+            services.TryAddSingleton<ITempDataProvider, CookieTempDataProvider>();
 
             return services;
         }
