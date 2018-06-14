@@ -70,7 +70,7 @@ namespace SimpleIAM.OpenIdAuthority.Entities
 
                 ad.Property(x => x.SubjectId).HasMaxLength(36).IsRequired();
                 ad.Property(x => x.DeviceIdHash).IsRequired();
-                ad.Property(x => x.Description).HasMaxLength(100);
+                ad.Property(x => x.Description);
                 ad.Property(x => x.AddedOn).IsRequired();
             });
         }

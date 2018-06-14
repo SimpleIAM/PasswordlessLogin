@@ -285,3 +285,24 @@ END;
 
 GO
 
+IF NOT EXISTS(SELECT * FROM [__EFMigrationsHistory] WHERE [MigrationId] = N'20180614034617_IncreaseFieldLength')
+BEGIN
+    DECLARE @var3 sysname;
+    SELECT @var3 = [d].[name]
+    FROM [sys].[default_constraints] [d]
+    INNER JOIN [sys].[columns] [c] ON [d].[parent_column_id] = [c].[column_id] AND [d].[parent_object_id] = [c].[object_id]
+    WHERE ([d].[parent_object_id] = OBJECT_ID(N'[AuthorizedDevices]') AND [c].[name] = N'Description');
+    IF @var3 IS NOT NULL EXEC(N'ALTER TABLE [AuthorizedDevices] DROP CONSTRAINT [' + @var3 + '];');
+    ALTER TABLE [AuthorizedDevices] ALTER COLUMN [Description] nvarchar(max) NULL;
+END;
+
+GO
+
+IF NOT EXISTS(SELECT * FROM [__EFMigrationsHistory] WHERE [MigrationId] = N'20180614034617_IncreaseFieldLength')
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20180614034617_IncreaseFieldLength', N'2.1.0-rtm-30799');
+END;
+
+GO
+
