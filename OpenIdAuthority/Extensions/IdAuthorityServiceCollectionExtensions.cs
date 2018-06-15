@@ -70,7 +70,6 @@ namespace Microsoft.Extensions.DependencyInjection
             services.TryAddTransient<IOneTimeCodeService, OneTimeCodeService>();
             services.TryAddTransient<IUserStore, DbUserStore>();
             services.TryAddTransient<IAuthorizedDeviceStore, DbAuthorizedDeviceStore>();
-            services.TryAddTransient<IAuthorizedDeviceService, AuthorizedDeviceService>();            
             services.TryAddTransient<IMessageService, MessageService>();
 
             services.AddIdentityServer(options =>

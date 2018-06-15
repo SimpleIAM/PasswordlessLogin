@@ -15,20 +15,17 @@ namespace SimpleIAM.OpenIdAuthority.Services.OTC
     {
         private readonly IOneTimeCodeStore _oneTimeCodeStore;
         private readonly IMessageService _messageService;
-        private readonly IAuthorizedDeviceService _authorizedDeviceService;
 
         public OneTimeCodeService(
             IOneTimeCodeStore oneTimeCodeStore,
-            IMessageService messageService,
-            IAuthorizedDeviceService authorizedDeviceService
+            IMessageService messageService
             )
         {
             _oneTimeCodeStore = oneTimeCodeStore;
             _messageService = messageService;
-            _authorizedDeviceService = authorizedDeviceService;
         }
 
-        public async Task<CheckOneTimeCodeResponse> CheckOneTimeCodeAsync(string longCode, string deviceId, string clientNonce)
+        public async Task<CheckOneTimeCodeResponse> CheckOneTimeCodeAsync(string longCode, string clientNonce)
         {
             if(string.IsNullOrEmpty(longCode) || longCode.Length > 36 )
             {
@@ -45,10 +42,10 @@ namespace SimpleIAM.OpenIdAuthority.Services.OTC
             {
                 return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.Expired);
             }
-            return await CheckAdditionalFactorsAsync(otc, deviceId, clientNonce);
+            return await ValidateNonceAsync(otc, clientNonce);
         }
 
-        public async Task<CheckOneTimeCodeResponse> CheckOneTimeCodeAsync(string sentTo, string shortCode, string deviceId, string clientNonce)
+        public async Task<CheckOneTimeCodeResponse> CheckOneTimeCodeAsync(string sentTo, string shortCode, string clientNonce)
         {
             var otc = await _oneTimeCodeStore.GetOneTimeCodeAsync(sentTo);
             if (otc == null)
@@ -70,7 +67,7 @@ namespace SimpleIAM.OpenIdAuthority.Services.OTC
                 }
                 if (shortCode == otc.ShortCode)
                 {
-                    return await CheckAdditionalFactorsAsync(otc, deviceId, clientNonce);
+                    return await ValidateNonceAsync(otc, clientNonce);
                 }
             }
 
@@ -78,21 +75,16 @@ namespace SimpleIAM.OpenIdAuthority.Services.OTC
             return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.CodeIncorrect);
         }
 
-        private async Task<CheckOneTimeCodeResponse> CheckAdditionalFactorsAsync(OneTimeCode otc, string deviceId, string clientNonce)
+        private async Task<CheckOneTimeCodeResponse> ValidateNonceAsync(OneTimeCode otc, string clientNonce)
         {
             await _oneTimeCodeStore.ExpireOneTimeCodeAsync(otc.SentTo);
 
-            if (await _authorizedDeviceService.DeviceIsAuthorized(otc.SentTo, deviceId))
-            {
-                return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.VerifiedOnAuthorizedDevice, otc.SentTo, otc.RedirectUrl);
-            }
-
             if (FastHashService.ValidateHash(otc.ClientNonceHash, clientNonce, otc.SentTo))
             {
-                return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.VerifiedOnNewDevice, otc.SentTo, otc.RedirectUrl);
+                return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.VerifiedWithNonce, otc.SentTo, otc.RedirectUrl);
             }
-            // if code is correct, but the device id and client nonce are incorrect or missing, expire the code and return Expired
-            return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.Expired, otc.SentTo, otc.RedirectUrl);
+
+            return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.VerifiedWithoutNonce, otc.SentTo, otc.RedirectUrl);
         }
 
         public async Task<GetOneTimeCodeResponse> GetOneTimeCodeAsync(string sendTo, TimeSpan validity, string redirectUrl = null)

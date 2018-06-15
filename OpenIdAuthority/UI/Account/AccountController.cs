@@ -134,9 +134,9 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
             }
             else if (ModelState.IsValid)
             {
-                var checkOtcResponse = await _oneTimeCodeService.CheckOneTimeCodeAsync(email, model.OneTimeCode, Request.GetDeviceId(), Request.GetClientNonce());
+                var checkOtcResponse = await _oneTimeCodeService.CheckOneTimeCodeAsync(email, model.OneTimeCode, Request.GetClientNonce());
                 switch(checkOtcResponse.Result) {
-                    case CheckOneTimeCodeResult.VerifiedOnAuthorizedDevice:
+                    case CheckOneTimeCodeResult.VerifiedWithNonce:
                         var sub = User.GetSubjectId();
                         var result = await _passwordService.RemovePasswordAsync(sub);
                         if (result == RemovePasswordResult.Success)
@@ -146,10 +146,7 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
                         }
                         AddPostRedirectMessage("Something was wrong");
                         return RedirectToAction("RemovePassword");
-                    case CheckOneTimeCodeResult.VerifiedOnNewDevice:
-                        //todo: consider if this should be allowed
-                        ModelState.AddModelError("OneTimeCode", "Password can only be removed when you have signed in from an authorized device");
-                        break;
+                    case CheckOneTimeCodeResult.VerifiedWithoutNonce:
                     default:
                         ModelState.AddModelError("OneTimeCode", "Code is incorrect or expired");
                         break;

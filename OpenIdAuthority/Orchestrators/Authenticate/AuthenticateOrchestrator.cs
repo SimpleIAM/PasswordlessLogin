@@ -3,6 +3,8 @@
 
 using System;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using IdentityServer4.Events;
 using IdentityServer4.Services;
@@ -22,6 +24,12 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
 {
     public class AuthenticateOrchestrator : ActionResponder
     {
+        private enum SignInMethod
+        {
+            Password,
+            OneTimeCode,
+            Link
+        }
         private readonly IOneTimeCodeService _oneTimeCodeService;
         private readonly IMessageService _messageService;
         private readonly IUserStore _userStore;
@@ -31,6 +39,9 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
         private readonly IPasswordService _passwordService;
         private readonly IdProviderConfig _config;
         private readonly IUrlHelper _urlHelper;
+        private readonly HttpContext _httpContext;
+        private readonly IAuthorizedDeviceStore _authorizedDeviceStore;
+
 
         public AuthenticateOrchestrator(
             IOneTimeCodeService oneTimeCodeService,
@@ -41,7 +52,9 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
             IIdentityServerInteractionService interaction,
             IEventService events,
             IPasswordService passwordService,
-            IUrlHelper urlHelper)
+            IUrlHelper urlHelper,
+            IHttpContextAccessor httpContextAccessor,
+            IAuthorizedDeviceStore authorizedDeviceStore)
         {
             _oneTimeCodeService = oneTimeCodeService;
             _userStore = userStore;
@@ -52,6 +65,8 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
             _events = events;
             _config = config;
             _urlHelper = urlHelper;
+            _httpContext = httpContextAccessor.HttpContext;
+            _authorizedDeviceStore = authorizedDeviceStore;
         }
 
         public async Task<ActionResponse> RegisterAsync(RegisterInputModel model)
@@ -145,7 +160,7 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
             }
         }
 
-        public async Task<ActionResponse> AuthenticateAsync(AuthenticatePasswordInputModel model, string deviceId, string clientNonce)
+        public async Task<ActionResponse> AuthenticateAsync(AuthenticatePasswordInputModel model)
         {
             var oneTimeCode = model.Password.Replace(" ", "");
             if (oneTimeCode.Length == 6 && oneTimeCode.All(Char.IsDigit))
@@ -156,28 +171,24 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
                     OneTimeCode = oneTimeCode,
                     StaySignedIn = model.StaySignedIn
                 };
-                return await AuthenticateCodeAsync(input, deviceId, clientNonce);
+                return await AuthenticateCodeAsync(input);
             }
             else
             {
-                return await AuthenticatePasswordAsync(model, deviceId);
+                return await AuthenticatePasswordAsync(model);
             }
         }
 
-        public async Task<ActionResponse> AuthenticateCodeAsync(AuthenticateInputModel model, string deviceId, string clientNonce)
+        public async Task<ActionResponse> AuthenticateCodeAsync(AuthenticateInputModel model)
         {
             model.OneTimeCode = model.OneTimeCode.Replace(" ", "");
-            var response = await _oneTimeCodeService.CheckOneTimeCodeAsync(model.Username, model.OneTimeCode, deviceId, clientNonce);
+            var response = await _oneTimeCodeService.CheckOneTimeCodeAsync(model.Username, model.OneTimeCode, _httpContext.Request.GetClientNonce());
             switch (response.Result)
             {
-                case CheckOneTimeCodeResult.VerifiedOnNewDevice:
-                case CheckOneTimeCodeResult.VerifiedOnAuthorizedDevice:
-                    var user = await _userStore.GetUserByEmailAsync(model.Username); //todo: handle non-email addresses
-                    if (user != null)
-                    {
-                        return SaveDeviceIdAndRedirect(response);
-                    }
-                    return Unauthenticated("Invalid one time code");
+                case CheckOneTimeCodeResult.VerifiedWithNonce:
+                case CheckOneTimeCodeResult.VerifiedWithoutNonce:
+                    var nonceWasValid = response.Result == CheckOneTimeCodeResult.VerifiedWithNonce;
+                    return await SignInAndRedirectAsync(SignInMethod.OneTimeCode, model.Username, model.StaySignedIn, response.RedirectUrl, nonceWasValid);
                 case CheckOneTimeCodeResult.Expired:
                     return Unauthenticated("Your one time code has expired. Please request a new one.");
                 case CheckOneTimeCodeResult.CodeIncorrect:
@@ -191,7 +202,7 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
             }
         }
 
-        public async Task<ActionResponse> AuthenticatePasswordAsync(AuthenticatePasswordInputModel model, string deviceId)
+        public async Task<ActionResponse> AuthenticatePasswordAsync(AuthenticatePasswordInputModel model)
         {
             // todo: if device is not authorized need to do a partial login and send a code by email
             var user = await _userStore.GetUserByEmailAsync(model.Username); //todo: handle non-email addresses
@@ -210,7 +221,7 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
                     case CheckPasswordResult.TemporarilyLocked:
                         return Unauthenticated("Your password is temporarily locked. Use a one time code to sign in.");
                     case CheckPasswordResult.Success:
-                        return Redirect(ValidatedNextUrl(model.NextUrl));
+                        return await SignInAndRedirectAsync(SignInMethod.Password, model.Username, model.StaySignedIn, model.NextUrl, null);
                     case CheckPasswordResult.ServiceFailure:
                     default:
                         return ServerError("Hmm. Something went wrong. Please try again.");
@@ -218,16 +229,17 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
             }
         }
 
-        public async Task<ActionResponse> AuthenticateLongCodeAsync(string longCode, string deviceId, string clientNonce)
+        public async Task<ActionResponse> AuthenticateLongCodeAsync(string longCode)
         {
             if (longCode != null && longCode.Length < 36)
             {
-                var response = await _oneTimeCodeService.CheckOneTimeCodeAsync(longCode, deviceId, clientNonce);
+                var response = await _oneTimeCodeService.CheckOneTimeCodeAsync(longCode, _httpContext.Request.GetClientNonce());
                 switch (response.Result)
                 {
-                    case CheckOneTimeCodeResult.VerifiedOnAuthorizedDevice:
-                    case CheckOneTimeCodeResult.VerifiedOnNewDevice:
-                        return SaveDeviceIdAndRedirect(response);
+                    case CheckOneTimeCodeResult.VerifiedWithoutNonce:
+                    case CheckOneTimeCodeResult.VerifiedWithNonce:
+                        var nonceWasValid = response.Result == CheckOneTimeCodeResult.VerifiedWithNonce;
+                        return await SignInAndRedirectAsync(SignInMethod.Link, response.SentTo, null, response.RedirectUrl, nonceWasValid);
                     case CheckOneTimeCodeResult.Expired:
                         return Unauthenticated("The sign in link expired.");
                     case CheckOneTimeCodeResult.CodeIncorrect:
@@ -272,14 +284,89 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
             return ServerError("Hmm. Something went wrong. Please try again.");
         }
 
-        public async Task SignInUserAsync(HttpContext httpContext, string username, bool staySignedIn)
+        private ActionResponse ReturnAppropriateResponse(SendMessageResult sendMessageResult, string clientNonce, string successMessage)
         {
+            if (clientNonce != null)
+            {
+                _httpContext.Response.SetClientNonce(clientNonce);
+            }
+            if (sendMessageResult.MessageSent)
+            {
+                return Ok(successMessage);
+            }
+            else
+            {
+                return ServerError(sendMessageResult.ErrorMessageForEndUser);
+            }
+        }
+
+        private async Task<ActionResponse> SignInAndRedirectAsync(SignInMethod method, string username, bool? staySignedIn, string nextUrl, bool? nonceWasValid)
+        {
+            /*
+            Do they have a partial sign in, and this was the second credential (code + password) or (password + code) [= 2 of 3]
+                Yes, skip to SIGN IN
+            Is this an authorized device? [= 2 of 3]
+                Yes, skip to SIGN IN
+            Do they have NO authorized devices? [= new account or someone who deleted all authorized devices, 1 of 1|2]
+                Yes, skip to SIGN IN
+            Is 2FA enabled? (they have a password set and have chosen to require it when authorizing a new device)
+                Yes. Do partial sign in and prompt for the relevant second factor (automatically mailed code or password)
+            Used password to sign in? [= 1 of 2]
+                Yes, skip to SIGN IN
+            NonceWasValid [= 1 of 1|2]
+                No, back to  sign in screen [prevents someone who passively observing code in transit/storage from using it undetected]
+            (local) SIGN IN
+            Is this a new device?
+                Yes, redirect to AUTHORIZE NEW DEVICE
+            Is their account set to prompt them to choose a password
+                Yes, redirect to SET PASSWORD
+            Is their account set to prompt them to enable 2FA?
+                Yes, redirect to ENABLE 2FA
+            Has the application they are signing in to (if any) have required claims that have not been set?
+                Yes, redirect to COMPLETE PROFILE
+            Is their account set to prompt them to see/acknowledge any other screen?
+                Yes, redirect SOMEWHERE
+            FULL SIGN IN AND REDIRECT back to app (or to default post login page, apps page if none)
+
+            */
+            //do 2FA and figure out new device, etc here
+
             var user = await _userStore.GetUserByEmailAsync(username); //todo: support non-email addresses
+            if(user == null)
+            {
+                // this could only happen if an account was removed, but a method of signing in remained
+                return Unauthenticated("Account not found");
+            }
+
+            var deviceIsAuthorized = await _authorizedDeviceStore
+                .GetAuthorizedDeviceAsync(user.SubjectId, _httpContext.Request.GetDeviceId()) != null;
+
+            if(!deviceIsAuthorized)
+            {
+                var anyAuthorizedDevices = (await _authorizedDeviceStore.GetAuthorizedDevicesAsync(user.SubjectId))?.Any() ?? false;
+                if(anyAuthorizedDevices)
+                {
+                    // todo: if SecurityLevel == High OR first thing was a password, do a partial sign in and prompt for second thing
+
+                    if((method == SignInMethod.OneTimeCode || method == SignInMethod.Link) && nonceWasValid == false)
+                    {
+                        return Unauthenticated("Your one time code has expired. Please request a new one.");
+                    }
+                }
+            }
+
+            if (!deviceIsAuthorized && staySignedIn == true)
+            {
+                // todo: instead of auto approving a device when they check stay signed in, do a partial 
+                // login and redirect them to a screen where they can approve the new device
+                var description = _httpContext.Request.Headers["User-Agent"];
+                var deviceId = await AuthorizeDeviceAsync(user.SubjectId, description);
+            }
 
             await _events.RaiseAsync(new UserLoginSuccessEvent(user.Email, user.SubjectId, user.Email));
 
             var authProps = (AuthenticationProperties)null;
-            if (staySignedIn)
+            if (staySignedIn == true || (method == SignInMethod.Link && deviceIsAuthorized))
             {
                 authProps = new AuthenticationProperties
                 {
@@ -288,38 +375,34 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
                 };
             }
 
-            await httpContext.SignInAsync(user.SubjectId, user.Email, authProps);
+            await _httpContext.SignInAsync(user.SubjectId, user.Email, authProps);
+
+            return Redirect(ValidatedNextUrl(nextUrl));
         }
 
-        private ActionResponse ReturnAppropriateResponse(SendMessageResult sendMessageResult, string clientNonce, string successMessage)
+        public async Task<string> AuthorizeDeviceAsync(string subjectId, string deviceDescription = null)
         {
-            ActionResponse actionResponse;
-            if (sendMessageResult.MessageSent)
+            var deviceId = _httpContext.Request.GetDeviceId();
+            // todo: Review. Accepting an existing device id opens an attack vector for pre-installing
+            // cookies on a device or via a malicious browser extension. May want to have a per-user
+            // device id that is stored in a DeviceId_[UniqueUserSuffix] cookie
+            if (deviceId == null || !(new Regex(@"^[0-9]{10,30}$").IsMatch(deviceId)))
             {
-                actionResponse = Ok(successMessage);
-            }
-            else
-            {
-                actionResponse = ServerError(sendMessageResult.ErrorMessageForEndUser);
+                var rngProvider = new RNGCryptoServiceProvider();
+                var byteArray = new byte[8];
+
+                rngProvider.GetBytes(byteArray);
+                var deviceIdUInt = BitConverter.ToUInt64(byteArray, 0);
+                deviceId = deviceIdUInt.ToString();
             }
 
-            if (clientNonce != null)
-            {
-                actionResponse.Content = new SetClientNonceCommand() { ClientNonce = clientNonce };
-            }
-            return actionResponse;
+            var result = await _authorizedDeviceStore.AddAuthorizedDeviceAsync(subjectId, deviceId, deviceDescription);
+
+            _httpContext.Response.SetDeviceId(deviceId);
+
+            return deviceId;
         }
 
-        private ActionResponse SaveDeviceIdAndRedirect(CheckOneTimeCodeResponse response)
-        {
-            // Returning username via Message field (it is needed when validating a long code)
-            var actionResponse = new ActionResponse(response.SentTo, 301) { RedirectUrl = ValidatedNextUrl(response.RedirectUrl) };
-            if (response.Result == CheckOneTimeCodeResult.VerifiedOnNewDevice)
-            {
-                actionResponse.Content = new SetDeviceIdCommand();
-            }
-            return actionResponse;
-        }
 
         private string ValidatedNextUrl(string nextUrl)
         {
@@ -327,6 +410,7 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
             {
                 return nextUrl;
             }
+            // todo: get default redirect url from config
             return _urlHelper.Action("Apps", "Home");
         }
 

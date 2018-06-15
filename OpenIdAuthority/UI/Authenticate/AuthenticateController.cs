@@ -11,7 +11,6 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SimpleIAM.OpenIdAuthority.Orchestrators;
-using SimpleIAM.OpenIdAuthority.Services;
 using SimpleIAM.OpenIdAuthority.Services.OTC;
 using SimpleIAM.OpenIdAuthority.UI.Shared;
 
@@ -25,23 +24,19 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
         private readonly IOneTimeCodeService _oneTimeCodeService;
         private readonly IClientStore _clientStore;
         private readonly AuthenticateOrchestrator _authenticateOrchestrator;
-        private readonly IAuthorizedDeviceService _authorizedDeviceService;
 
         public AuthenticateController(
             AuthenticateOrchestrator authenticateOrchestrator,
             IIdentityServerInteractionService interaction,
             IEventService events,
             IOneTimeCodeService oneTimeCodeService,
-            IClientStore clientStore,
-            IAuthorizedDeviceService authorizedDeviceService
-            )
+            IClientStore clientStore)
         {
             _authenticateOrchestrator = authenticateOrchestrator;
             _interaction = interaction;
             _events = events;
             _oneTimeCodeService = oneTimeCodeService;
             _clientStore = clientStore;
-            _authorizedDeviceService = authorizedDeviceService;
         }
 
         [HttpGet("register")]
@@ -66,7 +61,7 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
                 else
                 {
                     var response = await _authenticateOrchestrator.RegisterAsync(model);
-                    SetNonceAndMessage(response);
+                    ViewBag.Message = response.Message;
                 }
             }
             return View(model);
@@ -88,7 +83,7 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
             else if (ModelState.IsValid)
             {
                 var response = await _authenticateOrchestrator.SendPasswordResetMessageAsync(model);
-                SetNonceAndMessage(response);
+                ViewBag.Message = response.Message;
             }
             return View(model);
         }
@@ -125,20 +120,13 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
                     NextUrl = model.NextUrl
                 };
                 var response = await _authenticateOrchestrator.SendOneTimeCodeAsync(input);
-                SetNonceAndMessage(response);
+                ViewBag.Message = response.Message;
             }
             else if (ModelState.IsValid)
             {
-                var response = await _authenticateOrchestrator.AuthenticateAsync(model, Request.GetDeviceId(), Request.GetClientNonce());
+                var response = await _authenticateOrchestrator.AuthenticateAsync(model);
                 if (response.StatusCode == 301)
                 {
-                    // todo: consider allowing the user to choose whether to authorize the device or not and 
-                    // the ability to set a custom device description
-                    if (response.Content is SetDeviceIdCommand && model.StaySignedIn)
-                    {
-                        await RegisterNewDevice(model.Username);
-                    }
-                    await _authenticateOrchestrator.SignInUserAsync(HttpContext, model.Username, model.StaySignedIn);
                     return Redirect(response.RedirectUrl);
                 }
                 ViewBag.Message = response.Message;
@@ -149,17 +137,10 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
         [HttpGet("signin/{longCode}")]
         public async Task<ActionResult> SignInLink(string longCode)
         {
-            var response = await _authenticateOrchestrator.AuthenticateLongCodeAsync(longCode, Request.GetDeviceId(), Request.GetClientNonce());
+            var response = await _authenticateOrchestrator.AuthenticateLongCodeAsync(longCode);
             switch (response.StatusCode)
             {
                 case 301:
-                    var username = response.Message;
-                    if (response.Content is SetDeviceIdCommand)
-                    {
-                        // fyi: there is no way to determine if this is indeed a trusted device without prompting the user
-                        await RegisterNewDevice(username);
-                    }
-                    await _authenticateOrchestrator.SignInUserAsync(HttpContext, username, false);
                     return Redirect(response.RedirectUrl);
                 case 404:
                     return NotFound();
@@ -190,25 +171,6 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
             };
 
             return View("SignedOut", viewModel);
-        }
-
-        private void SetNonceAndMessage(ActionResponse response)
-        {
-            if (response.Content is SetClientNonceCommand)
-            {
-                Response.SetClientNonce((response.Content as SetClientNonceCommand).ClientNonce);
-            }
-            ViewBag.Message = response.Message;
-        }
-
-        private async Task RegisterNewDevice(string username, string description = null)
-        {
-            description = description ?? Request.Headers["User-Agent"];
-            var deviceId = await _authorizedDeviceService.AuthorizeDevice(username, Request.GetDeviceId(), description);
-            if (deviceId != null)
-            {
-                Response.SetDeviceId(deviceId);
-            }
         }
     }
 }
