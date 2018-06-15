@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Ryan Foster. All rights reserved. 
 // Licensed under the Apache License, Version 2.0.
 
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -10,11 +11,13 @@ namespace SimpleIAM.OpenIdAuthority.Services.Email
 {
     public class EmailTemplateService : IEmailTemplateService
     {
-        private IEmailService _emailService;
-        private EmailTemplates _templates;
+        private readonly ILogger _logger;
+        private readonly IEmailService _emailService;
+        private readonly EmailTemplates _templates;
 
-        public EmailTemplateService(IEmailService emailService, EmailTemplates templates)
+        public EmailTemplateService(ILogger<EmailTemplateService> logger, IEmailService emailService, EmailTemplates templates)
         {
+            _logger = logger;
             _templates = templates;
             _emailService = emailService;
         }
@@ -23,6 +26,7 @@ namespace SimpleIAM.OpenIdAuthority.Services.Email
         {
             if (_templates.TryGetValue(templateName, out EmailTemplate template))
             {
+                _logger.LogDebug("Merging data into email template: ", template);
                 var from = new StringBuilder(template.From);
                 var subject = new StringBuilder(template.Subject);
                 var body = new StringBuilder(template.Body);
@@ -36,6 +40,7 @@ namespace SimpleIAM.OpenIdAuthority.Services.Email
             }
             else
             {
+                _logger.LogError("Email template not found: ", template);
                 throw new Exception($"Email template '{templateName}' not found"); //todo: create new exception type
             }
         }

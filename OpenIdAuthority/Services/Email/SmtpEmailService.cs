@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 using MailKit.Net.Smtp;
+using Microsoft.Extensions.Logging;
 using MimeKit;
 using MimeKit.Text;
 using SimpleIAM.OpenIdAuthority.Configuration;
@@ -12,15 +13,18 @@ namespace SimpleIAM.OpenIdAuthority.Services.Email
 {
     public class SmtpEmailService : IEmailService
     {
-        private SmtpConfig _smtpConfig;
+        private readonly ILogger _logger;
+        private readonly SmtpConfig _smtpConfig;
 
-        public SmtpEmailService(SmtpConfig smtpConfig)
+        public SmtpEmailService(ILogger<SmtpEmailService> logger, SmtpConfig smtpConfig)
         {
+            _logger = logger;
             _smtpConfig = smtpConfig;
         }
 
         public async Task<SendMessageResult> SendEmailAsync(string from, string to, string subject, string body)
         {
+            _logger.LogDebug("Sending email to {0} with subject {1}", to, subject);
             var message = new MimeMessage()
             {                
                 Subject = subject
@@ -29,6 +33,7 @@ namespace SimpleIAM.OpenIdAuthority.Services.Email
             message.To.Add(MailboxAddress.Parse(to));
             if (body?.Contains("</") == true || body?.Contains("/>") == true)
             {
+                _logger.LogTrace("Body of message is html");
                 message.Body = new TextPart(TextFormat.Html)
                 {
                     Text = body
@@ -36,6 +41,7 @@ namespace SimpleIAM.OpenIdAuthority.Services.Email
             }
             else
             {
+                _logger.LogTrace("Body of message is plain text");
                 message.Body = new TextPart(TextFormat.Plain)
                 {
                     Text = body
@@ -46,18 +52,21 @@ namespace SimpleIAM.OpenIdAuthority.Services.Email
             {
                 try
                 {
+                    _logger.LogDebug("Connecting to {0}:{1} ({2})", _smtpConfig.Server, _smtpConfig.Port, _smtpConfig.UseSsl ? "ssl" : "not ssl");
                     await client.ConnectAsync(_smtpConfig.Server, _smtpConfig.Port, _smtpConfig.UseSsl);
+                    _logger.LogDebug("Authenticating with SMTP server");
                     await client.AuthenticateAsync(_smtpConfig.Username, _smtpConfig.Password);
+                    _logger.LogDebug("Sending message");
                     await client.SendAsync(message);
                 }
                 catch (Exception ex) when (ItIsANetworkError(ex))
                 {
-                    //todo: log warning
+                    _logger.LogError("Network error. Failed to send message. Exception: {0}", ex.ToString());
                     return SendMessageResult.Failed("Failed to send email. Please try again.");
                 }
-                catch (Exception ex) when (ItIsANetworkError(ex))
+                catch (Exception ex)
                 {
-                    //todo: log error
+                    _logger.LogError("Failed to send message. Exception: {0}", ex.ToString());
                     return SendMessageResult.Failed("Failed to send email");
                 }
                 finally

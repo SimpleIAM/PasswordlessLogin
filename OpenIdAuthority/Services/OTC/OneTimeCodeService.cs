@@ -4,6 +4,7 @@
 using System;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using SimpleIAM.OpenIdAuthority.Models;
 using SimpleIAM.OpenIdAuthority.Services.Message;
 using SimpleIAM.OpenIdAuthority.Stores;
@@ -13,22 +14,28 @@ namespace SimpleIAM.OpenIdAuthority.Services.OTC
 {
     public class OneTimeCodeService : IOneTimeCodeService
     {
+        private readonly ILogger _logger;
         private readonly IOneTimeCodeStore _oneTimeCodeStore;
         private readonly IMessageService _messageService;
 
         public OneTimeCodeService(
+            ILogger<OneTimeCodeService> logger,
             IOneTimeCodeStore oneTimeCodeStore,
             IMessageService messageService
             )
         {
+            _logger = logger;
             _oneTimeCodeStore = oneTimeCodeStore;
             _messageService = messageService;
         }
 
         public async Task<CheckOneTimeCodeResponse> CheckOneTimeCodeAsync(string longCode, string clientNonce)
         {
+            _logger.LogTrace("Checking long code");
+
             if(string.IsNullOrEmpty(longCode) || longCode.Length > 36 )
             {
+                _logger.LogError("The long code provided had an invalid format");
                 return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.CodeIncorrect);
             }
 
@@ -40,13 +47,16 @@ namespace SimpleIAM.OpenIdAuthority.Services.OTC
             }
             if(otc.ExpiresUTC < DateTime.UtcNow)
             {
+                _logger.LogDebug("The one time code has expired");
                 return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.Expired);
             }
-            return await ValidateNonceAsync(otc, clientNonce);
+            return await ExpireTokenAndValidateNonceAsync(otc, clientNonce);
         }
 
         public async Task<CheckOneTimeCodeResponse> CheckOneTimeCodeAsync(string sentTo, string shortCode, string clientNonce)
         {
+            _logger.LogTrace("Checking short code");
+
             var otc = await _oneTimeCodeStore.GetOneTimeCodeAsync(sentTo);
             if (otc == null)
             {
@@ -54,6 +64,7 @@ namespace SimpleIAM.OpenIdAuthority.Services.OTC
             }
             if (otc.ExpiresUTC < DateTime.UtcNow)
             {
+                _logger.LogDebug("The one time code has expired");
                 return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.Expired);
             }
 
@@ -63,27 +74,39 @@ namespace SimpleIAM.OpenIdAuthority.Services.OTC
                 {
                     // maximum of 3 attempts during code validity period to prevent guessing attacks
                     // long code remains valid, preventing account lockout attacks (and giving a fumbling but valid user another way in)
+                    _logger.LogDebug("The one time code is locked (too many failed attempts to use it)");
                     return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.ShortCodeLocked); 
                 }
                 if (shortCode == otc.ShortCode)
                 {
-                    return await ValidateNonceAsync(otc, clientNonce);
+                    _logger.LogDebug("The one time code matches");
+                    return await ExpireTokenAndValidateNonceAsync(otc, clientNonce);
                 }
             }
+            else
+            {
+                _logger.LogDebug("The one time code was missing or too long");
+            }
 
+            _logger.LogDebug("Updating failure count for one time code");
             await _oneTimeCodeStore.UpdateOneTimeCodeFailureAsync(sentTo, otc.FailedAttemptCount + 1);
             return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.CodeIncorrect);
         }
 
-        private async Task<CheckOneTimeCodeResponse> ValidateNonceAsync(OneTimeCode otc, string clientNonce)
+        private async Task<CheckOneTimeCodeResponse> ExpireTokenAndValidateNonceAsync(OneTimeCode otc, string clientNonce)
         {
+            _logger.LogTrace("Validating nonce");
+
+            _logger.LogDebug("Expiring the token so it cannot be used again and so a new token can be generated");
             await _oneTimeCodeStore.ExpireOneTimeCodeAsync(otc.SentTo);
 
             if (FastHashService.ValidateHash(otc.ClientNonceHash, clientNonce, otc.SentTo))
             {
+                _logger.LogDebug("Client nonce was valid");
                 return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.VerifiedWithNonce, otc.SentTo, otc.RedirectUrl);
             }
 
+            _logger.LogDebug("Client nonce was missing or invalid");
             return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.VerifiedWithoutNonce, otc.SentTo, otc.RedirectUrl);
         }
 
@@ -93,14 +116,20 @@ namespace SimpleIAM.OpenIdAuthority.Services.OTC
 
             if (otc != null && otc.ExpiresUTC > DateTime.UtcNow.AddMinutes(2) && otc.ExpiresUTC < DateTime.UtcNow.AddMinutes(10))
             {
+                _logger.LogDebug("A once time code exists that has enough time left to use");
                 // existing code has 2-10 minutes of validity remaining, so resend it
                 // if less than 2 minutes, user might not have time to use it
                 // if more than 10 minutes (e.g. first code sent to new user), user could lock the code and be locked out for a long time
                 if (otc.SentCount >= 4)
                 {
+                    _logger.LogDebug("The existing one time code has been sent too many times");
                     return new GetOneTimeCodeResponse(GetOneTimeCodeResult.TooManyRequests);
                 }
+
+                _logger.LogDebug("Updating the record of how many times the code has been sent");
                 await _oneTimeCodeStore.UpdateOneTimeCodeSentCountAsync(sendTo, otc.SentCount + 1, redirectUrl);
+
+                _logger.LogDebug("Returning the still valid code without a client nonce, which can only be delivered once.");
                 return new GetOneTimeCodeResponse(GetOneTimeCodeResult.Success)
                 {
                     ClientNonce = null, // only given out when code is first generated
@@ -109,6 +138,7 @@ namespace SimpleIAM.OpenIdAuthority.Services.OTC
                 };
             }
 
+            _logger.LogDebug("Generating a new one time code, link, and client nonce.");
             var rngProvider = new RNGCryptoServiceProvider();
             var byteArray = new byte[8];
 
@@ -138,6 +168,7 @@ namespace SimpleIAM.OpenIdAuthority.Services.OTC
             var codeSaved = await _oneTimeCodeStore.AddOneTimeCodeAsync(otc);
             if (!codeSaved)
             {
+                _logger.LogError("Failed to store the code.");
                 return new GetOneTimeCodeResponse(GetOneTimeCodeResult.ServiceFailure);
             }
 

@@ -12,6 +12,7 @@ using IdentityServer4.Stores;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using SimpleIAM.OpenIdAuthority.Configuration;
 using SimpleIAM.OpenIdAuthority.Models;
 using SimpleIAM.OpenIdAuthority.Services;
@@ -30,6 +31,7 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
             OneTimeCode,
             Link
         }
+        private readonly ILogger _logger;
         private readonly IOneTimeCodeService _oneTimeCodeService;
         private readonly IMessageService _messageService;
         private readonly IUserStore _userStore;
@@ -44,6 +46,7 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
 
 
         public AuthenticateOrchestrator(
+            ILogger<AuthenticateOrchestrator> logger,
             IOneTimeCodeService oneTimeCodeService,
             IMessageService messageService,
             IUserStore userStore,
@@ -56,6 +59,7 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
             IHttpContextAccessor httpContextAccessor,
             IAuthorizedDeviceStore authorizedDeviceStore)
         {
+            _logger = logger;
             _oneTimeCodeService = oneTimeCodeService;
             _userStore = userStore;
             _messageService = messageService;
@@ -71,6 +75,8 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
 
         public async Task<ActionResponse> RegisterAsync(RegisterInputModel model)
         {
+            _logger.LogDebug("Begin registration for {0}", model.Email);
+
             if (!await ApplicationIdIsNullOrValidAsync(model.ApplicationId))
             {
                 return BadRequest("Invalid application id");
@@ -80,6 +86,7 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
             var existingUser = await _userStore.GetUserByEmailAsync(model.Email);
             if (existingUser == null)
             {
+                _logger.LogDebug("Email address not used by an existing user. Creating a new user.");
                 var newUser = new User()
                 {
                     Email = model.Email,
@@ -90,6 +97,7 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
             }
             else
             {
+                _logger.LogDebug("Existing user found.");
                 linkValidity = TimeSpan.FromMinutes(5);
                 //may want allow admins to configure a different email to send to existing users. However, it could be that the user
                 // exists but just never got a welcome email?
@@ -98,6 +106,7 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
             var nextUrl = !string.IsNullOrEmpty(model.NextUrl) ? model.NextUrl : _urlHelper.Action("Apps", "Home");
             if (model.InviteToSetPasword)
             {
+                _logger.LogTrace("The user will be asked to set their password after confirming the account.");
                 nextUrl = SendToSetPasswordFirst(nextUrl);
             }
 
@@ -117,6 +126,8 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
 
         public async Task<ActionResponse> SendOneTimeCodeAsync(SendCodeInputModel model)
         {
+            _logger.LogDebug("Begin send one time code for {0}", model.Username);
+
             if (!await ApplicationIdIsNullOrValidAsync(model.ApplicationId))
             {
                 return BadRequest("Invalid application id");
@@ -130,6 +141,7 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
                 var user = await _userStore.GetUserByEmailAsync(model.Username);
                 if (user != null)
                 {
+                    _logger.LogDebug("User found");
                     var oneTimeCodeResponse = await _oneTimeCodeService.GetOneTimeCodeAsync(model.Username, TimeSpan.FromMinutes(5), model.NextUrl);
                     switch (oneTimeCodeResponse.Result)
                     {
@@ -145,6 +157,7 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
                 }
                 else
                 {
+                    _logger.LogDebug("User not found");
                     // if valid email or phone number, send a message inviting them to register
                     var result = await _messageService.SendAccountNotFoundMessageAsync(model.ApplicationId, model.Username);
                     if (!result.MessageSent)
@@ -156,15 +169,19 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
             }
             else
             {
+                _logger.LogError("{0} is not a valid email address", model.Username);
                 return BadRequest("Please enter a valid email address");
             }
         }
 
         public async Task<ActionResponse> AuthenticateAsync(AuthenticatePasswordInputModel model)
         {
+            _logger.LogDebug("Begin authentication for {0}", model.Username);
+
             var oneTimeCode = model.Password.Replace(" ", "");
             if (oneTimeCode.Length == 6 && oneTimeCode.All(Char.IsDigit))
             {
+                _logger.LogDebug("Password was a six-digit number");
                 var input = new AuthenticateInputModel()
                 {
                     Username = model.Username,
@@ -175,12 +192,15 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
             }
             else
             {
+                _logger.LogDebug("Password was not a six-digit number");
                 return await AuthenticatePasswordAsync(model);
             }
         }
 
         public async Task<ActionResponse> AuthenticateCodeAsync(AuthenticateInputModel model)
         {
+            _logger.LogDebug("Begin one time code authentication for {0}", model.Username);
+
             model.OneTimeCode = model.OneTimeCode.Replace(" ", "");
             var response = await _oneTimeCodeService.CheckOneTimeCodeAsync(model.Username, model.OneTimeCode, _httpContext.Request.GetClientNonce());
             switch (response.Result)
@@ -204,10 +224,12 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
 
         public async Task<ActionResponse> AuthenticatePasswordAsync(AuthenticatePasswordInputModel model)
         {
-            // todo: if device is not authorized need to do a partial login and send a code by email
+            _logger.LogDebug("Begin password authentication for {0}", model.Username);
+
             var user = await _userStore.GetUserByEmailAsync(model.Username); //todo: handle non-email addresses
             if (user == null)
             {
+                _logger.LogDebug("User not found: {0}", model.Username);
                 return Unauthenticated("The email address or password wasn't right");
             }
             else
@@ -231,30 +253,31 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
 
         public async Task<ActionResponse> AuthenticateLongCodeAsync(string longCode)
         {
-            if (longCode != null && longCode.Length < 36)
+            _logger.LogDebug("Begin long code (one time link) authentication");
+
+            var response = await _oneTimeCodeService.CheckOneTimeCodeAsync(longCode, _httpContext.Request.GetClientNonce());
+            switch (response.Result)
             {
-                var response = await _oneTimeCodeService.CheckOneTimeCodeAsync(longCode, _httpContext.Request.GetClientNonce());
-                switch (response.Result)
-                {
-                    case CheckOneTimeCodeResult.VerifiedWithoutNonce:
-                    case CheckOneTimeCodeResult.VerifiedWithNonce:
-                        var nonceWasValid = response.Result == CheckOneTimeCodeResult.VerifiedWithNonce;
-                        return await SignInAndRedirectAsync(SignInMethod.Link, response.SentTo, null, response.RedirectUrl, nonceWasValid);
-                    case CheckOneTimeCodeResult.Expired:
-                        return Unauthenticated("The sign in link expired.");
-                    case CheckOneTimeCodeResult.CodeIncorrect:
-                    case CheckOneTimeCodeResult.NotFound:
-                        return Unauthenticated("The sign in link is invalid.");
-                    case CheckOneTimeCodeResult.ServiceFailure:
-                    default:
-                        return ServerError("Something went wrong.");
-                }
+                case CheckOneTimeCodeResult.VerifiedWithoutNonce:
+                case CheckOneTimeCodeResult.VerifiedWithNonce:
+                    var nonceWasValid = response.Result == CheckOneTimeCodeResult.VerifiedWithNonce;
+                    return await SignInAndRedirectAsync(SignInMethod.Link, response.SentTo, null, response.RedirectUrl, nonceWasValid);
+                case CheckOneTimeCodeResult.Expired:
+                    return Unauthenticated("The sign in link expired.");
+                case CheckOneTimeCodeResult.CodeIncorrect:
+                    return NotFound();
+                case CheckOneTimeCodeResult.NotFound:
+                    return Unauthenticated("The sign in link is invalid.");
+                case CheckOneTimeCodeResult.ServiceFailure:
+                default:
+                    return ServerError("Something went wrong.");
             }
-            return NotFound();
         }
 
         public async Task<ActionResponse> SendPasswordResetMessageAsync(SendPasswordResetMessageInputModel model)
         {
+            _logger.LogDebug("Begin send password reset message for {0}", model.Username);
+
             if (!await ApplicationIdIsNullOrValidAsync(model.ApplicationId))
             {
                 return BadRequest("Invalid application id");
@@ -263,6 +286,7 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
             var user = await _userStore.GetUserByEmailAsync(model.Username); //todo: support non-email addresses
             if (user == null)
             {
+                _logger.LogInformation("User not found: {0}", model.Username);
                 // if valid email or phone number, send a message inviting them to register
                 if (model.Username.Contains("@"))
                 {
@@ -271,6 +295,10 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
                     {
                         return ServerError(result.ErrorMessageForEndUser);
                     }
+                }
+                else
+                {
+                    _logger.LogInformation("Account not found message was not sent because provided username is not an email address: {0}", model.Username);
                 }
                 return Ok("Check your email for password reset instructions.");
             }
@@ -281,6 +309,7 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
                 var result = await _messageService.SendPasswordResetMessageAsync(model.ApplicationId, model.Username, oneTimeCodeResponse.ShortCode, oneTimeCodeResponse.LongCode);
                 return ReturnAppropriateResponse(result, oneTimeCodeResponse.ClientNonce, "Check your email for password reset instructions.");
             }
+            _logger.LogError("Password reset message was not be sent due to error encountered while generating a one time link");
             return ServerError("Hmm. Something went wrong. Please try again.");
         }
 
@@ -288,6 +317,7 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
         {
             if (clientNonce != null)
             {
+                _logger.LogDebug("Saving client nonce in a browser cookie");
                 _httpContext.Response.SetClientNonce(clientNonce);
             }
             if (sendMessageResult.MessageSent)
@@ -296,12 +326,14 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
             }
             else
             {
+                _logger.LogDebug("Returning error message to user: {0}", sendMessageResult.ErrorMessageForEndUser);
                 return ServerError(sendMessageResult.ErrorMessageForEndUser);
             }
         }
 
         private async Task<ActionResponse> SignInAndRedirectAsync(SignInMethod method, string username, bool? staySignedIn, string nextUrl, bool? nonceWasValid)
         {
+            _logger.LogTrace("Begining sign in and redirect logic for {0}", username);
             /*
             Do they have a partial sign in, and this was the second credential (code + password) or (password + code) [= 2 of 3]
                 Yes, skip to SIGN IN
@@ -335,6 +367,7 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
             if(user == null)
             {
                 // this could only happen if an account was removed, but a method of signing in remained
+                _logger.LogError("Strangely, there is no account for {0} anymore", username);
                 return Unauthenticated("Account not found");
             }
 
@@ -343,15 +376,23 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
 
             if(!deviceIsAuthorized)
             {
+                _logger.LogDebug("Device user is signing in from is not authorized");
                 var anyAuthorizedDevices = (await _authorizedDeviceStore.GetAuthorizedDevicesAsync(user.SubjectId))?.Any() ?? false;
                 if(anyAuthorizedDevices)
                 {
+                    _logger.LogDebug("User does have other devices that are authorized");
                     // todo: if SecurityLevel == High OR first thing was a password, do a partial sign in and prompt for second thing
 
-                    if((method == SignInMethod.OneTimeCode || method == SignInMethod.Link) && nonceWasValid == false)
+                    if ((method == SignInMethod.OneTimeCode || method == SignInMethod.Link) && nonceWasValid == false)
                     {
+                        _logger.LogWarning("Client nonce was missing or invalid. Perhaps the one time code has " +
+                            "been intercepted and an unathorized party is trying to user it. Authentication blocked.");
                         return Unauthenticated("Your one time code has expired. Please request a new one.");
                     }
+                }
+                else
+                {
+                    _logger.LogDebug("User does not have any devices that are authorized");
                 }
             }
 
@@ -368,20 +409,30 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
             var authProps = (AuthenticationProperties)null;
             if (staySignedIn == true || (method == SignInMethod.Link && deviceIsAuthorized))
             {
+                _logger.LogTrace("Using maximum session length of {0} minutes", _config.MaxSessionLengthMinutes);
                 authProps = new AuthenticationProperties
                 {
                     IsPersistent = true,
                     ExpiresUtc = DateTimeOffset.UtcNow.Add(TimeSpan.FromMinutes(_config.MaxSessionLengthMinutes))
                 };
             }
+            else
+            {
+                _logger.LogTrace("Using default session length of {0} minutes", _config.DefaultSessionLengthMinutes);
+            }
 
+            _logger.LogDebug("Signing user in: {0}", user.Email);
+            _logger.LogTrace("SubjectId: {0}", user.SubjectId);
             await _httpContext.SignInAsync(user.SubjectId, user.Email, authProps);
 
-            return Redirect(ValidatedNextUrl(nextUrl));
+            nextUrl = ValidatedNextUrl(nextUrl);
+            _logger.LogDebug("Redirecting user to: {0}", nextUrl);
+            return Redirect(nextUrl);
         }
 
         public async Task<string> AuthorizeDeviceAsync(string subjectId, string deviceDescription = null)
         {
+            _logger.LogDebug("Registering current device as a trusted device");
             var deviceId = _httpContext.Request.GetDeviceId();
             // todo: Review. Accepting an existing device id opens an attack vector for pre-installing
             // cookies on a device or via a malicious browser extension. May want to have a per-user
@@ -410,6 +461,7 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
             {
                 return nextUrl;
             }
+            _logger.LogWarning("Next url was not valid: '{0}'. Using default redirect url instead.", nextUrl);
             // todo: get default redirect url from config
             return _urlHelper.Action("Apps", "Home");
         }
@@ -427,7 +479,12 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
                 return true;
             }
             var app = await _clientStore.FindEnabledClientByIdAsync(applicationId);
-            return app != null;
+            if (app == null)
+            {
+                _logger.LogError("Invalid application id '{0}'", applicationId);
+                return false;
+            }
+            return true;
         }
     }
 }

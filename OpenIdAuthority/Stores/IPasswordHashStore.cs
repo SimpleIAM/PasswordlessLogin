@@ -12,7 +12,7 @@ namespace SimpleIAM.OpenIdAuthority.Stores
         Task<PasswordHash> GetPasswordHashAsync(string uniqueIdentifier);
         Task<bool> AddPasswordHashAsync(string uniqueIdentifier, string hash);
         Task<bool> UpdatePasswordHashAsync(string uniqueIdentifier, string newHash);
-        Task<bool> UpdatePasswordHashFailureAsync(string uniqueIdentifier, int failureCount);
+        Task<bool> UpdatePasswordHashFailureCountAsync(string uniqueIdentifier, int failureCount);
         Task<bool> TempLockPasswordHashAsync(string uniqueIdentifier, DateTime lockUntil);
         Task<bool> RemovePasswordHashAsync(string uniqueIdentifier);
     }

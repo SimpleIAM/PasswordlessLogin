@@ -4,6 +4,7 @@
 using IdentityServer4.Extensions;
 using IdentityServer4.Models;
 using IdentityServer4.Services;
+using Microsoft.Extensions.Logging;
 using SimpleIAM.OpenIdAuthority.Stores;
 using System.Linq;
 using System.Security.Claims;
@@ -13,15 +14,19 @@ namespace SimpleIAM.OpenIdAuthority.Services
 {
     public class ProfileService : IProfileService
     {
+        private readonly ILogger _logger;
         private readonly IUserStore _userStore;
 
-        public ProfileService(IUserStore userStore)
+        public ProfileService(ILogger<ProfileService> logger, IUserStore userStore)
         {
+            _logger = logger;
             _userStore = userStore;
         }
 
         public async Task GetProfileDataAsync(ProfileDataRequestContext context)
         {
+            _logger.LogTrace("Getting profile data");
+
             var sub = context.Subject.GetSubjectId();
             if(context.RequestedClaimTypes.Any())
             {
@@ -36,6 +41,8 @@ namespace SimpleIAM.OpenIdAuthority.Services
                     {
                         claims.Add(new Claim("name", user.Email));
                     }
+
+                    _logger.LogTrace("Returning requested claims");
                     context.AddRequestedClaims(claims);
                 }
             }

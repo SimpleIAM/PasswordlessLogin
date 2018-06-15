@@ -4,6 +4,7 @@
 using System.Threading.Tasks;
 using IdentityServer4.Extensions;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using SimpleIAM.OpenIdAuthority.Services.Password;
 using SimpleIAM.OpenIdAuthority.Stores;
 
@@ -11,16 +12,19 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
 {
     public class UserOrchestrator : ActionResponder
     {
+        private readonly ILogger _logger;
         private readonly HttpContext _httpContext;
         private readonly IUserStore _userStore;
         private readonly IPasswordService _passwordService;
 
         public UserOrchestrator(
+            ILogger<UserOrchestrator> logger,
             IHttpContextAccessor httpContextAccessor,
             IUserStore userStore,
             IPasswordService passwordService
             )
         {
+            _logger = logger;
             _httpContext = httpContextAccessor.HttpContext;
             _userStore = userStore;
             _passwordService = passwordService;
@@ -28,8 +32,11 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
 
         public async Task<ActionResponse> GetUserAsync(string subjectId)
         {
-            if(!OperatingOnSelf(subjectId))
+            _logger.LogTrace("Get user {0}", subjectId);
+
+            if (!OperatingOnSelf(subjectId))
             {
+                _logger.LogWarning("Permission denied trying to get user {0}", subjectId);
                 return PermissionDenied();
             }
             var user = await _userStore.GetUserAsync(subjectId, true);
@@ -42,8 +49,11 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
 
         public async Task<ActionResponse> PatchUserAsync(PatchUserModel model)
         {
+            _logger.LogTrace("Patch user {0}", model.SubjectId);
+
             if (!OperatingOnSelf(model.SubjectId))
             {
+                _logger.LogWarning("Permission denied trying to patch user {0}", model.SubjectId);
                 return PermissionDenied();
             }
             var user = await _userStore.GetUserAsync(model.SubjectId, true);

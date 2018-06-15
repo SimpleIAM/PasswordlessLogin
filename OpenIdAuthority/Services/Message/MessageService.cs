@@ -4,6 +4,7 @@
 using IdentityServer4.Stores;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using SimpleIAM.OpenIdAuthority.Configuration;
 using SimpleIAM.OpenIdAuthority.Services.Email;
 using System.Collections.Generic;
@@ -13,6 +14,7 @@ namespace SimpleIAM.OpenIdAuthority.Services.Message
 {
     public class MessageService : IMessageService
     {
+        private readonly ILogger _logger;
         private readonly IEmailTemplateService _emailTemplateService;
         private readonly IUrlHelper _urlHelper;
         private readonly IHttpContextAccessor _httpContext;
@@ -20,6 +22,7 @@ namespace SimpleIAM.OpenIdAuthority.Services.Message
         private readonly IClientStore _clientStore;
 
         public MessageService(
+            ILogger<MessageService> logger,
             IEmailTemplateService emailTemplateService,
             IUrlHelper urlHelper,
             IHttpContextAccessor httpContext,
@@ -27,6 +30,7 @@ namespace SimpleIAM.OpenIdAuthority.Services.Message
             IClientStore clientStore
             )
         {
+            _logger = logger;
             _emailTemplateService = emailTemplateService;
             _urlHelper = urlHelper;
             _httpContext = httpContext;
@@ -36,6 +40,7 @@ namespace SimpleIAM.OpenIdAuthority.Services.Message
 
         public async Task<SendMessageResult> SendAccountNotFoundMessageAsync(string applicationId, string sendTo)
         {
+            _logger.LogDebug("Sending account not found message");
             if (!IsValidEmailAddress(sendTo)) {
                 return NotAnEmailAddress();
             }
@@ -48,11 +53,13 @@ namespace SimpleIAM.OpenIdAuthority.Services.Message
 
         public async Task<SendMessageResult> SendOneTimeCodeMessageAsync(string applicationId, string sendTo, string oneTimeCode)
         {
+            _logger.LogDebug("Sending one time code message");
             return await SendOneTimeCodeMessageInternalAsync("OneTimeCode", applicationId, sendTo, oneTimeCode, "");
         }
 
         public async Task<SendMessageResult> SendOneTimeCodeAndLinkMessageAsync(string applicationId, string sendTo, string oneTimeCode, string longCode)
         {
+            _logger.LogDebug("Sending one time code and link message");
             return await SendOneTimeCodeMessageInternalAsync("SignInWithEmail", applicationId, sendTo, oneTimeCode, longCode);
         }
 
@@ -82,6 +89,7 @@ namespace SimpleIAM.OpenIdAuthority.Services.Message
 
         public async Task<SendMessageResult> SendWelcomeMessageAsync(string applicationId, string sendTo, string oneTimeCode, string longCode, IDictionary<string, string> userFields)
         {
+            _logger.LogDebug("Sending welcome message");
             if (!IsValidEmailAddress(sendTo))
             {
                 return NotAnEmailAddress();
@@ -109,6 +117,7 @@ namespace SimpleIAM.OpenIdAuthority.Services.Message
 
         public async Task<SendMessageResult> SendPasswordResetMessageAsync(string applicationId, string sendTo, string oneTimeCode, string longCode)
         {
+            _logger.LogDebug("Sending password reset message");
             if (!IsValidEmailAddress(sendTo))
             {
                 return NotAnEmailAddress();
