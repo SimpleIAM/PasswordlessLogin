@@ -35,46 +35,53 @@ namespace Microsoft.AspNetCore.Builder
                 });
             }
 
-            // Security
-            app.UseXContentTypeOptions();
-            app.UseReferrerPolicy(opts => opts.SameOrigin());
-            app.UseXXssProtection(options => options.EnabledWithBlockMode());
-            app.UseXfo(options => options.Deny());
+            if (!hostingConfig.SkipContentSecuritySetup)
+            {
+                // Security
+                app.UseXContentTypeOptions();
+                app.UseReferrerPolicy(opts => opts.SameOrigin());
+                app.UseXXssProtection(options => options.EnabledWithBlockMode());
+                app.UseXfo(options => options.Deny());
 
-            app.UseCsp(opts => opts
-                .BlockAllMixedContent()
-                .DefaultSources(s => s.Self())
-                .ScriptSources(s => {
-                    s.Self();
-                    var scriptSrcs = (hostingConfig.Csp.ScriptSources ?? new string[] { }).ToList();
-                    scriptSrcs.Add("sha256-VuNUSJ59bpCpw62HM2JG/hCyGiqoPN3NqGvNXQPU+rY=");
-                    s.CustomSources(scriptSrcs.ToArray());
-                })
-                .StyleSources(s => {
-                    s.Self();
-                    s.UnsafeInline();
-                    if (hostingConfig.Csp.StyleSources != null)
+                app.UseCsp(opts => opts
+                    .BlockAllMixedContent()
+                    .DefaultSources(s => s.Self())
+                    .ScriptSources(s =>
                     {
-                        s.CustomSources(hostingConfig.Csp.StyleSources);
-                    }
-                })
-                .FontSources(s => {
-                    s.Self();
-                    if (hostingConfig.Csp.FontSources != null)
+                        s.Self();
+                        var scriptSrcs = (hostingConfig.Csp.ScriptSources ?? new string[] { }).ToList();
+                        scriptSrcs.Add("sha256-VuNUSJ59bpCpw62HM2JG/hCyGiqoPN3NqGvNXQPU+rY=");
+                        s.CustomSources(scriptSrcs.ToArray());
+                    })
+                    .StyleSources(s =>
                     {
-                        s.CustomSources(hostingConfig.Csp.FontSources);
-                    }
-                })
-                .ImageSources(s => {
-                    s.Self();
-                    if (hostingConfig.Csp.ImageSources != null)
+                        s.Self();
+                        s.UnsafeInline();
+                        if (hostingConfig.Csp.StyleSources != null)
+                        {
+                            s.CustomSources(hostingConfig.Csp.StyleSources);
+                        }
+                    })
+                    .FontSources(s =>
                     {
-                        s.CustomSources(hostingConfig.Csp.ImageSources);
-                    }
-                })
-                .FrameAncestors(s => s.None())
-            );
-            app.UseMiddleware<SimpleIAM.OpenIdAuthority.Extensions.CspHeaderOverridesMiddleware>();
+                        s.Self();
+                        if (hostingConfig.Csp.FontSources != null)
+                        {
+                            s.CustomSources(hostingConfig.Csp.FontSources);
+                        }
+                    })
+                    .ImageSources(s =>
+                    {
+                        s.Self();
+                        if (hostingConfig.Csp.ImageSources != null)
+                        {
+                            s.CustomSources(hostingConfig.Csp.ImageSources);
+                        }
+                    })
+                    .FrameAncestors(s => s.None())
+                );
+                app.UseMiddleware<SimpleIAM.OpenIdAuthority.Extensions.CspHeaderOverridesMiddleware>();
+            }
 
             var compositeFileProvider = new CompositeFileProvider(
                 new EmbeddedFileProvider(typeof(OpenIdAuthorityApplicationBuilderExtensions).GetTypeInfo().Assembly, "SimpleIAM.OpenIdAuthority.wwwroot"),

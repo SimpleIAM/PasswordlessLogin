@@ -6,6 +6,9 @@ namespace SimpleIAM.OpenIdAuthority.Configuration
     public class HostingConfig
     {
         public bool BehindProxy { get; set; } = false;
+
+        public bool SkipContentSecuritySetup { get; set; } = false;
+
         public CspConfig Csp { get; set; } = new CspConfig();
     }
 }
