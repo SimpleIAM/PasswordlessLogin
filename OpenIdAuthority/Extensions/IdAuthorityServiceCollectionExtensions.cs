@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 using IdentityServer4.Models;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -12,6 +13,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Options;
 using SimpleIAM.OpenIdAuthority;
 using SimpleIAM.OpenIdAuthority.Configuration;
 using SimpleIAM.OpenIdAuthority.Entities;
@@ -84,6 +86,8 @@ namespace Microsoft.Extensions.DependencyInjection
                 .AddInMemoryClients(clients)
                 .AddProfileService<ProfileService>()                
                 .AddInMemoryIdentityResources(idScopes);
+
+            services.AddSingleton<IConfigureOptions<CookieAuthenticationOptions>, ReconfigureCookieOptions>();
 
             var smtpConfig = new SmtpConfig();
             configuration.Bind("Mail:Smtp", smtpConfig);
