@@ -17,6 +17,7 @@ namespace SimpleIAM.OpenIdAuthority.Configuration
 
         public static Client GetClientFromConfig(ClientAppConfig config)
         {
+            //todo: clean up magic strings
             var baseUrl = (config.Uri ?? "").TrimEnd('/');
             var allowedScopes = new List<string>() { "openid" };
             if (config.AllowedScopes != null)

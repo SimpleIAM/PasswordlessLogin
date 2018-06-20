@@ -93,12 +93,12 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
                     Claims = model.Claims?.Select(x => new UserClaim() { Type = x.Key, Value = x.Value }) //todo: filter these to claim types that are allowed to be set by user
                 };
                 newUser = await _userStore.AddUserAsync(newUser);
-                linkValidity = TimeSpan.FromHours(24);
+                linkValidity = TimeSpan.FromMinutes(OpenIdAuthorityConstants.OneTimeCode.ConfirmAccountDefaultValidityMinutes);
             }
             else
             {
                 _logger.LogDebug("Existing user found.");
-                linkValidity = TimeSpan.FromMinutes(5);
+                linkValidity = TimeSpan.FromMinutes(OpenIdAuthorityConstants.OneTimeCode.DefaultValidityMinutes);
                 //may want allow admins to configure a different email to send to existing users. However, it could be that the user
                 // exists but just never got a welcome email?
             }
@@ -142,7 +142,11 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
                 if (user != null)
                 {
                     _logger.LogDebug("User found");
-                    var oneTimeCodeResponse = await _oneTimeCodeService.GetOneTimeCodeAsync(model.Username, TimeSpan.FromMinutes(5), model.NextUrl);
+                    //todo: get validity timespan from config
+                    var oneTimeCodeResponse = await _oneTimeCodeService.GetOneTimeCodeAsync(
+                        model.Username, 
+                        TimeSpan.FromMinutes(OpenIdAuthorityConstants.OneTimeCode.DefaultValidityMinutes), 
+                        model.NextUrl);
                     switch (oneTimeCodeResponse.Result)
                     {
                         case GetOneTimeCodeResult.Success:
@@ -179,7 +183,7 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
             _logger.LogDebug("Begin authentication for {0}", model.Username);
 
             var oneTimeCode = model.Password.Replace(" ", "");
-            if (oneTimeCode.Length == 6 && oneTimeCode.All(Char.IsDigit))
+            if (oneTimeCode.Length == OpenIdAuthorityConstants.OneTimeCode.ShortCodeLength && oneTimeCode.All(Char.IsDigit))
             {
                 _logger.LogDebug("Password was a six-digit number");
                 var input = new AuthenticateInputModel()
@@ -303,7 +307,10 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
                 return Ok("Check your email for password reset instructions.");
             }
             var nextUrl = SendToSetPasswordFirst(!string.IsNullOrEmpty(model.NextUrl) ? model.NextUrl : _urlHelper.Action("Apps", "Home"));
-            var oneTimeCodeResponse = await _oneTimeCodeService.GetOneTimeCodeAsync(model.Username, TimeSpan.FromMinutes(5), nextUrl);
+            var oneTimeCodeResponse = await _oneTimeCodeService.GetOneTimeCodeAsync(
+                model.Username, 
+                TimeSpan.FromMinutes(OpenIdAuthorityConstants.OneTimeCode.DefaultValidityMinutes), 
+                nextUrl);
             if (oneTimeCodeResponse.Result == GetOneTimeCodeResult.Success)
             {
                 var result = await _messageService.SendPasswordResetMessageAsync(model.ApplicationId, model.Username, oneTimeCodeResponse.ShortCode, oneTimeCodeResponse.LongCode);

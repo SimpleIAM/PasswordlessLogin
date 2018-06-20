@@ -10,7 +10,7 @@ using SimpleIAM.OpenIdAuthority.Orchestrators;
 namespace SimpleIAM.OpenIdAuthority.API
 {
     [Route("api/v1/user")]
-    [EnableCors("CorsPolicy")]
+    [EnableCors(OpenIdAuthorityConstants.Security.CorsPolicyName)]
     [Authorize]
     public class UserApiController : Controller
     {

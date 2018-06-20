@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Ryan Foster. All rights reserved. 
 // Licensed under the Apache License, Version 2.0.
 
+using System.Net;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
@@ -9,7 +10,7 @@ using SimpleIAM.OpenIdAuthority.Orchestrators;
 namespace SimpleIAM.OpenIdAuthority.API
 {
     [Route("api/v1")]
-    [EnableCors("CorsPolicy")]
+    [EnableCors(OpenIdAuthorityConstants.Security.CorsPolicyName)]
     public class AuthenticateApiController : Controller
     {
         private readonly AuthenticateOrchestrator _authenticateOrchestrator;
@@ -47,7 +48,7 @@ namespace SimpleIAM.OpenIdAuthority.API
             if (ModelState.IsValid)
             {
                 var response = await _authenticateOrchestrator.AuthenticateCodeAsync(model);
-                if(response.StatusCode == 301)
+                if(response.StatusCode == HttpStatusCode.Redirect)
                 {
                     return NextUrlJsonResult(response.RedirectUrl);
                 }
@@ -63,7 +64,7 @@ namespace SimpleIAM.OpenIdAuthority.API
             if (ModelState.IsValid)
             {
                 var response = await _authenticateOrchestrator.AuthenticatePasswordAsync(model);
-                if (response.StatusCode == 301)
+                if (response.StatusCode == HttpStatusCode.Redirect)
                 {
                     return NextUrlJsonResult(response.RedirectUrl);
                 }

@@ -33,7 +33,7 @@ namespace SimpleIAM.OpenIdAuthority.Services.OTC
         {
             _logger.LogTrace("Checking long code");
 
-            if(string.IsNullOrEmpty(longCode) || longCode.Length > 36 )
+            if(string.IsNullOrEmpty(longCode) || longCode.Length > OpenIdAuthorityConstants.OneTimeCode.LongCodeMaxLength )
             {
                 _logger.LogError("The long code provided had an invalid format");
                 return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.CodeIncorrect);
@@ -68,9 +68,9 @@ namespace SimpleIAM.OpenIdAuthority.Services.OTC
                 return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.Expired);
             }
 
-            if (!string.IsNullOrEmpty(shortCode) && shortCode.Length <= 8)
+            if (!string.IsNullOrEmpty(shortCode) && shortCode.Length == OpenIdAuthorityConstants.OneTimeCode.ShortCodeLength)
             {
-                if (otc.FailedAttemptCount >= 3)
+                if (otc.FailedAttemptCount >= OpenIdAuthorityConstants.OneTimeCode.MaxFailedAttemptCount)
                 {
                     // maximum of 3 attempts during code validity period to prevent guessing attacks
                     // long code remains valid, preventing account lockout attacks (and giving a fumbling but valid user another way in)
@@ -85,7 +85,7 @@ namespace SimpleIAM.OpenIdAuthority.Services.OTC
             }
             else
             {
-                _logger.LogDebug("The one time code was missing or too long");
+                _logger.LogDebug("The one time code was missing or was the wrong length");
             }
 
             _logger.LogDebug("Updating failure count for one time code");
@@ -114,13 +114,15 @@ namespace SimpleIAM.OpenIdAuthority.Services.OTC
         {
             var otc = await _oneTimeCodeStore.GetOneTimeCodeAsync(sendTo);
 
-            if (otc != null && otc.ExpiresUTC > DateTime.UtcNow.AddMinutes(2) && otc.ExpiresUTC < DateTime.UtcNow.AddMinutes(10))
+            if (otc != null && 
+                otc.ExpiresUTC > DateTime.UtcNow.AddMinutes(OpenIdAuthorityConstants.OneTimeCode.IssueNewCodeIfValidityLessThanXMinutes) && 
+                otc.ExpiresUTC < DateTime.UtcNow.AddMinutes(OpenIdAuthorityConstants.OneTimeCode.DefaultValidityMinutes))
             {
                 _logger.LogDebug("A once time code exists that has enough time left to use");
-                // existing code has 2-10 minutes of validity remaining, so resend it
-                // if less than 2 minutes, user might not have time to use it
-                // if more than 10 minutes (e.g. first code sent to new user), user could lock the code and be locked out for a long time
-                if (otc.SentCount >= 4)
+                // existing code has at least X minutes of validity remaining, so resend it
+                // if more than default validity (e.g. first code sent to new user), user could accidentally 
+                // lock the code and not be able to confirm or access the account (terrible UX)
+                if (otc.SentCount >= OpenIdAuthorityConstants.OneTimeCode.MaxResendCount)
                 {
                     _logger.LogDebug("The existing one time code has been sent too many times");
                     return new GetOneTimeCodeResponse(GetOneTimeCodeResult.TooManyRequests);

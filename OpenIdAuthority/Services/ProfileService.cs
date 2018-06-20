@@ -35,11 +35,11 @@ namespace SimpleIAM.OpenIdAuthority.Services
                 if (user != null)
                 {
                     var claims = user.Claims.Select(x => new Claim(x.Type, x.Value)).ToList();
-                    claims.Add(new Claim("email", user.Email));
-                    claims.Add(new Claim("email_verified", "true"));
-                    if(!claims.Any(x => x.Type == "name"))
+                    claims.Add(new Claim(OpenIdAuthorityConstants.StandardClaims.Email, user.Email));
+                    claims.Add(new Claim(OpenIdAuthorityConstants.StandardClaims.EmailVerified, "true"));
+                    if(!claims.Any(x => x.Type == OpenIdAuthorityConstants.StandardClaims.Name))
                     {
-                        claims.Add(new Claim("name", user.Email));
+                        claims.Add(new Claim(OpenIdAuthorityConstants.StandardClaims.Name, user.Email));
                     }
 
                     _logger.LogTrace("Returning requested claims");

@@ -12,7 +12,7 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
 
         [Required]
         [EmailAddress]
-        [RegularExpression(@".+\@.+\..+", ErrorMessage = "Enter a valid email address")]
+        [RegularExpression(OpenIdAuthorityConstants.BasicEmailRegexPattern, ErrorMessage = "Enter a valid email address")]
         public string Email { get; set; }
 
         public Dictionary<string, string> Claims {get; set;}

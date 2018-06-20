@@ -25,6 +25,7 @@ namespace SimpleIAM.OpenIdAuthority.Configuration
             options.Cookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.Always;
             options.Events.OnRedirectToAccessDenied = context =>
             {
+                // Don't redirect to another page
                 context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
                 return Task.FromResult(0);
             };

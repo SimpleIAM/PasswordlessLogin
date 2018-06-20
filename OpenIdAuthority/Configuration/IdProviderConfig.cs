@@ -7,11 +7,11 @@ namespace SimpleIAM.OpenIdAuthority.Configuration
 {
     public class IdProviderConfig
     {
-        public string DisplayName { get; set; } = "OpenID Authority";
-        public int DefaultSessionLengthMinutes { get; set; } = 720; // 12 hours
-        public int MaxSessionLengthMinutes { get; set; } = 44640; // 31 days
+        public string DisplayName { get; set; } = OpenIdAuthorityConstants.DefaultDisplayName;
+        public int DefaultSessionLengthMinutes { get; set; } = OpenIdAuthorityConstants.Security.DefaultDefaultSessionLengthMinutes;
+        public int MaxSessionLengthMinutes { get; set; } = OpenIdAuthorityConstants.Security.DefaultMaxSessionLengthMinutes;
         public bool RememberUsernames { get; set; } = true;
-        public int MinimumPasswordStrengthInBits { get; set; } = 40;
+        public int MinimumPasswordStrengthInBits { get; set; } = OpenIdAuthorityConstants.Security.DefaultMinimumPasswordStrengthInBits;
         public bool BehindProxy { get; set; } = false;
         public CspConfig Csp { get; set; } = new CspConfig();
         public IDictionary<string, string> CustomProperties { get; set; }

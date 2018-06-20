@@ -8,8 +8,8 @@ namespace SimpleIAM.OpenIdAuthority
 {
     public static class CookieExtensions
     {
-        public const string ClientNonceCookieName = "ClientNonce";
-        public const string DeviceIdCookieName = "DeviceId";
+        public const string ClientNonceCookieName = OpenIdAuthorityConstants.RecognizedDevices.ClientNonceCookieName;
+        public const string DeviceIdCookieName = OpenIdAuthorityConstants.RecognizedDevices.DeviceIdCookieName;
 
         public static string GetClientNonce(this HttpRequest request)
         {
@@ -23,12 +23,12 @@ namespace SimpleIAM.OpenIdAuthority
 
         public static void SetClientNonce(this HttpResponse response, string value)
         {
-            response.SetSecureCookie(ClientNonceCookieName, value, TimeSpan.FromMinutes(5));
+            response.SetSecureCookie(ClientNonceCookieName, value, TimeSpan.FromMinutes(OpenIdAuthorityConstants.OneTimeCode.DefaultValidityMinutes));
         }
 
         public static void SetDeviceId(this HttpResponse response, string value)
         {
-            response.SetSecureCookie(DeviceIdCookieName, value, TimeSpan.FromDays(365 * 8));
+            response.SetSecureCookie(DeviceIdCookieName, value, TimeSpan.FromDays(OpenIdAuthorityConstants.RecognizedDevices.DeviceIdCookieValidityDays));
         }
 
         public static void SetSecureCookie(this HttpResponse response, string key, string value, TimeSpan maxAge)

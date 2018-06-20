@@ -91,7 +91,7 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
                     {
                         return Redirect(model.NextUrl);
                     }
-                    return RedirectToAction("MyAccount");
+                    return RedirectToAction(nameof(MyAccount));
                 case SetPasswordResult.PasswordDoesNotMeetStrengthRequirements:
                     ModelState.AddModelError("NewPassword", "Password does not meet minimum password strength requirements (try something longer).");
                     break;
@@ -128,9 +128,9 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
                 var success = await SendOneTimeCodeBeforeRedirect();
                 if (success)
                 {
-                    return RedirectToAction("RemovePassword", new { step = 2 });
+                    return RedirectToAction(nameof(RemovePassword), new { step = 2 });
                 }
-                return RedirectToAction("RemovePassword");
+                return RedirectToAction(nameof(RemovePassword));
             }
             else if (ModelState.IsValid)
             {
@@ -142,13 +142,13 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
                         if (result == RemovePasswordResult.Success)
                         {
                             AddPostRedirectMessage("Password successfully removed");
-                            return RedirectToAction("MyAccount");
+                            return RedirectToAction(nameof(MyAccount));
                         }
                         AddPostRedirectMessage("Something was wrong");
-                        return RedirectToAction("RemovePassword");
+                        return RedirectToAction(nameof(RemovePassword));
                     case CheckOneTimeCodeResult.VerifiedWithoutNonce:
                     default:
-                        ModelState.AddModelError("OneTimeCode", "Code is incorrect or expired");
+                        ModelState.AddModelError(nameof(model.OneTimeCode), "Code is incorrect or expired");
                         break;
                 }
             }
@@ -159,7 +159,8 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
         {
             var email = User.GetDisplayName();
 
-            var oneTimeCodeResponse = await _oneTimeCodeService.GetOneTimeCodeAsync(email, TimeSpan.FromMinutes(5));
+            var oneTimeCodeResponse = await _oneTimeCodeService.GetOneTimeCodeAsync(email, 
+                TimeSpan.FromMinutes(OpenIdAuthorityConstants.OneTimeCode.DefaultValidityMinutes));
             switch (oneTimeCodeResponse.Result)
             {
                 case GetOneTimeCodeResult.Success:

@@ -17,8 +17,9 @@ namespace SimpleIAM.OpenIdAuthority.Extensions
 
         public async Task Invoke(HttpContext context)
         {
-            if (context.Request.Path == "/connect/checksession") // allow check_session_iframe to be loaded in an iframe
+            if (context.Request.Path == OpenIdAuthorityConstants.Configuration.CheckSessionIFrame)
             {
+                // allow check_session_iframe to be loaded in an iframe
                 context.Response.Headers.Remove("Content-Security-Policy");
                 context.Response.Headers.Remove("X-Frame-Options");
             }

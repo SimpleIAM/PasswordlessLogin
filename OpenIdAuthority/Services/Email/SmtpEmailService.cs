@@ -38,6 +38,7 @@ namespace SimpleIAM.OpenIdAuthority.Services.Email
                 {
                     Text = body
                 };
+                //todo: add a plain-text version also for better email delivery
             }
             else
             {

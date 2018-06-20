@@ -11,20 +11,19 @@ namespace SimpleIAM.OpenIdAuthority.Configuration
 {
     public static class EmailTemplateProcessor
     {
-        public static EmailTemplates GetTemplatesFromMailConfig(IConfigurationSection configuration, IFileProvider fileProvider)
+        public static EmailTemplates GetTemplatesFromMailConfig(string defaultFrom, IFileProvider fileProvider)
         {
-            var from = configuration.GetValue<string>("From");
             var templates = new EmailTemplates()
             {
-                { "OneTimeCode", new EmailTemplate() },
-                { "SignInWithEmail", new EmailTemplate() },
-                { "Welcome", new EmailTemplate() },
-                { "PasswordReset", new EmailTemplate() },
-                { "AccountNotFound", new EmailTemplate() },
+                { OpenIdAuthorityConstants.EmailTemplates.OneTimeCode, new EmailTemplate() },
+                { OpenIdAuthorityConstants.EmailTemplates.SignInWithEmail, new EmailTemplate() },
+                { OpenIdAuthorityConstants.EmailTemplates.Welcome, new EmailTemplate() },
+                { OpenIdAuthorityConstants.EmailTemplates.PasswordReset, new EmailTemplate() },
+                { OpenIdAuthorityConstants.EmailTemplates.AccountNotFound, new EmailTemplate() },
             };
             foreach(var template in templates)
             {
-                template.Value.From = from;
+                template.Value.From = defaultFrom;
 
                 var fileInfo = fileProvider.GetFileInfo($"{template.Key}.html");
                 if(fileInfo.Exists)

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 
 namespace SimpleIAM.OpenIdAuthority.Orchestrators
 {
@@ -12,24 +13,24 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
     {
         public ActionResponse() { }
 
-        public ActionResponse(string message = null, int statusCode = 200)
+        public ActionResponse(string message = null, HttpStatusCode statusCode = HttpStatusCode.OK)
         {
             Message = message;
             StatusCode = statusCode;
         }
 
-        public ActionResponse(object content, int statusCode = 200)
+        public ActionResponse(object content, HttpStatusCode statusCode = HttpStatusCode.OK)
         {
             Content = content;
             StatusCode = statusCode;
         }
 
-        public ActionResponse(int statusCode)
+        public ActionResponse(HttpStatusCode statusCode)
         {
             StatusCode = statusCode;
         }
 
-        public ActionResponse(ModelStateDictionary modelState, int statusCode = 400)
+        public ActionResponse(ModelStateDictionary modelState, HttpStatusCode statusCode = HttpStatusCode.BadRequest)
         {
             StatusCode = statusCode;
             // Extract error messages from model state. For form-level errors, use the key "_" instead of ""
@@ -46,7 +47,7 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
             }
         }
 
-        public int StatusCode { get; set; } = 200;
+        public HttpStatusCode StatusCode { get; set; } = HttpStatusCode.OK;
 
         public string Message { get; set; }
 
@@ -60,9 +61,9 @@ namespace SimpleIAM.OpenIdAuthority.Orchestrators
         {
             if(Content != null)
             {
-                return new JsonResult(Content) { StatusCode = StatusCode };
+                return new JsonResult(Content) { StatusCode = (int)StatusCode };
             }
-            return new JsonResult(new { Message, Errors }) { StatusCode = StatusCode };
+            return new JsonResult(new { Message, Errors }) { StatusCode = (int)StatusCode };
         }
     }
 }

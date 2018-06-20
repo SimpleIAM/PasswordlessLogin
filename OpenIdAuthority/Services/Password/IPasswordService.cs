@@ -10,7 +10,6 @@ namespace SimpleIAM.OpenIdAuthority.Services.Password
     {
         Task<DateTime?> PasswordLastChangedAsync(string uniqueIdentifier);
         Task<SetPasswordResult> SetPasswordAsync(string uniqueIdentifier, string password);
-        //Task<ChangePasswordResult> ChangePasswordAsync(string uniqueIdentifier, string oldPassword, string newPassword);
         Task<RemovePasswordResult> RemovePasswordAsync(string uniqueIdentifier);
     }
 }

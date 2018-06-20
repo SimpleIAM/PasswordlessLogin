@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Ryan Foster. All rights reserved. 
 // Licensed under the Apache License, Version 2.0.
 
+using System.Net;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using IdentityServer4.Events;
@@ -111,7 +112,7 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
             }
             else if (model.Username != null && (action == "getcode" || (action == "submit" && model.Password == null)))
             {
-                ModelState.ClearValidationState("Password");
+                ModelState.ClearValidationState(nameof(model.Password));
                 var context = await _interaction.GetAuthorizationContextAsync(model.NextUrl);
                 var input = new SendCodeInputModel()
                 {
@@ -125,7 +126,7 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
             else if (ModelState.IsValid)
             {
                 var response = await _authenticateOrchestrator.AuthenticateAsync(model);
-                if (response.StatusCode == 301)
+                if (response.StatusCode == HttpStatusCode.Redirect)
                 {
                     return Redirect(response.RedirectUrl);
                 }
@@ -140,13 +141,13 @@ namespace SimpleIAM.OpenIdAuthority.UI.Authenticate
             var response = await _authenticateOrchestrator.AuthenticateLongCodeAsync(longCode);
             switch (response.StatusCode)
             {
-                case 301:
+                case HttpStatusCode.Redirect:
                     return Redirect(response.RedirectUrl);
-                case 404:
+                case HttpStatusCode.NotFound:
                     return NotFound();
                 default:
                     AddPostRedirectMessage(response.Message);
-                    return RedirectToAction("SignIn");
+                    return RedirectToAction(nameof(SignIn));
             }
         }
 

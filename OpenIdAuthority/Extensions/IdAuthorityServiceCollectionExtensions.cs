@@ -42,20 +42,20 @@ namespace Microsoft.Extensions.DependencyInjection
             }
 
             var idProviderConfig = new IdProviderConfig();
-            configuration.Bind("IdProvider", idProviderConfig);
+            configuration.Bind(OpenIdAuthorityConstants.ConfigurationSections.IdProvider, idProviderConfig);
             services.AddSingleton(idProviderConfig);
 
             var hostingConfig = new HostingConfig();
-            configuration.Bind("Hosting", hostingConfig);
+            configuration.Bind(OpenIdAuthorityConstants.ConfigurationSections.Hosting, hostingConfig);
             services.AddSingleton(hostingConfig);
 
-            var clientConfigs = configuration.GetSection("Apps").Get<List<ClientAppConfig>>() ?? new List<ClientAppConfig>();
+            var clientConfigs = configuration.GetSection(OpenIdAuthorityConstants.ConfigurationSections.Apps).Get<List<ClientAppConfig>>() ?? new List<ClientAppConfig>();
             var clients = ClientConfigHelper.GetClientsFromConfig(clientConfigs);
             var apps = ClientConfigHelper.GetAppsFromClients(clients);
             var appStore = new InMemoryAppStore(apps);
             services.TryAddSingleton<IAppStore>(appStore);
 
-            var idScopeConfig = configuration.GetSection("IdScopes").Get<List<IdScopeConfig>>() ?? new List<IdScopeConfig>();
+            var idScopeConfig = configuration.GetSection(OpenIdAuthorityConstants.ConfigurationSections.IdScopes).Get<List<IdScopeConfig>>() ?? new List<IdScopeConfig>();
             var idScopes = idScopeConfig.Select(x=> new IdentityResource(x.Name, x.DisplayName ?? x.Name, x.ClaimTypes) { Required = x.Required }).ToList();
             idScopes.AddRange(new List<IdentityResource>() {
                 new IdentityResources.OpenId(),
@@ -65,7 +65,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 new IdentityResources.Address(),
             });
 
-            var connection = configuration.GetConnectionString("DefaultConnection");
+            var connection = configuration.GetConnectionString(OpenIdAuthorityConstants.ConfigurationSections.ConnectionStringName);
 
             services.AddDbContext<OpenIdAuthorityDbContext>(options => options.UseSqlServer(connection));
             services.TryAddTransient<IOneTimeCodeStore, DbOneTimeCodeStore>();
@@ -76,10 +76,10 @@ namespace Microsoft.Extensions.DependencyInjection
 
             services.AddIdentityServer(options =>
             {
-                options.UserInteraction.LoginUrl = "/signin";
-                options.UserInteraction.LogoutUrl = "/signout";
-                options.UserInteraction.LogoutIdParameter = "id";
-                options.UserInteraction.ErrorUrl = "/error";
+                options.UserInteraction.LoginUrl = OpenIdAuthorityConstants.Configuration.LoginUrl;
+                options.UserInteraction.LogoutUrl = OpenIdAuthorityConstants.Configuration.LogoutUrl;
+                options.UserInteraction.LogoutIdParameter = OpenIdAuthorityConstants.Configuration.LogoutIdParameter;
+                options.UserInteraction.ErrorUrl = OpenIdAuthorityConstants.Configuration.ErrorUrl;
                 options.Authentication.CookieLifetime = TimeSpan.FromMinutes(idProviderConfig.DefaultSessionLengthMinutes);
             })
                 .AddDeveloperSigningCredential() //todo: replace
@@ -90,12 +90,14 @@ namespace Microsoft.Extensions.DependencyInjection
             services.AddSingleton<IConfigureOptions<CookieAuthenticationOptions>, ReconfigureCookieOptions>();
 
             var smtpConfig = new SmtpConfig();
-            configuration.Bind("Mail:Smtp", smtpConfig);
+            configuration.Bind(OpenIdAuthorityConstants.ConfigurationSections.Smtp, smtpConfig);
             services.TryAddSingleton(smtpConfig);
             services.TryAddTransient<IEmailService, SmtpEmailService>();
 
-            IFileProvider templateFileProvider = new EmbeddedFileProvider(typeof(OpenIdAuthorityServiceCollectionExtensions).GetTypeInfo().Assembly, "SimpleIAM.OpenIdAuthority.EmailTemplates");
-            var emailTemplateOverrideFolder = Path.Combine(env.ContentRootPath, "EmailTemplates");
+            IFileProvider templateFileProvider = new EmbeddedFileProvider(
+                typeof(OpenIdAuthorityServiceCollectionExtensions).GetTypeInfo().Assembly, 
+                $"SimpleIAM.OpenIdAuthority.{OpenIdAuthorityConstants.EmailTemplateFolder}");
+            var emailTemplateOverrideFolder = Path.Combine(env.ContentRootPath, OpenIdAuthorityConstants.EmailTemplateFolder);
             if (Directory.Exists(emailTemplateOverrideFolder))
             {
                 templateFileProvider = new CompositeFileProvider(
@@ -103,11 +105,13 @@ namespace Microsoft.Extensions.DependencyInjection
                     templateFileProvider
                 );
             }
-            var emailTemplates = EmailTemplateProcessor.GetTemplatesFromMailConfig(configuration.GetSection("Mail"), templateFileProvider);
+            var defaultFromAddress = configuration.GetValue<string>(OpenIdAuthorityConstants.ConfigurationSections.MailFrom);
+            var emailTemplates = EmailTemplateProcessor.GetTemplatesFromMailConfig(defaultFromAddress, templateFileProvider);
             services.TryAddSingleton(emailTemplates);
             services.TryAddTransient<IEmailTemplateService, EmailTemplateService>();
 
-            services.TryAddSingleton<IPasswordHashService>(new AspNetIdentityPasswordHashService(10000));
+            services.TryAddSingleton<IPasswordHashService>(
+                new AspNetIdentityPasswordHashService(OpenIdAuthorityConstants.Security.DefaultPbkdf2Iterations));
             services.TryAddTransient<IPasswordHashStore, DbPasswordHashStore>();
             services.TryAddTransient<IPasswordService, DefaultPasswordService>();
 
@@ -131,7 +135,7 @@ namespace Microsoft.Extensions.DependencyInjection
             {
                 services.AddCors(options =>
                 {
-                    options.AddPolicy("CorsPolicy", builder => builder
+                    options.AddPolicy(OpenIdAuthorityConstants.Security.CorsPolicyName, builder => builder
                         .WithOrigins(allowedOrigins)
                         .AllowAnyMethod()
                         .AllowAnyHeader()
