@@ -8,14 +8,14 @@ using System.Linq;
 
 namespace SimpleIAM.OpenIdAuthority.Configuration
 {
-    public static class ClientConfigHelper
+    public static class AppConfigHelper
     {
-        public static IEnumerable<Client> GetClientsFromConfig(IEnumerable<ClientAppConfig> config)
+        public static IEnumerable<Client> GetClientsFromAppConfig(IEnumerable<AppConfig> config)
         {
-            return config.Select(x => GetClientFromConfig(x));
+            return config.Select(x => GetClientFromAppConfig(x));
         }
 
-        public static Client GetClientFromConfig(ClientAppConfig config)
+        public static Client GetClientFromAppConfig(AppConfig config)
         {
             //todo: clean up magic strings
             var baseUrl = (config.Uri ?? "").TrimEnd('/');
@@ -30,7 +30,7 @@ namespace SimpleIAM.OpenIdAuthority.Configuration
                 ClientId = config.ClientId,
                 ClientName = config.Name,
                 ClientUri = baseUrl,
-                ClientSecrets = new Secret[] { new Secret(config.ClientSecret.Sha256()) },
+                ClientSecrets = config.Secrets?.Select(x => new Secret(x.Sha256())).ToList() ?? new List<Secret>(),
                 AllowedGrantTypes = config.AppType == AppType.SPA ? new string[] { "implicit" } : new string[] { "authorization_code" },
                 RedirectUris = config.RedirectUris != null ? config.RedirectUris.Split('\n') : new string[] { baseUrl, $"{baseUrl}/signin-oidc" },
                 FrontChannelLogoutUri = config.FrontChannelLogoutUri ?? $"{baseUrl}/signout-oidc",
@@ -39,9 +39,12 @@ namespace SimpleIAM.OpenIdAuthority.Configuration
                 RequireConsent = false,
                 Properties = config.CustomProperties ?? new Dictionary<string, string>(),
             };
-            if(config.AppType == AppType.SPA)
+            if (config.CallsAuthorityViaCors)
             {
-                client.AllowedCorsOrigins.Add(baseUrl); //todo: consider enabling cors for server side apps too
+                client.AllowedCorsOrigins.Add(baseUrl);
+            }
+            if (config.AppType == AppType.SPA)
+            {
                 client.AllowAccessTokensViaBrowser = true;
             }
 

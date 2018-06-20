@@ -8,10 +8,10 @@ namespace SimpleIAM.OpenIdAuthority.Configuration
     public enum AppType
     {
         Traditional,
-        SPA
+        SPA,
     }
 
-    public class ClientAppConfig
+    public class AppConfig
     {
         public AppType AppType { get; set; } = AppType.Traditional;
         public string ClientId { get; set; }
@@ -20,8 +20,9 @@ namespace SimpleIAM.OpenIdAuthority.Configuration
         public string RedirectUris { get; set; }
         public string FrontChannelLogoutUri { get; set; }
         public string PostLogoutRedirectUris { get; set; }
-        public string ClientSecret { get; set; }
+        public string[] Secrets { get; set; }
         public string[] AllowedScopes { get; set; }
+        public bool CallsAuthorityViaCors { get; set; }
         public IDictionary<string, string> CustomProperties { get; set; }
     }
 }

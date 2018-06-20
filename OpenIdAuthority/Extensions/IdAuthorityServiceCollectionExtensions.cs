@@ -49,14 +49,14 @@ namespace Microsoft.Extensions.DependencyInjection
             configuration.Bind(OpenIdAuthorityConstants.ConfigurationSections.Hosting, hostingConfig);
             services.AddSingleton(hostingConfig);
 
-            var clientConfigs = configuration.GetSection(OpenIdAuthorityConstants.ConfigurationSections.Apps).Get<List<ClientAppConfig>>() ?? new List<ClientAppConfig>();
+            var clientConfigs = configuration.GetSection(OpenIdAuthorityConstants.ConfigurationSections.Apps).Get<List<AppConfig>>() ?? new List<AppConfig>();
             var clients = ClientConfigHelper.GetClientsFromConfig(clientConfigs);
             var apps = ClientConfigHelper.GetAppsFromClients(clients);
             var appStore = new InMemoryAppStore(apps);
             services.TryAddSingleton<IAppStore>(appStore);
 
             var idScopeConfig = configuration.GetSection(OpenIdAuthorityConstants.ConfigurationSections.IdScopes).Get<List<IdScopeConfig>>() ?? new List<IdScopeConfig>();
-            var idScopes = idScopeConfig.Select(x=> new IdentityResource(x.Name, x.DisplayName ?? x.Name, x.ClaimTypes) { Required = x.Required }).ToList();
+            var idScopes = idScopeConfig.Select(x => new IdentityResource(x.Name, x.IncludeClaimTypes) { Required = x.Required }).ToList();
             idScopes.AddRange(new List<IdentityResource>() {
                 new IdentityResources.OpenId(),
                 new IdentityResources.Profile(),
