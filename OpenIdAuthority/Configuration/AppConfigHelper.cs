@@ -31,7 +31,7 @@ namespace SimpleIAM.OpenIdAuthority.Configuration
                 ClientName = config.Name,
                 ClientUri = baseUrl,
                 ClientSecrets = config.Secrets?.Select(x => new Secret(x.Sha256())).ToList() ?? new List<Secret>(),
-                AllowedGrantTypes = config.AppType == AppType.SPA ? new string[] { "implicit" } : new string[] { "authorization_code" },
+                AllowedGrantTypes = config.AppType == AppType.ClientSideWebApp ? new string[] { "implicit" } : new string[] { "authorization_code" },
                 RedirectUris = config.RedirectUris != null ? config.RedirectUris.Split('\n') : new string[] { baseUrl, $"{baseUrl}/signin-oidc" },
                 FrontChannelLogoutUri = config.FrontChannelLogoutUri ?? $"{baseUrl}/signout-oidc",
                 PostLogoutRedirectUris = config.PostLogoutRedirectUris != null ? config.PostLogoutRedirectUris.Split('\n') : new string[] { baseUrl, $"{baseUrl}/", $"{baseUrl}/signout-callback-oidc" },
@@ -43,9 +43,23 @@ namespace SimpleIAM.OpenIdAuthority.Configuration
             {
                 client.AllowedCorsOrigins.Add(baseUrl);
             }
-            if (config.AppType == AppType.SPA)
+            switch(config.AppType)
             {
-                client.AllowAccessTokensViaBrowser = true;
+                case AppType.ClientSideWebApp:
+                    client.AllowedGrantTypes = new string[] { "implicit" };
+                    client.AllowAccessTokensViaBrowser = true;
+                    break;
+                case AppType.NativeApp:
+                    client.AllowedGrantTypes = new string[] { "implicit" };
+                    client.AllowAccessTokensViaBrowser = true;
+                    break;
+                case AppType.BackendService:
+                    client.AllowedGrantTypes = new string[] { "client_credentials" };
+                    break;
+                case AppType.ServerSideWebApp:
+                default:
+                    client.AllowedGrantTypes = new string[] { "authorization_code" };
+                    break;
             }
 
             return client;

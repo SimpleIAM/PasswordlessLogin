@@ -7,13 +7,15 @@ namespace SimpleIAM.OpenIdAuthority.Configuration
 {
     public enum AppType
     {
-        Traditional,
-        SPA,
+        ServerSideWebApp,
+        ClientSideWebApp,
+        NativeApp,
+        BackendService
     }
 
     public class AppConfig
     {
-        public AppType AppType { get; set; } = AppType.Traditional;
+        public AppType AppType { get; set; } = AppType.ServerSideWebApp;
         public string ClientId { get; set; }
         public string Name { get; set; }
         public string Uri { get; set; }
