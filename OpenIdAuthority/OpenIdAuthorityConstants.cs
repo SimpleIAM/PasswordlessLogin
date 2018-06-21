@@ -21,7 +21,8 @@ namespace SimpleIAM.OpenIdAuthority
 
         public static class ConfigurationSections
         {
-            public const string Apps = "Apps";            
+            public const string Apis = "Apis";
+            public const string Apps = "Apps";
             public const string Hosting = "Hosting";
             public const string IdProvider = "IdProvider";
             public const string IdScopes = "IdScopes";

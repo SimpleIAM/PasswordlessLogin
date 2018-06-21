@@ -49,9 +49,9 @@ namespace Microsoft.Extensions.DependencyInjection
             configuration.Bind(OpenIdAuthorityConstants.ConfigurationSections.Hosting, hostingConfig);
             services.AddSingleton(hostingConfig);
 
-            var clientConfigs = configuration.GetSection(OpenIdAuthorityConstants.ConfigurationSections.Apps).Get<List<AppConfig>>() ?? new List<AppConfig>();
-            var clients = ClientConfigHelper.GetClientsFromConfig(clientConfigs);
-            var apps = ClientConfigHelper.GetAppsFromClients(clients);
+            var appConfigs = configuration.GetSection(OpenIdAuthorityConstants.ConfigurationSections.Apps).Get<List<AppConfig>>() ?? new List<AppConfig>();
+            var clients = AppConfigHelper.GetClientsFromAppConfig(appConfigs);
+            var apps = AppConfigHelper.GetAppsFromClients(clients);
             var appStore = new InMemoryAppStore(apps);
             services.TryAddSingleton<IAppStore>(appStore);
 
@@ -64,6 +64,13 @@ namespace Microsoft.Extensions.DependencyInjection
                 new IdentityResources.Phone(),
                 new IdentityResources.Address(),
             });
+
+            var apiConfigs = configuration.GetSection(OpenIdAuthorityConstants.ConfigurationSections.Apis).Get<List<ApiConfig>>() ?? new List<ApiConfig>();
+            var apiResources = apiConfigs.Select(x => new ApiResource(x.Url, x.IncludeClaimTypes)
+            {
+                ApiSecrets = x.Secrets?.ToList()?.Select(y=> new Secret(y.Sha256())).ToList(),
+                Scopes = x.Scopes?.ToList()?.Select(y => new Scope(y)).ToList()
+            }).ToList();
 
             var connection = configuration.GetConnectionString(OpenIdAuthorityConstants.ConfigurationSections.ConnectionStringName);
 
@@ -83,6 +90,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 options.Authentication.CookieLifetime = TimeSpan.FromMinutes(idProviderConfig.DefaultSessionLengthMinutes);
             })
                 .AddDeveloperSigningCredential() //todo: replace
+                .AddInMemoryApiResources(apiResources)
                 .AddInMemoryClients(clients)
                 .AddProfileService<ProfileService>()                
                 .AddInMemoryIdentityResources(idScopes);
