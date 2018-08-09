@@ -6,9 +6,6 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using IdentityServer4.Events;
-using IdentityServer4.Services;
-using IdentityServer4.Stores;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -35,9 +32,6 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
         private readonly IOneTimeCodeService _oneTimeCodeService;
         private readonly IMessageService _messageService;
         private readonly IUserStore _userStore;
-        private readonly IClientStore _clientStore;
-        private readonly IIdentityServerInteractionService _interaction;
-        private readonly IEventService _events;
         private readonly IPasswordService _passwordService;
         private readonly IdProviderConfig _config;
         private readonly IUrlHelper _urlHelper;
@@ -51,9 +45,6 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             IMessageService messageService,
             IUserStore userStore,
             IdProviderConfig config,
-            IClientStore clientStore,
-            IIdentityServerInteractionService interaction,
-            IEventService events,
             IPasswordService passwordService,
             IUrlHelper urlHelper,
             IHttpContextAccessor httpContextAccessor,
@@ -63,10 +54,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             _oneTimeCodeService = oneTimeCodeService;
             _userStore = userStore;
             _messageService = messageService;
-            _clientStore = clientStore;
             _passwordService = passwordService;
-            _interaction = interaction;
-            _events = events;
             _config = config;
             _urlHelper = urlHelper;
             _httpContext = httpContextAccessor.HttpContext;
@@ -464,7 +452,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
 
         private string ValidatedNextUrl(string nextUrl)
         {
-            if (_interaction.IsValidReturnUrl(nextUrl) || _urlHelper.IsLocalUrl(nextUrl))
+            if (_urlHelper.IsLocalUrl(nextUrl))
             {
                 return nextUrl;
             }

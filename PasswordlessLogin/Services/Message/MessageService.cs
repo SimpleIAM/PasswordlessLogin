@@ -1,7 +1,6 @@
 ﻿// Copyright (c) Ryan Foster. All rights reserved. 
 // Licensed under the Apache License, Version 2.0.
 
-using IdentityServer4.Stores;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -20,15 +19,13 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
         private readonly IUrlHelper _urlHelper;
         private readonly IHttpContextAccessor _httpContext;
         private readonly IdProviderConfig _idProviderConfig;
-        private readonly IClientStore _clientStore;
 
         public MessageService(
             ILogger<MessageService> logger,
             IEmailTemplateService emailTemplateService,
             IUrlHelper urlHelper,
             IHttpContextAccessor httpContext,
-            IdProviderConfig idProviderConfig,
-            IClientStore clientStore
+            IdProviderConfig idProviderConfig
             )
         {
             _logger = logger;
@@ -36,7 +33,6 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
             _urlHelper = urlHelper;
             _httpContext = httpContext;
             _idProviderConfig = idProviderConfig;
-            _clientStore = clientStore;
         }
 
         public async Task<SendMessageResult> SendAccountNotFoundMessageAsync(string applicationId, string sendTo)

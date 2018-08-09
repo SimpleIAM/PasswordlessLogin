@@ -12,8 +12,6 @@ namespace SimpleIAM.PasswordlessLogin.Configuration
         public int MaxSessionLengthMinutes { get; set; } = PasswordlessLoginConstants.Security.DefaultMaxSessionLengthMinutes;
         public bool RememberUsernames { get; set; } = true;
         public int MinimumPasswordStrengthInBits { get; set; } = PasswordlessLoginConstants.Security.DefaultMinimumPasswordStrengthInBits;
-        public bool BehindProxy { get; set; } = false;
-        public CspConfig Csp { get; set; } = new CspConfig();
         public IDictionary<string, string> CustomProperties { get; set; }
     }
 }

@@ -3,8 +3,6 @@
 
 using System;
 using System.Threading.Tasks;
-using IdentityServer4.Extensions;
-using IdentityServer4.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SimpleIAM.PasswordlessLogin.Configuration;
@@ -20,9 +18,8 @@ namespace SimpleIAM.PasswordlessLogin.UI.Authenticate
 {
     [Route("account")]
     [Authorize]
-    public class AccountController : BaseController
+    public class AccountController : PasswordlessBaseController
     {
-        private readonly IIdentityServerInteractionService _interaction;
         private readonly IEmailTemplateService _emailTemplateService;
         private readonly IUserStore _userStore;
         private readonly IPasswordService _passwordService;
@@ -31,7 +28,6 @@ namespace SimpleIAM.PasswordlessLogin.UI.Authenticate
         private readonly IdProviderConfig _config;
 
         public AccountController(
-            IIdentityServerInteractionService interaction,
             IEmailTemplateService emailTemplateService,
             IUserStore userStore,
             IPasswordService passwordService,
@@ -39,7 +35,6 @@ namespace SimpleIAM.PasswordlessLogin.UI.Authenticate
             IMessageService messageService,
             IdProviderConfig config)
         {
-            _interaction = interaction;
             _emailTemplateService = emailTemplateService;
             _userStore = userStore;
             _passwordService = passwordService;

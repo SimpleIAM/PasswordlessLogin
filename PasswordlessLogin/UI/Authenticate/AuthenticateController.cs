@@ -4,11 +4,6 @@
 using System.Net;
 using System.Security.Claims;
 using System.Threading.Tasks;
-using IdentityServer4.Events;
-using IdentityServer4.Extensions;
-using IdentityServer4.Services;
-using IdentityServer4.Stores;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SimpleIAM.PasswordlessLogin.Orchestrators;
@@ -18,26 +13,17 @@ using SimpleIAM.PasswordlessLogin.UI.Shared;
 namespace SimpleIAM.PasswordlessLogin.UI.Authenticate
 {
     [Route("")]
-    public class AuthenticateController : BaseController
+    public class AuthenticateController : PasswordlessBaseController
     {
-        private readonly IIdentityServerInteractionService _interaction;
-        private readonly IEventService _events;
         private readonly IOneTimeCodeService _oneTimeCodeService;
-        private readonly IClientStore _clientStore;
         private readonly AuthenticateOrchestrator _authenticateOrchestrator;
 
         public AuthenticateController(
             AuthenticateOrchestrator authenticateOrchestrator,
-            IIdentityServerInteractionService interaction,
-            IEventService events,
-            IOneTimeCodeService oneTimeCodeService,
-            IClientStore clientStore)
+            IOneTimeCodeService oneTimeCodeService)
         {
             _authenticateOrchestrator = authenticateOrchestrator;
-            _interaction = interaction;
-            _events = events;
             _oneTimeCodeService = oneTimeCodeService;
-            _clientStore = clientStore;
         }
 
         [HttpGet("register")]

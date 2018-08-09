@@ -5,9 +5,9 @@
 
 <div class="focusBox focusBox-centered @if (ViewBag.Message == null) {<text>focusBox-delayedFadeIn</text>}">
     <h2 class="focusBox_title">Sign In</h2>
-    <openidauthority-sign-in next-url="@Model.NextUrl" login-hint="@Model.Username">
+    <passwordless-sign-in next-url="@Model.NextUrl" login-hint="@Model.Username">
         <partial name="_SignInFallback" for="@Model" />
-    </openidauthority-sign-in>
+    </passwordless-sign-in>
 </div>
 
 @section scripts {

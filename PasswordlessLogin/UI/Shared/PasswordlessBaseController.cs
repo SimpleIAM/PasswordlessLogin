@@ -8,9 +8,9 @@ using SimpleIAM.PasswordlessLogin.Configuration;
 
 namespace SimpleIAM.PasswordlessLogin.UI.Shared
 {
-    public class BaseController : Controller
+    public class PasswordlessBaseController : Controller
     {
-        public BaseController()
+        public PasswordlessBaseController()
         {            
         }
 

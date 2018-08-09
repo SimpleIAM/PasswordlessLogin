@@ -5,7 +5,7 @@
 
 <div class="focusBox focusBox-centered">
     <h2 class="focusBox_title">Register</h2>
-    <openidauthority-register next-url="@Model.NextUrl">
+    <passwordless-register next-url="@Model.NextUrl">
     <form method="post" asp-action="Register" class="form">
         <div class="field field-stacked form_row">
             <label asp-for="Email" class="field_label">Email</label>
@@ -30,7 +30,7 @@
       @ViewBag.Message
     </div>
     }
-    </openidauthority-register>
+    </passwordless-register>
     <div class="minorNav register_footer">
         <a href="/signin" class="register_signInLink">Sign in</a>
     </div>
