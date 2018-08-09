@@ -150,6 +150,14 @@ namespace Microsoft.Extensions.DependencyInjection
                         .AllowCredentials());
                 });
             }
+            else
+            {
+                services.AddCors(options =>
+                {
+                    options.AddPolicy(OpenIdAuthorityConstants.Security.CorsPolicyName, builder => builder
+                        .DisallowCredentials());
+                });
+            }
 
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
 
