@@ -1,0 +1,41 @@
+﻿@model SimpleIAM.PasswordlessLogin.Orchestrators.RegisterInputModel
+@{
+    ViewData["Title"] = "Register";
+}
+
+<div class="focusBox focusBox-centered">
+    <h2 class="focusBox_title">Register</h2>
+    <openidauthority-register next-url="@Model.NextUrl">
+    <form method="post" asp-action="Register" class="form">
+        <div class="field field-stacked form_row">
+            <label asp-for="Email" class="field_label">Email</label>
+            <input class="field_element field_element-fullWidth register_email" type="email" asp-for="Email" placeholder="you@example.com" autofocus />
+            <span asp-validation-for="Email" class="field_error"></span>
+        </div>
+        <div class="field field-checkbox form_row">
+          <input name="consent" class="field_element" type="checkbox" id="consent" value="true" />
+          <label class="field_label register_consentLabel" for="consent">I consent to the <a href="/privacy" target="_blank">privacy policy</a> and <a href="/terms" target="_blank">terms of service</a>.</label>
+        </div>
+        <div style="display:none">
+            <input type="text" name="leaveBlank" placeholder="leave blank" autocomplete="off" />
+        </div>
+        <div class="field form_row">
+            <input type="hidden" name="nextUrl" value="@Model.NextUrl" />
+            <input type="submit" value="Register" class="field_element field_element-fullWidth field_element-tall register_button" />
+        </div>
+    </form>
+    @if (ViewBag.Message != null)
+    {
+    <div class="message message-notice register_message">
+      @ViewBag.Message
+    </div>
+    }
+    </openidauthority-register>
+    <div class="minorNav register_footer">
+        <a href="/signin" class="register_signInLink">Sign in</a>
+    </div>
+</div>
+
+@section scripts {
+    <script src="~/dist.main.js" asp-append-version="true"></script>
+}

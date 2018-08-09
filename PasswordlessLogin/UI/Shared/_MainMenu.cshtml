@@ -1,0 +1,25 @@
+﻿@using SimpleIAM.PasswordlessLogin.Configuration
+@inject IdProviderConfig config
+
+<nav class="mainNav">
+    <h1 class="mainNav_siteName">
+        <a class="mainNav_siteNameLink" asp-action="Index" asp-controller="Home">@config.DisplayName</a>
+    </h1>
+    @if (User.Identity.IsAuthenticated)
+    {
+        <ul class="mainNav_menu">
+            <li class="mainNav_menuItem"><a class="mainNav_menuItemLink" asp-action="Apps" asp-controller="Home">Apps</a></li>
+        </ul>
+        <ul class="mainNav_menu mainNav_menu-account">
+            <li class="mainNav_menuItem mainNav_menuItem-primary"><a class="mainNav_menuItemLink" asp-action="MyAccount" asp-controller="Account">@User.Identity.Name</a></li>
+            <li class="mainNav_menuItem"><a class="mainNav_menuItemLink" asp-action="SignOut" asp-controller="Authenticate">Sign out</a></li>
+        </ul>
+    }
+    else
+    {
+        <ul class="mainNav_menu mainNav_menu-account">
+            <li class="mainNav_menuItem"><a class="mainNav_menuItemLink" asp-action="Register" asp-controller="Authenticate">Register</a></li>
+            <li class="mainNav_menuItem mainNav_menuItem-primary"><a class="mainNav_menuItemLink" asp-action="SignIn" asp-controller="Authenticate">Sign in</a></li>
+        </ul>
+    }
+</nav>

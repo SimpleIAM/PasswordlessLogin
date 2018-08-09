@@ -1,0 +1,19 @@
+﻿@model IEnumerable<SimpleIAM.PasswordlessLogin.Models.App>
+@{
+    ViewData["Title"] = "Apps";
+}
+
+<h2>Apps</h2>
+
+<div class="apps">
+    @foreach (var app in Model)
+    {
+        <div class="app">
+            <a class="app_link" href="@app.Uri">
+                <img class="app_image" src="@app.LogoUri" />
+                <span class="app_name">@app.Name</span>
+            </a>
+        </div>
+    }
+</div>
+
