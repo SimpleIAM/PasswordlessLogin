@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using SimpleIAM.PasswordlessLogin.Configuration;
 using SimpleIAM.PasswordlessLogin.Services.Email;
-using SimpleIAM.PasswordlessLogin.UI.Authenticate;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -16,24 +15,21 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
     {
         private readonly ILogger _logger;
         private readonly IEmailTemplateService _emailTemplateService;
-        private readonly IUrlHelper _urlHelper;
-        private readonly IHttpContextAccessor _httpContext;
+        private readonly IUrlService _urlService;
         private readonly IdProviderConfig _idProviderConfig;
         private readonly IApplicationService _applicationService;
 
         public MessageService(
             ILogger<MessageService> logger,
             IEmailTemplateService emailTemplateService,
-            IUrlHelper urlHelper,
-            IHttpContextAccessor httpContext,
+            IUrlService urlService,
             IdProviderConfig idProviderConfig,
             IApplicationService applicationService
             )
         {
             _logger = logger;
             _emailTemplateService = emailTemplateService;
-            _urlHelper = urlHelper;
-            _httpContext = httpContext;
+            _urlService = urlService;
             _idProviderConfig = idProviderConfig;
             _applicationService = applicationService;
         }
@@ -45,7 +41,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
                 return NotAnEmailAddress();
             }
 
-            var link = GenerateUrl(nameof(AuthenticateController.Register));
+            var link = _urlService.GetRegisterUrl();
             var fields = GetCustomFields(applicationId);
             fields["register_link"] = link;
             return await _emailTemplateService.SendEmailAsync(PasswordlessLoginConstants.EmailTemplates.AccountNotFound, sendTo, fields);
@@ -70,7 +66,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
                 return NotAnEmailAddress();
             }
 
-            var link = GenerateUrl(nameof(AuthenticateController.SignInLink), new { longCode = longCode.ToString() });
+            var link = _urlService.GetSignInLinkUrl(longCode.ToString());
             var fields = GetCustomFields(clientId);
             fields["one_time_code"] = oneTimeCode;
             fields["sign_in_link"] = link;
@@ -95,8 +91,8 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
                 return NotAnEmailAddress();
             }
 
-            var link = GenerateUrl(nameof(AuthenticateController.SignInLink), new { longCode = longCode.ToString() });
-            var signInUrl = GenerateUrl(nameof(AuthenticateController.SignIn));
+            var link = _urlService.GetSignInLinkUrl(longCode.ToString());
+            var signInUrl = _urlService.GetSignInUrl();
             var fields = GetCustomFields(applicationId);
             if(userFields != null)
             {
@@ -123,8 +119,8 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
                 return NotAnEmailAddress();
             }
 
-            var link = GenerateUrl(nameof(AuthenticateController.SignInLink), new { longCode = longCode.ToString() });
-            var signInUrl = GenerateUrl(nameof(AuthenticateController.SignIn));
+            var link = _urlService.GetSignInLinkUrl(longCode.ToString());
+            var signInUrl = _urlService.GetSignInUrl();
             var fields = GetCustomFields(applicationId);
             fields["one_time_code"] = oneTimeCode;
             fields["password_reset_link"] = link;
@@ -147,13 +143,6 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
                 }
             }
             return fields;
-        }
-
-        protected string GenerateUrl(string action, object values = null)
-        {
-            var controllerName = typeof(AuthenticateController).Name;
-            controllerName = controllerName.Substring(0, controllerName.Length - "Controller".Length);
-            return _urlHelper.Action(action, controllerName, values ?? new { }, _httpContext.HttpContext.Request.Scheme);
         }
     }
 }

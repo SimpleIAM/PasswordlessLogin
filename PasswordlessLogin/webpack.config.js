@@ -6,9 +6,10 @@ module.exports = {
     main: './UI/Main.js'
   },
   output: {
-    filename: 'dist.[name].js',
-    chunkFilename: 'dist.[name].[chunkhash:12].js',
-    path: path.resolve(__dirname, 'wwwroot')
+    filename: '[name].js',
+    chunkFilename: '[name].[chunkhash:12].js',
+    path: path.resolve(__dirname, 'wwwroot/passwordless/dist'),
+    publicPath: '/passwordless.dist.'
   },
   module: {
     rules: [

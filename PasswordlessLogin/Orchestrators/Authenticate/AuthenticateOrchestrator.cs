@@ -8,7 +8,6 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using SimpleIAM.PasswordlessLogin.Configuration;
 using SimpleIAM.PasswordlessLogin.Models;
@@ -34,7 +33,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
         private readonly IUserStore _userStore;
         private readonly IPasswordService _passwordService;
         private readonly IdProviderConfig _config;
-        private readonly IUrlHelper _urlHelper;
+        private readonly IUrlService _urlService;
         private readonly HttpContext _httpContext;
         private readonly IAuthorizedDeviceStore _authorizedDeviceStore;
         private readonly ISignInService _signInService;
@@ -47,7 +46,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             IUserStore userStore,
             IdProviderConfig config,
             IPasswordService passwordService,
-            IUrlHelper urlHelper,
+            IUrlService urlService,
             IHttpContextAccessor httpContextAccessor,
             IAuthorizedDeviceStore authorizedDeviceStore,
             ISignInService signInService,
@@ -59,7 +58,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             _messageService = messageService;
             _passwordService = passwordService;
             _config = config;
-            _urlHelper = urlHelper;
+            _urlService = urlService;
             _httpContext = httpContextAccessor.HttpContext;
             _authorizedDeviceStore = authorizedDeviceStore;
             _signInService = signInService;
@@ -96,7 +95,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 // exists but just never got a welcome email?
             }
 
-            var nextUrl = !string.IsNullOrEmpty(model.NextUrl) ? model.NextUrl : _urlHelper.Action("Apps", "Home");
+            var nextUrl = !string.IsNullOrEmpty(model.NextUrl) ? model.NextUrl : _urlService.GetDefaultRedirectUrl();
             if (model.InviteToSetPasword)
             {
                 _logger.LogTrace("The user will be asked to set their password after confirming the account.");
@@ -299,7 +298,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 }
                 return Ok("Check your email for password reset instructions.");
             }
-            var nextUrl = SendToSetPasswordFirst(!string.IsNullOrEmpty(model.NextUrl) ? model.NextUrl : _urlHelper.Action("Apps", "Home"));
+            var nextUrl = SendToSetPasswordFirst(!string.IsNullOrEmpty(model.NextUrl) ? model.NextUrl : _urlService.GetDefaultRedirectUrl());
             var oneTimeCodeResponse = await _oneTimeCodeService.GetOneTimeCodeAsync(
                 model.Username, 
                 TimeSpan.FromMinutes(PasswordlessLoginConstants.OneTimeCode.DefaultValidityMinutes), 
@@ -455,18 +454,18 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
 
         private string ValidatedNextUrl(string nextUrl)
         {
-            if (_urlHelper.IsLocalUrl(nextUrl))
+            if (_urlService.IsAllowedRedirectUrl(nextUrl))
             {
                 return nextUrl;
             }
             _logger.LogWarning("Next url was not valid: '{0}'. Using default redirect url instead.", nextUrl);
             // todo: get default redirect url from config
-            return _urlHelper.Action("Apps", "Home");
+            return _urlService.GetDefaultRedirectUrl();
         }
 
         private string SendToSetPasswordFirst(string nextUrl)
         {
-            var setPasswordUrl = _urlHelper.Action("SetPassword", "Account");
+            var setPasswordUrl = _urlService.GetSetPasswordUrl();
             return $"{setPasswordUrl}?nextUrl={nextUrl}";
         }
 

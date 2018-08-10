@@ -262,4 +262,4 @@ __pycache__/
 
 
 tempkey.rsa
-Paswordless/wwwroot/dist.*
+PasswordlessLogin/wwwroot/passwordless/dist
