@@ -28,15 +28,75 @@ namespace Microsoft.Extensions.DependencyInjection
 {
     public static class PasswordlessLoginServiceCollectionExtensions
     {
-        public static IServiceCollection AddPasswordlessSignIn(this IServiceCollection services, IConfiguration configuration, IHostingEnvironment env)
+        public static IServiceCollection AddPasswordlessLogin(this IServiceCollection services, IConfiguration configuration, IHostingEnvironment env)
         {
-            ThrowIfMissingParams(services, configuration, env);
+            if (services == null)
+            {
+                throw new ArgumentNullException(nameof(services));
+            }
+            if (configuration == null)
+            {
+                throw new ArgumentNullException(nameof(configuration));
+            }
+            if (env == null)
+            {
+                throw new ArgumentNullException(nameof(env));
+            }
 
-            services.AddPasswordlessSignInPart1(configuration);
-            services.AddPasswordlessSignInPart2(configuration, env);
 
-            var allowedOrigins = new string[] { };
-            services.AddCustomCorsPolicy(allowedOrigins);
+            var connection = configuration.GetConnectionString(PasswordlessLoginConstants.ConfigurationSections.ConnectionStringName);
+
+            services.AddDbContext<PasswordlessLoginDbContext>(options => options.UseSqlServer(connection));
+            services.TryAddTransient<IOneTimeCodeStore, DbOneTimeCodeStore>();
+            services.TryAddTransient<IOneTimeCodeService, OneTimeCodeService>();
+            services.TryAddTransient<IUserStore, DbUserStore>();
+            services.TryAddTransient<IAuthorizedDeviceStore, DbAuthorizedDeviceStore>();
+            services.TryAddTransient<IMessageService, MessageService>();
+            services.TryAddTransient<ISignInService, PasswordlessSignInService>();
+            services.TryAddTransient<IApplicationService, NonexistantApplicationService>();
+
+
+
+            var smtpConfig = new SmtpConfig();
+            configuration.Bind(PasswordlessLoginConstants.ConfigurationSections.Smtp, smtpConfig);
+            services.TryAddSingleton(smtpConfig);
+            services.TryAddTransient<IEmailService, SmtpEmailService>();
+
+            IFileProvider templateFileProvider = new EmbeddedFileProvider(
+                typeof(PasswordlessLoginServiceCollectionExtensions).GetTypeInfo().Assembly,
+                $"SimpleIAM.PasswordlessLogin.{PasswordlessLoginConstants.EmailTemplateFolder}");
+            var emailTemplateOverrideFolder = Path.Combine(env.ContentRootPath, PasswordlessLoginConstants.EmailTemplateFolder);
+            if (Directory.Exists(emailTemplateOverrideFolder))
+            {
+                templateFileProvider = new CompositeFileProvider(
+                    new PhysicalFileProvider(emailTemplateOverrideFolder),
+                    templateFileProvider
+                );
+            }
+            var defaultFromAddress = configuration.GetValue<string>(PasswordlessLoginConstants.ConfigurationSections.MailFrom);
+            var emailTemplates = EmailTemplateProcessor.GetTemplatesFromMailConfig(defaultFromAddress, templateFileProvider);
+            services.TryAddSingleton(emailTemplates);
+            services.TryAddTransient<IEmailTemplateService, EmailTemplateService>();
+
+            services.TryAddSingleton<IPasswordHashService>(
+                new AspNetIdentityPasswordHashService(PasswordlessLoginConstants.Security.DefaultPbkdf2Iterations));
+            services.TryAddTransient<IPasswordHashStore, DbPasswordHashStore>();
+            services.TryAddTransient<IPasswordService, DefaultPasswordService>();
+
+            services.TryAddTransient<AuthenticateOrchestrator>();
+            services.TryAddTransient<UserOrchestrator>();
+
+            services.AddEmbeddedViews();
+
+            services.TryAddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+
+            // IUrlHelper
+            services.TryAddSingleton<IActionContextAccessor, ActionContextAccessor>();
+            services.TryAddScoped<IUrlHelper>(x => {
+                var actionContext = x.GetRequiredService<IActionContextAccessor>().ActionContext;
+                var factory = x.GetRequiredService<IUrlHelperFactory>();
+                return factory.GetUrlHelper(actionContext);
+            });
 
             return services;
         }
@@ -118,7 +178,7 @@ namespace Microsoft.Extensions.DependencyInjection
             return services;
         }
 
-        private static IServiceCollection AddCustomCorsPolicy(this IServiceCollection services, string[] allowedOrigins)
+        public static IServiceCollection AddCustomCorsPolicy(this IServiceCollection services, string[] allowedOrigins)
         {
             if (allowedOrigins.Length > 0)
             {

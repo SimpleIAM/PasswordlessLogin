@@ -9,7 +9,7 @@ namespace Microsoft.AspNetCore.Builder
 {
     public static class PasswordlessLoginApplicationBuilderExtensions
     {
-        public static IApplicationBuilder UsePasswordlessSignIn(this IApplicationBuilder app, IFileProvider webRootFileProvider)
+        public static IApplicationBuilder UsePasswordlessLogin(this IApplicationBuilder app, IFileProvider webRootFileProvider)
         {
             if (app == null)
             {
