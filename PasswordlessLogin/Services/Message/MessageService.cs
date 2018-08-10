@@ -19,13 +19,15 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
         private readonly IUrlHelper _urlHelper;
         private readonly IHttpContextAccessor _httpContext;
         private readonly IdProviderConfig _idProviderConfig;
+        private readonly IApplicationService _applicationService;
 
         public MessageService(
             ILogger<MessageService> logger,
             IEmailTemplateService emailTemplateService,
             IUrlHelper urlHelper,
             IHttpContextAccessor httpContext,
-            IdProviderConfig idProviderConfig
+            IdProviderConfig idProviderConfig,
+            IApplicationService applicationService
             )
         {
             _logger = logger;
@@ -33,6 +35,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
             _urlHelper = urlHelper;
             _httpContext = httpContext;
             _idProviderConfig = idProviderConfig;
+            _applicationService = applicationService;
         }
 
         public async Task<SendMessageResult> SendAccountNotFoundMessageAsync(string applicationId, string sendTo)
@@ -43,7 +46,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
             }
 
             var link = GenerateUrl(nameof(AuthenticateController.Register));
-            var fields = await GetCustomFieldsAsync(applicationId);
+            var fields = GetCustomFields(applicationId);
             fields["register_link"] = link;
             return await _emailTemplateService.SendEmailAsync(PasswordlessLoginConstants.EmailTemplates.AccountNotFound, sendTo, fields);
         }
@@ -68,7 +71,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
             }
 
             var link = GenerateUrl(nameof(AuthenticateController.SignInLink), new { longCode = longCode.ToString() });
-            var fields = await GetCustomFieldsAsync(clientId);
+            var fields = GetCustomFields(clientId);
             fields["one_time_code"] = oneTimeCode;
             fields["sign_in_link"] = link;
             return await _emailTemplateService.SendEmailAsync(template, sendTo, fields);
@@ -94,7 +97,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
 
             var link = GenerateUrl(nameof(AuthenticateController.SignInLink), new { longCode = longCode.ToString() });
             var signInUrl = GenerateUrl(nameof(AuthenticateController.SignIn));
-            var fields = await GetCustomFieldsAsync(applicationId);
+            var fields = GetCustomFields(applicationId);
             if(userFields != null)
             {
                 foreach (var field in userFields)
@@ -122,22 +125,22 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
 
             var link = GenerateUrl(nameof(AuthenticateController.SignInLink), new { longCode = longCode.ToString() });
             var signInUrl = GenerateUrl(nameof(AuthenticateController.SignIn));
-            var fields = await GetCustomFieldsAsync(applicationId);
+            var fields = GetCustomFields(applicationId);
             fields["one_time_code"] = oneTimeCode;
             fields["password_reset_link"] = link;
 
             return await _emailTemplateService.SendEmailAsync(PasswordlessLoginConstants.EmailTemplates.PasswordReset, sendTo, fields);
         }
 
-        protected async Task<IDictionary<string, string>> GetCustomFieldsAsync(string applicationId)
+        protected IDictionary<string, string> GetCustomFields(string applicationId)
         {
             var fields = new Dictionary<string, string>(_idProviderConfig.CustomProperties);
             if (applicationId != null)
             {
-                var client = await _clientStore.FindEnabledClientByIdAsync(applicationId);
-                if(client != null && client.Properties != null)
+                var clientProperties = _applicationService.GetApplicationProperties(applicationId);
+                if (clientProperties != null)
                 {
-                    foreach(var field in client.Properties)
+                    foreach(var field in clientProperties)
                     {
                         fields[field.Key] = field.Value;
                     }

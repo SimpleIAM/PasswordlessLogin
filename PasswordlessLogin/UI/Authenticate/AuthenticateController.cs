@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SimpleIAM.PasswordlessLogin.Orchestrators;
+using SimpleIAM.PasswordlessLogin.Services;
 using SimpleIAM.PasswordlessLogin.Services.OTC;
 using SimpleIAM.PasswordlessLogin.UI.Shared;
 
@@ -17,13 +18,19 @@ namespace SimpleIAM.PasswordlessLogin.UI.Authenticate
     {
         private readonly IOneTimeCodeService _oneTimeCodeService;
         private readonly AuthenticateOrchestrator _authenticateOrchestrator;
+        private readonly ISignInService _signInService;
+        private readonly IApplicationService _applicationService;
 
         public AuthenticateController(
             AuthenticateOrchestrator authenticateOrchestrator,
-            IOneTimeCodeService oneTimeCodeService)
+            IOneTimeCodeService oneTimeCodeService,
+            ISignInService signInService,
+            IApplicationService applicationService)
         {
             _authenticateOrchestrator = authenticateOrchestrator;
             _oneTimeCodeService = oneTimeCodeService;
+            _signInService = signInService;
+            _applicationService = applicationService;
         }
 
         [HttpGet("register")]
@@ -144,15 +151,14 @@ namespace SimpleIAM.PasswordlessLogin.UI.Authenticate
 
             if (User?.Identity.IsAuthenticated == true)
             {
-                await HttpContext.SignOutAsync();
-                await _events.RaiseAsync(new UserLogoutSuccessEvent(User.GetSubjectId(), User.GetDisplayName()));
+                await _signInService.SignOutAsync(User.GetSubjectId(), User.GetDisplayName());
 
                 // We're signed out now, so the UI for this request should show an anonymous user
                 HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
             }
             var viewModel = new SignedOutViewModel()
             {
-                AppName = (await _clientStore.FindEnabledClientByIdAsync(context?.ClientId))?.ClientName ?? "the website",
+                AppName = _applicationService.GetApplicationName(context?.ClientId) ?? "the website",
                 PostLogoutRedirectUri = context?.PostLogoutRedirectUri,
                 SignOutIFrameUrl = context?.SignOutIFrameUrl
             };

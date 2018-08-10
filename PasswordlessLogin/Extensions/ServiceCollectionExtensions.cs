@@ -14,6 +14,7 @@ using SimpleIAM.PasswordlessLogin;
 using SimpleIAM.PasswordlessLogin.Configuration;
 using SimpleIAM.PasswordlessLogin.Entities;
 using SimpleIAM.PasswordlessLogin.Orchestrators;
+using SimpleIAM.PasswordlessLogin.Services;
 using SimpleIAM.PasswordlessLogin.Services.Email;
 using SimpleIAM.PasswordlessLogin.Services.Message;
 using SimpleIAM.PasswordlessLogin.Services.OTC;
@@ -66,6 +67,8 @@ namespace Microsoft.Extensions.DependencyInjection
             services.TryAddTransient<IUserStore, DbUserStore>();
             services.TryAddTransient<IAuthorizedDeviceStore, DbAuthorizedDeviceStore>();
             services.TryAddTransient<IMessageService, MessageService>();
+            services.TryAddTransient<ISignInService, PasswordlessSignInService>();
+            services.TryAddTransient<IApplicationService, NonexistantApplicationService>();
 
             return services;
         }

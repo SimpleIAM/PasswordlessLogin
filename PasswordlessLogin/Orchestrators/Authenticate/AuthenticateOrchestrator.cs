@@ -37,7 +37,8 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
         private readonly IUrlHelper _urlHelper;
         private readonly HttpContext _httpContext;
         private readonly IAuthorizedDeviceStore _authorizedDeviceStore;
-
+        private readonly ISignInService _signInService;
+        private readonly IApplicationService _applicationService;
 
         public AuthenticateOrchestrator(
             ILogger<AuthenticateOrchestrator> logger,
@@ -48,7 +49,9 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             IPasswordService passwordService,
             IUrlHelper urlHelper,
             IHttpContextAccessor httpContextAccessor,
-            IAuthorizedDeviceStore authorizedDeviceStore)
+            IAuthorizedDeviceStore authorizedDeviceStore,
+            ISignInService signInService,
+            IApplicationService applicationService)
         {
             _logger = logger;
             _oneTimeCodeService = oneTimeCodeService;
@@ -59,13 +62,15 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             _urlHelper = urlHelper;
             _httpContext = httpContextAccessor.HttpContext;
             _authorizedDeviceStore = authorizedDeviceStore;
+            _signInService = signInService;
+            _applicationService = applicationService;
         }
 
         public async Task<ActionResponse> RegisterAsync(RegisterInputModel model)
         {
             _logger.LogDebug("Begin registration for {0}", model.Email);
 
-            if (!await ApplicationIdIsNullOrValidAsync(model.ApplicationId))
+            if (!ApplicationIdIsNullOrValid(model.ApplicationId))
             {
                 return BadRequest("Invalid application id");
             }
@@ -116,7 +121,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
         {
             _logger.LogDebug("Begin send one time code for {0}", model.Username);
 
-            if (!await ApplicationIdIsNullOrValidAsync(model.ApplicationId))
+            if (!ApplicationIdIsNullOrValid(model.ApplicationId))
             {
                 return BadRequest("Invalid application id");
             }
@@ -270,7 +275,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
         {
             _logger.LogDebug("Begin send password reset message for {0}", model.Username);
 
-            if (!await ApplicationIdIsNullOrValidAsync(model.ApplicationId))
+            if (!ApplicationIdIsNullOrValid(model.ApplicationId))
             {
                 return BadRequest("Invalid application id");
             }
@@ -399,8 +404,6 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 var deviceId = await AuthorizeDeviceAsync(user.SubjectId, description);
             }
 
-            await _events.RaiseAsync(new UserLoginSuccessEvent(user.Email, user.SubjectId, user.Email));
-
             var authProps = (AuthenticationProperties)null;
             if (staySignedIn == true || (method == SignInMethod.Link && deviceIsAuthorized))
             {
@@ -418,7 +421,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
 
             _logger.LogDebug("Signing user in: {0}", user.Email);
             _logger.LogTrace("SubjectId: {0}", user.SubjectId);
-            await _httpContext.SignInAsync(user.SubjectId, user.Email, authProps);
+            await _signInService.SignInAsync(user.SubjectId, user.Email, authProps);
 
             nextUrl = ValidatedNextUrl(nextUrl);
             _logger.LogDebug("Redirecting user to: {0}", nextUrl);
@@ -467,14 +470,13 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             return $"{setPasswordUrl}?nextUrl={nextUrl}";
         }
 
-        private async Task<bool> ApplicationIdIsNullOrValidAsync(string applicationId)
+        private bool ApplicationIdIsNullOrValid(string applicationId)
         {
             if(applicationId == null)
             {
                 return true;
             }
-            var app = await _clientStore.FindEnabledClientByIdAsync(applicationId);
-            if (app == null)
+            if (!_applicationService.ApplicationExists(applicationId))
             {
                 _logger.LogError("Invalid application id '{0}'", applicationId);
                 return false;
