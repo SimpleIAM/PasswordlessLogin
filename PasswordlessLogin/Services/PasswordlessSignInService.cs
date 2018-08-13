@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http;
 
 namespace SimpleIAM.PasswordlessLogin.Services
@@ -27,14 +28,14 @@ namespace SimpleIAM.PasswordlessLogin.Services
                 new Claim("name", username),
                 new Claim("auth_time", authTime.ToString()),
             };
-            var id = new ClaimsIdentity(claims, "pwd", "rname", "role");
+            var id = new ClaimsIdentity(claims, "pwd", "name", "role");
             var principal = new ClaimsPrincipal(id);
-            await _httpContext.SignInAsync("Cookies", principal, authProps);
+            await _httpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, authProps);
         }
 
         public async Task SignOutAsync(string subjectId, string username)
         {
-            await _httpContext.SignOutAsync("Cookies");
+            await _httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         }
     }
 }

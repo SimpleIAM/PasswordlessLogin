@@ -7,11 +7,17 @@ namespace SimpleIAM.PasswordlessLogin.Configuration
 {
     public class IdProviderConfig
     {
+        public IdProviderConfig()
+        {
+            Urls = new UrlConfig();
+        }
+
         public string DisplayName { get; set; } = PasswordlessLoginConstants.DefaultDisplayName;
         public int DefaultSessionLengthMinutes { get; set; } = PasswordlessLoginConstants.Security.DefaultDefaultSessionLengthMinutes;
         public int MaxSessionLengthMinutes { get; set; } = PasswordlessLoginConstants.Security.DefaultMaxSessionLengthMinutes;
         public bool RememberUsernames { get; set; } = true;
         public int MinimumPasswordStrengthInBits { get; set; } = PasswordlessLoginConstants.Security.DefaultMinimumPasswordStrengthInBits;
         public IDictionary<string, string> CustomProperties { get; set; }
+        public UrlConfig Urls { get; set; }
     }
 }

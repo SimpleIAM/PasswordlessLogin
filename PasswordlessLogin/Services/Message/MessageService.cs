@@ -1,8 +1,6 @@
 ﻿// Copyright (c) Ryan Foster. All rights reserved. 
 // Licensed under the Apache License, Version 2.0.
 
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using SimpleIAM.PasswordlessLogin.Configuration;
 using SimpleIAM.PasswordlessLogin.Services.Email;
@@ -130,7 +128,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
 
         protected IDictionary<string, string> GetCustomFields(string applicationId)
         {
-            var fields = new Dictionary<string, string>(_idProviderConfig.CustomProperties);
+            var fields = new Dictionary<string, string>(_idProviderConfig.CustomProperties ?? new Dictionary<string, string>() { });
             if (applicationId != null)
             {
                 var clientProperties = _applicationService.GetApplicationProperties(applicationId);

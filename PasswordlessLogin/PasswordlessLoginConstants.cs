@@ -10,22 +10,9 @@ namespace SimpleIAM.PasswordlessLogin
         public const string BasicEmailRegexPattern = @".+\@.+\..+";
         public const string EmailTemplateFolder = "EmailTemplates";
 
-        public static class Configuration
-        {
-            public const string LoginUrl = "/signin";
-            public const string LogoutUrl = "/signout";
-            public const string LogoutIdParameter = "id";
-            public const string ErrorUrl = "/error";
-            public const string CheckSessionIFrame = "/connect/checksession";
-        }
-
         public static class ConfigurationSections
         {
-            public const string Apis = "Apis";
-            public const string Apps = "Apps";
-            public const string Hosting = "Hosting";
             public const string IdProvider = "IdProvider";
-            public const string IdScopes = "IdScopes";
             public const string MailFrom = "Mail:From";
             public const string Smtp = "Mail:Smtp";
             public const string ConnectionStringName = "DefaultConnection";
@@ -60,18 +47,11 @@ namespace SimpleIAM.PasswordlessLogin
 
         public static class Security
         {
-            public const string CorsPolicyName = "CorsPolicy";
+            public const string CorsPolicyName = "PasswordlessCorsPolicy";
             public const int DefaultPbkdf2Iterations = 50000;
             public const int DefaultMinimumPasswordStrengthInBits = 30;
             public const int DefaultDefaultSessionLengthMinutes = 720; // 12 hours
             public const int DefaultMaxSessionLengthMinutes = 44640; // 31 days
-        }
-
-        public static class StandardClaims
-        {
-            public const string Name = "name";
-            public const string Email = "email";
-            public const string EmailVerified = "email_verified";
         }
     }
 }
