@@ -1,9 +1,10 @@
 const path = require('path')
 const VueLoaderPlugin = require('vue-loader/lib/plugin')
+const WebpackCleanupPlugin = require('webpack-cleanup-plugin')
 
 module.exports = {
   entry: {
-    main: './UI/Main.js'
+    main: './src/main.js'
   },
   output: {
     filename: '[name].js',
@@ -13,7 +14,7 @@ module.exports = {
   },
   module: {
     rules: [
-      { test: /\.vue$/, include: /UI/, loader: 'vue-loader' },
+      { test: /\.vue$/, include: /src/, loader: 'vue-loader' },
       { 
         test: /\.js$/, 
         loader: 'babel-loader',
@@ -26,7 +27,8 @@ module.exports = {
     ]
   },
   plugins: [
-    new VueLoaderPlugin()
+    new VueLoaderPlugin(),
+    new WebpackCleanupPlugin()
   ],
   /*optimization: {
       splitChunks: {

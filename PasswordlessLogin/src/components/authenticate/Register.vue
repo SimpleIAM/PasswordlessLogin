@@ -39,7 +39,7 @@
 
 <script>
 import Vue from 'vue';
-import api from '../Shared/api.js';
+import api from '../../api.js';
 
 var VueCookie = require('vue-cookie');
 
