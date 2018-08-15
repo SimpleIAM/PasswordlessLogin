@@ -1,7 +1,6 @@
 ﻿// Copyright (c) Ryan Foster. All rights reserved. 
 // Licensed under the Apache License, Version 2.0.
 
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
 using SimpleIAM.PasswordlessLogin.Services.Email;
 using System.IO;

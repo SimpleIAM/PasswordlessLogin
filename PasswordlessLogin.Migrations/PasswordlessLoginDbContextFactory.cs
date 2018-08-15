@@ -3,6 +3,7 @@
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using SimpleIAM.PasswordlessLogin.Configuration;
 using SimpleIAM.PasswordlessLogin.Entities;
 
 namespace SimpleIAM.PasswordlessLogin.Migrations
@@ -14,10 +15,19 @@ namespace SimpleIAM.PasswordlessLogin.Migrations
             var optionsBuilder = new DbContextOptionsBuilder<PasswordlessLoginDbContext>();
 
             var connection = "(none)";
+            var schema = "auth";
 
-            optionsBuilder.UseSqlServer(connection, b => b.MigrationsAssembly("SimpleIAM.PasswordlessLogin.Migrations"));
+            optionsBuilder.UseSqlServer(connection, b =>
+            {
+                b.MigrationsAssembly("SimpleIAM.PasswordlessLogin.Migrations");
+                b.MigrationsHistoryTable("__PasswordlessMigrationsHistory", schema);
+            });
 
-            return new PasswordlessLoginDbContext(optionsBuilder.Options);
+            var config = new PasswordlessDatabaseConfig()
+            { 
+                Schema = schema
+            };
+            return new PasswordlessLoginDbContext(optionsBuilder.Options, config);
         }
     }
 }

@@ -2,14 +2,19 @@
 // Licensed under the Apache License, Version 2.0.
 
 using Microsoft.EntityFrameworkCore;
+using SimpleIAM.PasswordlessLogin.Configuration;
 
 namespace SimpleIAM.PasswordlessLogin.Entities
 {
     public class PasswordlessLoginDbContext : DbContext
     {
-        public PasswordlessLoginDbContext(DbContextOptions<PasswordlessLoginDbContext> options)
+        private readonly string _schema;
+
+        public PasswordlessLoginDbContext(DbContextOptions<PasswordlessLoginDbContext> options, PasswordlessDatabaseConfig config)
             : base(options)
-        { }
+        {
+            _schema = config?.Schema ?? "auth";
+        }
 
         public DbSet<User> Users { get; set; }
         public DbSet<UserClaim> Claims { get; set; }
@@ -19,6 +24,8 @@ namespace SimpleIAM.PasswordlessLogin.Entities
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            modelBuilder.HasDefaultSchema(_schema);
+
             modelBuilder.Entity<User>(user =>
             {
                 user.HasKey(x => x.SubjectId);

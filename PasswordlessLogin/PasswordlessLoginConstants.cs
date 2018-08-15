@@ -5,7 +5,7 @@ namespace SimpleIAM.PasswordlessLogin
 {
     public static class PasswordlessLoginConstants
     {
-        public const string DefaultDisplayName = "OpenID Authority";
+        public const string DefaultDisplayName = "Passwordless Login";
 
         public const string BasicEmailRegexPattern = @".+\@.+\..+";
         public const string EmailTemplateFolder = "EmailTemplates";
@@ -13,6 +13,7 @@ namespace SimpleIAM.PasswordlessLogin
         public static class ConfigurationSections
         {
             public const string IdProvider = "IdProvider";
+            public const string PasswordlessDatabase = "PasswordlessDatabase";
             public const string MailFrom = "Mail:From";
             public const string Smtp = "Mail:Smtp";
             public const string ConnectionStringName = "DefaultConnection";

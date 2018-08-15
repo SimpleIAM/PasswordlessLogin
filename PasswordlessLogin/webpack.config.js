@@ -4,10 +4,10 @@ const WebpackCleanupPlugin = require('webpack-cleanup-plugin')
 
 module.exports = {
   entry: {
-    main: './src/main.js'
+    bundle: './src/main.js'
   },
   output: {
-    filename: '[name].js',
+    filename: 'bundle.js',
     chunkFilename: '[name].[chunkhash:12].js',
     path: path.resolve(__dirname, 'wwwroot/passwordless/dist'),
     publicPath: '/passwordless.dist.'

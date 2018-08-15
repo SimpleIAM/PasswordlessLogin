@@ -10,14 +10,15 @@ using SimpleIAM.PasswordlessLogin.Entities;
 namespace SimpleIAM.PasswordlessLogin.Migrations.Migrations
 {
     [DbContext(typeof(PasswordlessLoginDbContext))]
-    [Migration("20180613000752_AdditionalFactors")]
-    partial class AdditionalFactors
+    [Migration("20180815171813_v0.3.0")]
+    partial class v030
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "2.1.0-rtm-30799")
+                .HasDefaultSchema("auth")
+                .HasAnnotation("ProductVersion", "2.1.1-rtm-30846")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128)
                 .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
 
@@ -29,8 +30,7 @@ namespace SimpleIAM.PasswordlessLogin.Migrations.Migrations
 
                     b.Property<DateTime>("AddedOn");
 
-                    b.Property<string>("Description")
-                        .HasMaxLength(100);
+                    b.Property<string>("Description");
 
                     b.Property<string>("DeviceIdHash")
                         .IsRequired();

@@ -79,6 +79,10 @@ namespace Microsoft.Extensions.DependencyInjection
             configuration.Bind(PasswordlessLoginConstants.ConfigurationSections.IdProvider, idProviderConfig);
             services.AddSingleton(idProviderConfig);
 
+            var databaseConfig = new PasswordlessDatabaseConfig();
+            configuration.Bind(PasswordlessLoginConstants.ConfigurationSections.PasswordlessDatabase, databaseConfig);
+            services.AddSingleton(databaseConfig);
+
             var connection = configuration.GetConnectionString(PasswordlessLoginConstants.ConfigurationSections.ConnectionStringName);
 
             services.AddDbContext<PasswordlessLoginDbContext>(options => options.UseSqlServer(connection));

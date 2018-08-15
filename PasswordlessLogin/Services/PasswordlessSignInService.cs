@@ -33,9 +33,12 @@ namespace SimpleIAM.PasswordlessLogin.Services
             await _httpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, authProps);
         }
 
-        public async Task SignOutAsync(string subjectId, string username)
+        public async Task SignOutAsync()
         {
             await _httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+
+            // We're signed out now, so the UI for this request should show an anonymous user
+            _httpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
         }
     }
 }
