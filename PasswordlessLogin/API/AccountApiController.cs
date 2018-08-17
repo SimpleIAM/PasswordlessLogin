@@ -12,7 +12,7 @@ using SimpleIAM.PasswordlessLogin.Services.Password;
 
 namespace SimpleIAM.PasswordlessLogin.API
 {
-    [Route("passwordless-api/v1/myaccount")]
+    [Route("passwordless-api/v1/my-account")]
     [EnableCors(PasswordlessLoginConstants.Security.CorsPolicyName)]
     [Authorize]
     public class AccountApiController : Controller
@@ -55,7 +55,7 @@ namespace SimpleIAM.PasswordlessLogin.API
             return response.ToJsonResult();
         }
 
-        [HttpPatch("setpassword")]
+        [HttpPost("set-password")]
         public async Task<IActionResult> SetPassword([FromBody] SetPasswordInputModel model)
         {
             var subjectId = User.GetSubjectId();
@@ -68,7 +68,7 @@ namespace SimpleIAM.PasswordlessLogin.API
                     return Unauthenticated("Old password was incorrect, locked, or missing");
                 }
             }
-            else if (User.GetAuthTimeUTC() > DateTime.UtcNow.AddMinutes(-5)) //todo: may want to make time configurable
+            else if (User.GetAuthTimeUTC() < DateTime.UtcNow.AddMinutes(-5)) //todo: may want to make time configurable
             {
                 return Unauthenticated("Please reauthenticate to proceed");
             }

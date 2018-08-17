@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 using Microsoft.Extensions.Logging;
+using SimpleIAM.PasswordlessLogin.Configuration;
 using SimpleIAM.PasswordlessLogin.Stores;
 using System;
 using System.Threading.Tasks;
@@ -13,16 +14,19 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
         private readonly ILogger _logger;
         private readonly IPasswordHashService _passwordHashService;
         private readonly IPasswordHashStore _passwordHashStore;
+        private readonly IdProviderConfig _idProviderConfig;
 
         public DefaultPasswordService(
             ILogger<DefaultPasswordService> logger,
             IPasswordHashService passwordHashService,
-            IPasswordHashStore passwordHashStore
+            IPasswordHashStore passwordHashStore,
+            IdProviderConfig idProviderConfig
             )
         {
             _logger = logger;
             _passwordHashService = passwordHashService;
             _passwordHashStore = passwordHashStore;
+            _idProviderConfig = idProviderConfig;
         }
 
         public string UniqueIdentifierClaimType => "sub";
@@ -99,8 +103,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
 
         private bool PasswordIsStrongEnough(string password)
         {
-            //todo: implement an accurate password strength check or a length check based on settings
-            return password?.Length >= 8;
+            return password?.Length >= _idProviderConfig.MinimumPasswordLength;
         }
 
         public async Task<DateTime?> PasswordLastChangedAsync(string uniqueIdentifier)
