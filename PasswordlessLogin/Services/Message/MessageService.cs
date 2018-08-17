@@ -39,7 +39,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
                 return NotAnEmailAddress();
             }
 
-            var link = _urlService.GetRegisterUrl();
+            var link = _urlService.GetRegisterUrl(true);
             var fields = GetCustomFields(applicationId);
             fields["register_link"] = link;
             return await _emailTemplateService.SendEmailAsync(PasswordlessLoginConstants.EmailTemplates.AccountNotFound, sendTo, fields);
@@ -64,7 +64,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
                 return NotAnEmailAddress();
             }
 
-            var link = _urlService.GetSignInLinkUrl(longCode.ToString());
+            var link = _urlService.GetSignInLinkUrl(longCode.ToString(), true);
             var fields = GetCustomFields(clientId);
             fields["one_time_code"] = oneTimeCode;
             fields["sign_in_link"] = link;
@@ -89,8 +89,8 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
                 return NotAnEmailAddress();
             }
 
-            var link = _urlService.GetSignInLinkUrl(longCode.ToString());
-            var signInUrl = _urlService.GetSignInUrl();
+            var link = _urlService.GetSignInLinkUrl(longCode.ToString(), true);
+            var signInUrl = _urlService.GetSignInUrl(true);
             var fields = GetCustomFields(applicationId);
             if(userFields != null)
             {
@@ -117,8 +117,8 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
                 return NotAnEmailAddress();
             }
 
-            var link = _urlService.GetSignInLinkUrl(longCode.ToString());
-            var signInUrl = _urlService.GetSignInUrl();
+            var link = _urlService.GetSignInLinkUrl(longCode.ToString(), true);
+            var signInUrl = _urlService.GetSignInUrl(true);
             var fields = GetCustomFields(applicationId);
             fields["one_time_code"] = oneTimeCode;
             fields["password_reset_link"] = link;

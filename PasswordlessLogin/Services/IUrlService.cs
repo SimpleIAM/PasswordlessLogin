@@ -5,14 +5,14 @@ namespace SimpleIAM.PasswordlessLogin.Services
 {
     public interface IUrlService
     {
-        string GetDefaultRedirectUrl();
-        string GetForgotPasswordUrl();
-        string GetMyAccountUrl();
-        string GetRegisterUrl();
-        string GetSetPasswordUrl();
-        string GetSignInUrl();
-        string GetSignInLinkUrl(string longCode);
-        string GetSignOutUrl();
+        string GetDefaultRedirectUrl(bool absolute = false);
+        string GetForgotPasswordUrl(bool absolute = false);
+        string GetMyAccountUrl(bool absolute = false);
+        string GetRegisterUrl(bool absolute = false);
+        string GetSetPasswordUrl(bool absolute = false);
+        string GetSignInUrl(bool absolute = false);
+        string GetSignInLinkUrl(string longCode, bool absolute = false);
+        string GetSignOutUrl(bool absolute = false);
         bool IsAllowedRedirectUrl(string url);
     }
 }

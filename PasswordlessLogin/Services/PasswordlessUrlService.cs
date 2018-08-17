@@ -24,44 +24,77 @@ namespace SimpleIAM.PasswordlessLogin.Services
             _urls = idProviderConfig.Urls;
         }
 
-        public string GetDefaultRedirectUrl()
+        public string GetDefaultRedirectUrl(bool absolute = false)
         {
-            return AbsoluteUrl(_urls.DefaultRedirect);
+            if (absolute)
+            {
+                return AbsoluteUrl(_urls.DefaultRedirect);
+            }
+            return _urls.DefaultRedirect;
         }
 
-        public string GetForgotPasswordUrl()
+        public string GetForgotPasswordUrl(bool absolute = false)
         {
-            return AbsoluteUrl(_urls.ForgotPassword);
+            if (absolute)
+            {
+                return AbsoluteUrl(_urls.ForgotPassword);
+            }
+            return _urls.ForgotPassword;
         }
 
-        public string GetMyAccountUrl()
+        public string GetMyAccountUrl(bool absolute = false)
         {
-            return AbsoluteUrl(_urls.MyAccount);
+            if (absolute)
+            {
+                return AbsoluteUrl(_urls.MyAccount);
+            }
+            return _urls.MyAccount;
         }
 
-        public string GetRegisterUrl()
+        public string GetRegisterUrl(bool absolute = false)
         {
-            return AbsoluteUrl(_urls.Register);
+            if (absolute)
+            {
+                return AbsoluteUrl(_urls.Register);
+            }
+            return _urls.Register;
         }
 
-        public string GetSetPasswordUrl()
+        public string GetSetPasswordUrl(bool absolute = false)
         {
-            return AbsoluteUrl(_urls.SetPassword);
+            if (absolute)
+            {
+                return AbsoluteUrl(_urls.SetPassword);
+            }
+            return _urls.SetPassword;
         }
 
-        public string GetSignInLinkUrl(string longCode)
+        public string GetSignInLinkUrl(string longCode, bool absolute = false)
         {
-            return AbsoluteUrl(_urls.SignInLink.Replace("{long_code}", longCode));
+            var url = _urls.SignInLink.Replace("{long_code}", longCode);
+            if (absolute)
+            {
+                return AbsoluteUrl(url);
+            }
+            return url;
         }
 
-        public string GetSignInUrl()
+        public string GetSignInUrl(bool absolute = false)
         {
-            return AbsoluteUrl(_urls.SignIn);
+            if (absolute)
+            {
+                return AbsoluteUrl(_urls.SignIn);
+            }
+            return _urls.SignIn;
         }
 
-        public string GetSignOutUrl()
+        public string GetSignOutUrl(bool absolute = false)
         {
-            return AbsoluteUrl(_urls.SignOut);
+            if (absolute)
+            {
+                return AbsoluteUrl(_urls.SignOut);
+            }
+            return _urls.SignOut;
         }
 
         public bool IsAllowedRedirectUrl(string url)
