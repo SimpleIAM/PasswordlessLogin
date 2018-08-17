@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const url = axios.create({
-  baseURL: window.location.origin + '/api/v1/'
+  baseURL: window.location.origin + '/passwordless-api/v1/'
 });
 
 const api = {

@@ -9,7 +9,7 @@ using SimpleIAM.PasswordlessLogin.Orchestrators;
 
 namespace SimpleIAM.PasswordlessLogin.API
 {
-    [Route("api/v1")]
+    [Route("passwordless-api/v1")]
     [EnableCors(PasswordlessLoginConstants.Security.CorsPolicyName)]
     public class AuthenticateApiController : Controller
     {

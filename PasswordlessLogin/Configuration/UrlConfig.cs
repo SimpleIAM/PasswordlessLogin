@@ -13,5 +13,8 @@ namespace SimpleIAM.PasswordlessLogin.Configuration
         public string SignIn { get; set; } = "/signin";
         public string SignInLink { get; set; } = "/signin/{long_code}";
         public string SignOut { get; set; } = "/signout";
+        public string ApiBase { get; set; } = "/passwordless-api";
+        public string CustomApiBase { get; set; } = "/api";
+        public string Error { get; set; } = "/error";
     }
 }

@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Ryan Foster. All rights reserved. 
 // Licensed under the Apache License, Version 2.0.
 
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -41,25 +42,46 @@ namespace Microsoft.Extensions.DependencyInjection
             services
                 .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
                 .AddCookie(options => {
-                    options.LoginPath = idProviderConfig.Urls.SignIn;
-                    options.LogoutPath = idProviderConfig.Urls.SignOut;
-                    options.SlidingExpiration = true;
                     options.ExpireTimeSpan = TimeSpan.FromMinutes(idProviderConfig.DefaultSessionLengthMinutes);
-                    options.ReturnUrlParameter = "returnUrl";
-
-                    options.Cookie.IsEssential = true;
-                    options.Cookie.HttpOnly = true;
-                    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-                    options.Events.OnRedirectToAccessDenied = context =>
-                    {
-                        // Don't redirect to another page
-                        context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
-                        return Task.FromResult(0);
-                    };
+                    options.ConfigurePasswordlessAuthenticationOptions(idProviderConfig.Urls);
                 });
 
             return services;
         }
+
+        public static void ConfigurePasswordlessAuthenticationOptions(this CookieAuthenticationOptions options, UrlConfig urls)
+        {
+            options.LoginPath = urls.SignIn;
+            options.LogoutPath = urls.SignOut;
+            options.SlidingExpiration = true;
+            options.ReturnUrlParameter = "returnUrl";
+
+            options.Cookie.IsEssential = true;
+            options.Cookie.HttpOnly = true;
+            options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+            options.Events.OnRedirectToAccessDenied = context =>
+            {
+                // Don't redirect to another page
+                context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
+                return Task.FromResult(0);
+            };
+            options.Events.OnRedirectToLogin = options.Events.OnRedirectToLogin.ReturnStatusCode(HttpStatusCode.Unauthorized, urls.ApiBase);
+            if (urls.CustomApiBase != null)
+            {
+                options.Events.OnRedirectToLogin = options.Events.OnRedirectToLogin.ReturnStatusCode(HttpStatusCode.Unauthorized, urls.CustomApiBase);
+            }
+        }
+
+        public static Func<RedirectContext<CookieAuthenticationOptions>, Task> ReturnStatusCode(this Func<RedirectContext<CookieAuthenticationOptions>, Task> existingRedirector, HttpStatusCode returnStatusCode, string forPath = null) => context =>
+        {
+            if (forPath == null || context.Request.Path.StartsWithSegments(forPath))
+            {
+                context.Response.StatusCode = (int)returnStatusCode;
+                return Task.CompletedTask;
+            }
+            return existingRedirector(context);
+        };
+
         public static IServiceCollection AddPasswordlessLoginWithoutAuthentication(this IServiceCollection services, IConfiguration configuration, IHostingEnvironment env, string[] apiAllowedOrigins = null)
         {
             if (services == null)
