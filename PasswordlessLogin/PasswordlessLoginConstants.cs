@@ -25,6 +25,8 @@ namespace SimpleIAM.PasswordlessLogin
             public const string SignInWithEmail = "SignInWithEmail";
             public const string Welcome = "Welcome";
             public const string PasswordReset = "PasswordReset";
+            public const string PasswordChangedNotice = "PasswordChangedNotice";
+            public const string PasswordRemovedNotice = "PasswordRemovedNotice";
             public const string AccountNotFound = "AccountNotFound";
         }
 
@@ -54,6 +56,7 @@ namespace SimpleIAM.PasswordlessLogin
             public const int DefaultMinimumPasswordStrengthInBits = 30;
             public const int DefaultDefaultSessionLengthMinutes = 720; // 12 hours
             public const int DefaultMaxSessionLengthMinutes = 44640; // 31 days
+            public const int DefaultChangeSecuritySettingsTimeWindowMinutes = 5;
         }
     }
 }

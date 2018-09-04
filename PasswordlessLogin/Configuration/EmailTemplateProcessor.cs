@@ -18,6 +18,8 @@ namespace SimpleIAM.PasswordlessLogin.Configuration
                 { PasswordlessLoginConstants.EmailTemplates.SignInWithEmail, new EmailTemplate() },
                 { PasswordlessLoginConstants.EmailTemplates.Welcome, new EmailTemplate() },
                 { PasswordlessLoginConstants.EmailTemplates.PasswordReset, new EmailTemplate() },
+                { PasswordlessLoginConstants.EmailTemplates.PasswordChangedNotice, new EmailTemplate() },
+                { PasswordlessLoginConstants.EmailTemplates.PasswordRemovedNotice, new EmailTemplate() },
                 { PasswordlessLoginConstants.EmailTemplates.AccountNotFound, new EmailTemplate() },
             };
             foreach(var template in templates)

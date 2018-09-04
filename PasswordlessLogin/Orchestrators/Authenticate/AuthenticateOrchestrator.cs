@@ -3,7 +3,6 @@
 
 using System;
 using System.Linq;
-using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -97,7 +96,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             }
 
             var nextUrl = !string.IsNullOrEmpty(model.NextUrl) ? model.NextUrl : _urlService.GetDefaultRedirectUrl();
-            if (model.InviteToSetPasword)
+            if (model.SetPassword)
             {
                 _logger.LogTrace("The user will be asked to set their password after confirming the account.");
                 nextUrl = SendToSetPasswordFirst(nextUrl);

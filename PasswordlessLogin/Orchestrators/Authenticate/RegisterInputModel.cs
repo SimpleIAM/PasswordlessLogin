@@ -17,7 +17,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
 
         public Dictionary<string, string> Claims {get; set;}
 
-        public bool InviteToSetPasword { get; set; } = true;
+        public bool SetPassword { get; set; } = false;
 
         public string NextUrl { get; set; }
     }

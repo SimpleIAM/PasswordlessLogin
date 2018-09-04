@@ -30,11 +30,14 @@ namespace SimpleIAM.PasswordlessLogin.Services.Email
                 var from = new StringBuilder(template.From);
                 var subject = new StringBuilder(template.Subject);
                 var body = new StringBuilder(template.Body);
-                foreach (var field in fields)
+                if(fields != null)
                 {
-                    from = from.Replace("{{" + field.Key + "}}", field.Value);
-                    subject = subject.Replace("{{" + field.Key + "}}", field.Value);
-                    body = body.Replace("{{" + field.Key + "}}", field.Value);
+                    foreach (var field in fields)
+                    {
+                        from = from.Replace("{{" + field.Key + "}}", field.Value);
+                        subject = subject.Replace("{{" + field.Key + "}}", field.Value);
+                        body = body.Replace("{{" + field.Key + "}}", field.Value);
+                    }
                 }
                 return await _emailService.SendEmailAsync(from.ToString(), to, subject.ToString(), body.ToString());
             }

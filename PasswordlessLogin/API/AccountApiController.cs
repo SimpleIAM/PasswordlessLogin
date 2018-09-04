@@ -7,7 +7,9 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
+using SimpleIAM.PasswordlessLogin.Configuration;
 using SimpleIAM.PasswordlessLogin.Orchestrators;
+using SimpleIAM.PasswordlessLogin.Services.Message;
 using SimpleIAM.PasswordlessLogin.Services.Password;
 
 namespace SimpleIAM.PasswordlessLogin.API
@@ -18,15 +20,21 @@ namespace SimpleIAM.PasswordlessLogin.API
     public class AccountApiController : Controller
     {
         private readonly UserOrchestrator _userOrchestrator;
-        private readonly IPasswordService _passwordService;        
+        private readonly IPasswordService _passwordService;
+        private readonly IMessageService _messageService;
+        private readonly IdProviderConfig _idProviderConfig;
 
         public AccountApiController(
             UserOrchestrator userOrchestrator,
-            IPasswordService passwordService
+            IPasswordService passwordService,
+            IMessageService messageService,
+            IdProviderConfig idProviderConfig
             )
         {
             _userOrchestrator = userOrchestrator;
             _passwordService = passwordService;
+            _messageService = messageService;
+            _idProviderConfig = idProviderConfig;
         }
 
         [HttpGet("")]
@@ -68,7 +76,7 @@ namespace SimpleIAM.PasswordlessLogin.API
                     return Unauthenticated("Old password was incorrect, locked, or missing");
                 }
             }
-            else if (User.GetAuthTimeUTC() < DateTime.UtcNow.AddMinutes(-5)) //todo: may want to make time configurable
+            else if (User.GetAuthTimeUTC().AddMinutes(_idProviderConfig.ChangeSecuritySettingsTimeWindowMinutes) < DateTime.UtcNow)
             {
                 return Unauthenticated("Please reauthenticate to proceed");
             }
@@ -77,12 +85,54 @@ namespace SimpleIAM.PasswordlessLogin.API
             switch (result)
             {
                 case SetPasswordResult.Success:
+                    var response = await _userOrchestrator.GetUserAsync(subjectId);
+                    if (response.Content is Models.User)
+                    {
+                        var user = response.Content as Models.User;
+                        await _messageService.SendPasswordChangedNoticeAsync(user.Email);
+                    }
                     return Ok();
                 case SetPasswordResult.PasswordDoesNotMeetStrengthRequirements:
                     ModelState.AddModelError("NewPassword", "Password does not meet minimum password strength requirements (try something longer).");
                     break;
                 case SetPasswordResult.ServiceFailure:
-                    ModelState.AddModelError("NewPassword", "Something went wrong.");
+                    ModelState.AddModelError("", "Something went wrong.");
+                    break;
+            }
+            return new ActionResponse(ModelState).ToJsonResult();
+        }
+
+        [HttpPost("remove-password")]
+        public async Task<IActionResult> RemovePassword([FromBody] RemovePasswordInputModel model)
+        {
+            var subjectId = User.GetSubjectId();
+
+            if (!string.IsNullOrEmpty(model.OldPassword))
+            {
+                var result1 = await _passwordService.CheckPasswordAsync(subjectId, model.OldPassword);
+                if (result1 != CheckPasswordResult.Success)
+                {
+                    return Unauthenticated("Old password was incorrect, locked, or missing");
+                }
+            }
+            else if (User.GetAuthTimeUTC().AddMinutes(_idProviderConfig.ChangeSecuritySettingsTimeWindowMinutes) < DateTime.UtcNow)
+            {
+                return Unauthenticated("Please reauthenticate to proceed");
+            }
+
+            var result = await _passwordService.RemovePasswordAsync(subjectId);
+            switch (result)
+            {
+                case RemovePasswordResult.Success:
+                    var response = await _userOrchestrator.GetUserAsync(subjectId);
+                    if (response.Content is Models.User)
+                    {
+                        var user = response.Content as Models.User;
+                        await _messageService.SendPasswordRemovedNoticeAsync(user.Email);
+                    }
+                    return Ok();
+                case RemovePasswordResult.ServiceFailure:
+                    ModelState.AddModelError("", "Something went wrong.");
                     break;
             }
             return new ActionResponse(ModelState).ToJsonResult();

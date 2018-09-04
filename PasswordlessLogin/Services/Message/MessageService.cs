@@ -45,6 +45,30 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
             return await _emailTemplateService.SendEmailAsync(PasswordlessLoginConstants.EmailTemplates.AccountNotFound, sendTo, fields);
         }
 
+        public async Task<SendMessageResult> SendPasswordChangedNoticeAsync(string sendTo)
+        {
+            _logger.LogDebug("Sending password changed notice");
+            if (!IsValidEmailAddress(sendTo))
+            {
+                return NotAnEmailAddress();
+            }
+
+            var fields = GetCustomFields(null);
+            return await _emailTemplateService.SendEmailAsync(PasswordlessLoginConstants.EmailTemplates.PasswordChangedNotice, sendTo, fields);
+        }
+
+        public async Task<SendMessageResult> SendPasswordRemovedNoticeAsync(string sendTo)
+        {
+            _logger.LogDebug("Sending password removed notice");
+            if (!IsValidEmailAddress(sendTo))
+            {
+                return NotAnEmailAddress();
+            }
+
+            var fields = GetCustomFields(null);
+            return await _emailTemplateService.SendEmailAsync(PasswordlessLoginConstants.EmailTemplates.PasswordRemovedNotice, sendTo, fields);
+        }
+
         public async Task<SendMessageResult> SendOneTimeCodeMessageAsync(string applicationId, string sendTo, string oneTimeCode)
         {
             _logger.LogDebug("Sending one time code message");
