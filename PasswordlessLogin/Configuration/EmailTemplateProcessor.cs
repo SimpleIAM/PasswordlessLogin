@@ -20,6 +20,7 @@ namespace SimpleIAM.PasswordlessLogin.Configuration
                 { PasswordlessLoginConstants.EmailTemplates.PasswordReset, new EmailTemplate() },
                 { PasswordlessLoginConstants.EmailTemplates.PasswordChangedNotice, new EmailTemplate() },
                 { PasswordlessLoginConstants.EmailTemplates.PasswordRemovedNotice, new EmailTemplate() },
+                { PasswordlessLoginConstants.EmailTemplates.EmailChangedNotice, new EmailTemplate() },
                 { PasswordlessLoginConstants.EmailTemplates.AccountNotFound, new EmailTemplate() },
             };
             foreach(var template in templates)

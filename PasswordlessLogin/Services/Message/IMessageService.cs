@@ -15,5 +15,6 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
         Task<SendMessageResult> SendPasswordResetMessageAsync(string applicationId, string sendTo, string oneTimeCode, string longCode);
         Task<SendMessageResult> SendPasswordChangedNoticeAsync(string sendTo);
         Task<SendMessageResult> SendPasswordRemovedNoticeAsync(string sendTo);
+        Task<SendMessageResult> SendEmailChangedNoticeAsync(string sendTo, string longCode);
     }
 }

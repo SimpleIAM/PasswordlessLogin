@@ -75,14 +75,25 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             }
 
             TimeSpan linkValidity;
-            var existingUser = await _userStore.GetUserByEmailAsync(model.Email);
-            if (existingUser == null)
+            if (await _userStore.UsernameIsAvailable(model.Email))
             {
+                if(await _oneTimeCodeService.UnexpiredOneTimeCodeExistsAsync(model.Email))
+                {
+                    // alternatively, we could send an email message explaining that the recently freed up email
+                    // address can't be linked to a new account yet (must wait until the link that can cancel
+                    // the username change expires)
+                    return BadRequest("Email address is temporarily reserved");
+                }
                 _logger.LogDebug("Email address not used by an existing user. Creating a new user.");
+                // todo: consider restricting claims to a list predefined by the system administrator
                 var newUser = new User()
                 {
                     Email = model.Email,
-                    Claims = model.Claims?.Select(x => new UserClaim() { Type = x.Key, Value = x.Value }) //todo: filter these to claim types that are allowed to be set by user
+                    Claims = model.Claims?
+                        .Where(x => 
+                            !PasswordlessLoginConstants.Security.ForbiddenClaims.Contains(x.Key) && 
+                            !PasswordlessLoginConstants.Security.ProtectedClaims.Contains(x.Key))
+                        .Select(x => new UserClaim() { Type = x.Key, Value = x.Value })
                 };
                 newUser = await _userStore.AddUserAsync(newUser);
                 linkValidity = TimeSpan.FromMinutes(PasswordlessLoginConstants.OneTimeCode.ConfirmAccountDefaultValidityMinutes);
@@ -130,8 +141,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             // If the username provide is not an email address or phone number, tell the user "we sent you a code if you have an account"
             if (model.Username?.Contains("@") == true) // temporary rough email check
             {
-                var user = await _userStore.GetUserByEmailAsync(model.Username);
-                if (user != null)
+                if (await _userStore.UserExists(model.Username))
                 {
                     _logger.LogDebug("User found");
                     //todo: get validity timespan from config
@@ -279,8 +289,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 return BadRequest("Invalid application id");
             }
 
-            var user = await _userStore.GetUserByEmailAsync(model.Username); //todo: support non-email addresses
-            if (user == null)
+            if (!await _userStore.UserExists(model.Username))
             {
                 _logger.LogInformation("User not found: {0}", model.Username);
                 // if valid email or phone number, send a message inviting them to register

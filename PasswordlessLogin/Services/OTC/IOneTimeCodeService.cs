@@ -11,5 +11,6 @@ namespace SimpleIAM.PasswordlessLogin.Services.OTC
         Task<GetOneTimeCodeResponse> GetOneTimeCodeAsync(string sendTo, TimeSpan validity, string redirectUrl = null);
         Task<CheckOneTimeCodeResponse> CheckOneTimeCodeAsync(string longCode, string clientNonce);
         Task<CheckOneTimeCodeResponse> CheckOneTimeCodeAsync(string sentTo, string shortCode, string clientNonce);
+        Task<bool> UnexpiredOneTimeCodeExistsAsync(string sentTo);
     }
 }

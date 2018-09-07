@@ -181,5 +181,17 @@ namespace SimpleIAM.PasswordlessLogin.Services.OTC
                 LongCode = longCode
             };
         }
+
+        public async Task<bool> UnexpiredOneTimeCodeExistsAsync(string sentTo)
+        {
+            _logger.LogTrace("Check if unexpired one time code exists");
+
+            var otc = await _oneTimeCodeStore.GetOneTimeCodeAsync(sentTo);
+            if (otc == null)
+            {
+                return false;
+            }
+            return (otc.ExpiresUTC >= DateTime.UtcNow);
+        }
     }
 }

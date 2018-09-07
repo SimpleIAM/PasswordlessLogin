@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SimpleIAM.PasswordlessLogin.Entities;
+using SimpleIAM.PasswordlessLogin.Models;
 
 namespace SimpleIAM.PasswordlessLogin.Stores
 {
@@ -24,6 +25,13 @@ namespace SimpleIAM.PasswordlessLogin.Stores
         public async Task<Models.User> AddUserAsync(Models.User user)
         {
             _logger.LogTrace("Add user {0}", user.Email);
+
+            // First, if anyone previously used this email, clear the claim that could
+            // be used to revert that account back to this email address
+            _context.Claims.RemoveRange(_context.Claims.Where(x => 
+                x.Type == PasswordlessLoginConstants.Security.PreviousEmailClaimType && 
+                x.Value == user.Email));
+
             var dbUser = new Entities.User()
             {
                 SubjectId = user.SubjectId ?? Guid.NewGuid().ToString("N"),
@@ -35,6 +43,7 @@ namespace SimpleIAM.PasswordlessLogin.Stores
 
             var success = count > 0;
             _logger.LogDebug("{0}uccessfully added user", success ? "S" : "Uns");
+
             return user;
         }
 
@@ -62,15 +71,37 @@ namespace SimpleIAM.PasswordlessLogin.Stores
             return model;
         }
 
-        public async Task<Models.User> PatchUserAsync(string subjectId, ILookup<string, string> Properties)
+        public async Task<Models.User> GetUserByPreviousEmailAsync(string previousEmail)
+        {
+            _logger.LogTrace("Fetch user (by previous email) {0}");
+            var model = (await _context.Users.SingleOrDefaultAsync(x => x.Claims.Any(c => 
+                c.Type == PasswordlessLoginConstants.Security.PreviousEmailClaimType &&
+                c.Value == previousEmail
+                )))?.ToModel();
+            _logger.LogDebug("{0}uccessfully fetched user by previous email", model != null ? "S" : "Uns");
+            return model;
+        }
+
+        public async Task<Models.User> PatchUserAsync(string subjectId, ILookup<string, string> Properties, bool changeProtectedClaims = false)
         {
             _logger.LogTrace("Patch user");
+            Entities.User user;
             foreach (var values in Properties)
             {
-                // todo: ignore protocol claims
-                if (values.Key == "email")
+                if (changeProtectedClaims && values.Key == "email")
                 {
-                    //todo: special processing, but for now just ignore since we don't allow email changes yet
+                    var newEmail = values.SingleOrDefault(x => x != null); // will throw if multiple email addresses provided
+                    if (newEmail != null)
+                    {
+                        user = await _context.Users.FirstOrDefaultAsync(x => x.SubjectId == subjectId);
+                        user.Email = newEmail;
+                    }                    
+                }
+                else if (PasswordlessLoginConstants.Security.ForbiddenClaims.Contains(values.Key) ||
+                    (!changeProtectedClaims && PasswordlessLoginConstants.Security.ProtectedClaims.Contains(values.Key)))
+                {
+                    // ignore
+                    _logger.LogWarning("Attempt to change {0} claim for user {1} was blocked", values.Key, subjectId);
                 }
                 else
                 {
@@ -82,6 +113,23 @@ namespace SimpleIAM.PasswordlessLogin.Stores
             _logger.LogDebug("Updated {0} claims", count);
 
             return await GetUserAsync(subjectId);
+        }
+
+        public async Task<bool> UserExists(string email)
+        {
+            _logger.LogTrace("Check if user with username {0} exists", email);
+
+            var user = await GetUserByEmailAsync(email);
+            if (user != null)
+            {
+                return true;
+            }
+            return false;
+        }
+
+        public async Task<bool> UsernameIsAvailable(string email)
+        {            
+            return !(await UserExists(email));
         }
     }
 }

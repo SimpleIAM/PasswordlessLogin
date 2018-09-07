@@ -66,38 +66,41 @@ namespace SimpleIAM.PasswordlessLogin.API
         [HttpPost("set-password")]
         public async Task<IActionResult> SetPassword([FromBody] SetPasswordInputModel model)
         {
-            var subjectId = User.GetSubjectId();
+            if (ModelState.IsValid)
+            {
+                var subjectId = User.GetSubjectId();
 
-            if (!string.IsNullOrEmpty(model.OldPassword))
-            {
-                var result1 = await _passwordService.CheckPasswordAsync(subjectId, model.OldPassword);
-                if (result1 != CheckPasswordResult.Success)
+                if (!string.IsNullOrEmpty(model.OldPassword))
                 {
-                    return Unauthenticated("Old password was incorrect, locked, or missing");
-                }
-            }
-            else if (User.GetAuthTimeUTC().AddMinutes(_idProviderConfig.ChangeSecuritySettingsTimeWindowMinutes) < DateTime.UtcNow)
-            {
-                return Unauthenticated("Please reauthenticate to proceed");
-            }
-            
-            var result = await _passwordService.SetPasswordAsync(subjectId, model.NewPassword);
-            switch (result)
-            {
-                case SetPasswordResult.Success:
-                    var response = await _userOrchestrator.GetUserAsync(subjectId);
-                    if (response.Content is Models.User)
+                    var result1 = await _passwordService.CheckPasswordAsync(subjectId, model.OldPassword);
+                    if (result1 != CheckPasswordResult.Success)
                     {
-                        var user = response.Content as Models.User;
-                        await _messageService.SendPasswordChangedNoticeAsync(user.Email);
+                        return Unauthenticated("Old password was incorrect, locked, or missing");
                     }
-                    return Ok();
-                case SetPasswordResult.PasswordDoesNotMeetStrengthRequirements:
-                    ModelState.AddModelError("NewPassword", "Password does not meet minimum password strength requirements (try something longer).");
-                    break;
-                case SetPasswordResult.ServiceFailure:
-                    ModelState.AddModelError("", "Something went wrong.");
-                    break;
+                }
+                else if (UserSignedInRecentlyEnoughToChangeSecuritySettings())
+                {
+                    return Unauthenticated("Please reauthenticate to proceed");
+                }
+
+                var result = await _passwordService.SetPasswordAsync(subjectId, model.NewPassword);
+                switch (result)
+                {
+                    case SetPasswordResult.Success:
+                        var response = await _userOrchestrator.GetUserAsync(subjectId);
+                        if (response.Content is Models.User)
+                        {
+                            var user = response.Content as Models.User;
+                            await _messageService.SendPasswordChangedNoticeAsync(user.Email);
+                        }
+                        return Ok();
+                    case SetPasswordResult.PasswordDoesNotMeetStrengthRequirements:
+                        ModelState.AddModelError("NewPassword", "Password does not meet minimum password strength requirements (try something longer).");
+                        break;
+                    case SetPasswordResult.ServiceFailure:
+                        ModelState.AddModelError("", "Something went wrong.");
+                        break;
+                }
             }
             return new ActionResponse(ModelState).ToJsonResult();
         }
@@ -105,37 +108,71 @@ namespace SimpleIAM.PasswordlessLogin.API
         [HttpPost("remove-password")]
         public async Task<IActionResult> RemovePassword([FromBody] RemovePasswordInputModel model)
         {
-            var subjectId = User.GetSubjectId();
-
-            if (!string.IsNullOrEmpty(model.OldPassword))
+            if (ModelState.IsValid)
             {
-                var result1 = await _passwordService.CheckPasswordAsync(subjectId, model.OldPassword);
-                if (result1 != CheckPasswordResult.Success)
+                var subjectId = User.GetSubjectId();
+
+                if (!string.IsNullOrEmpty(model.OldPassword))
                 {
-                    return Unauthenticated("Old password was incorrect, locked, or missing");
+                    var result1 = await _passwordService.CheckPasswordAsync(subjectId, model.OldPassword);
+                    if (result1 != CheckPasswordResult.Success)
+                    {
+                        return Unauthenticated("Old password was incorrect, locked, or missing");
+                    }
+                }
+                else if (UserSignedInRecentlyEnoughToChangeSecuritySettings())
+                {
+                    return Unauthenticated("Please reauthenticate to proceed");
+                }
+
+                var result = await _passwordService.RemovePasswordAsync(subjectId);
+                switch (result)
+                {
+                    case RemovePasswordResult.Success:
+                        var response = await _userOrchestrator.GetUserAsync(subjectId);
+                        if (response.Content is Models.User)
+                        {
+                            var user = response.Content as Models.User;
+                            await _messageService.SendPasswordRemovedNoticeAsync(user.Email);
+                        }
+                        return Ok();
+                    case RemovePasswordResult.ServiceFailure:
+                        ModelState.AddModelError("", "Something went wrong.");
+                        break;
                 }
             }
-            else if (User.GetAuthTimeUTC().AddMinutes(_idProviderConfig.ChangeSecuritySettingsTimeWindowMinutes) < DateTime.UtcNow)
-            {
-                return Unauthenticated("Please reauthenticate to proceed");
-            }
+            return new ActionResponse(ModelState).ToJsonResult();
+        }
 
-            var result = await _passwordService.RemovePasswordAsync(subjectId);
-            switch (result)
+        [HttpPost("change-email")]
+        public async Task<IActionResult> ChangeEmail([FromBody] ChangeEmailInputModel model)
+        {
+            if (ModelState.IsValid)
             {
-                case RemovePasswordResult.Success:
-                    var response = await _userOrchestrator.GetUserAsync(subjectId);
-                    if (response.Content is Models.User)
+                var subjectId = User.GetSubjectId();
+
+                if (!string.IsNullOrEmpty(model.Password))
+                {
+                    var result1 = await _passwordService.CheckPasswordAsync(subjectId, model.Password);
+                    if (result1 != CheckPasswordResult.Success)
                     {
-                        var user = response.Content as Models.User;
-                        await _messageService.SendPasswordRemovedNoticeAsync(user.Email);
+                        return Unauthenticated("Password was incorrect, locked, or missing");
                     }
-                    return Ok();
-                case RemovePasswordResult.ServiceFailure:
-                    ModelState.AddModelError("", "Something went wrong.");
-                    break;
+                }
+                else if (UserSignedInRecentlyEnoughToChangeSecuritySettings())
+                {
+                    return Unauthenticated("Please reauthenticate to proceed");
+                }
+
+                var response = await _userOrchestrator.ChangeEmailAddressAsync(subjectId, model.NewEmail);
+                return response.ToJsonResult();
             }
             return new ActionResponse(ModelState).ToJsonResult();
+        }
+
+        private bool UserSignedInRecentlyEnoughToChangeSecuritySettings()
+        {
+            return User.GetAuthTimeUTC().AddMinutes(_idProviderConfig.ChangeSecuritySettingsTimeWindowMinutes) < DateTime.UtcNow;
         }
 
         private JsonResult Ok(string message = null)

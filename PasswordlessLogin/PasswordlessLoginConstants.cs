@@ -1,6 +1,8 @@
 ﻿// Copyright (c) Ryan Foster. All rights reserved. 
 // Licensed under the Apache License, Version 2.0.
 
+using System.Collections.Generic;
+
 namespace SimpleIAM.PasswordlessLogin
 {
     public static class PasswordlessLoginConstants
@@ -27,6 +29,7 @@ namespace SimpleIAM.PasswordlessLogin
             public const string PasswordReset = "PasswordReset";
             public const string PasswordChangedNotice = "PasswordChangedNotice";
             public const string PasswordRemovedNotice = "PasswordRemovedNotice";
+            public const string EmailChangedNotice = "EmailChangedNotice";
             public const string AccountNotFound = "AccountNotFound";
         }
 
@@ -57,6 +60,10 @@ namespace SimpleIAM.PasswordlessLogin
             public const int DefaultDefaultSessionLengthMinutes = 720; // 12 hours
             public const int DefaultMaxSessionLengthMinutes = 44640; // 31 days
             public const int DefaultChangeSecuritySettingsTimeWindowMinutes = 5;
+            public const int DefaultCancelEmailChangeTimeWindowHours = 72; // 3 days
+            public const string PreviousEmailClaimType = "__previous_email";
+            public static readonly string[] ForbiddenClaims = { "iss", "sub", "aud", "exp", "iat", "auth_time", "nonce", "acr", "amr", "azp", "email" };
+            public static readonly string[] ProtectedClaims = { PreviousEmailClaimType };
         }
     }
 }

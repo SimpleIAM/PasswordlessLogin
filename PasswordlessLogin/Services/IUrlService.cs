@@ -12,6 +12,7 @@ namespace SimpleIAM.PasswordlessLogin.Services
         string GetSetPasswordUrl(bool absolute = false);
         string GetSignInUrl(bool absolute = false);
         string GetSignInLinkUrl(string longCode, bool absolute = false);
+        string GetCancelChangeLinkUrl(string longCode, bool absolute = false);
         string GetSignOutUrl(bool absolute = false);
         bool IsAllowedRedirectUrl(string url);
     }

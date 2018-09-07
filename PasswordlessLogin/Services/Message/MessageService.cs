@@ -69,6 +69,21 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
             return await _emailTemplateService.SendEmailAsync(PasswordlessLoginConstants.EmailTemplates.PasswordRemovedNotice, sendTo, fields);
         }
 
+        public async Task<SendMessageResult> SendEmailChangedNoticeAsync(string sendTo, string longCode)
+        {
+            if (!IsValidEmailAddress(sendTo))
+            {
+                return NotAnEmailAddress();
+            }
+
+            var link = _urlService.GetCancelChangeLinkUrl(longCode, true);
+            var fields = GetCustomFields(null);
+            fields["old_email_address"] = sendTo;
+            fields["link_validity_hours"] = _idProviderConfig.CancelEmailChangeTimeWindowHours.ToString();
+            fields["cancel_email_change_link"] = link;
+            return await _emailTemplateService.SendEmailAsync(PasswordlessLoginConstants.EmailTemplates.EmailChangedNotice, sendTo, fields);
+        }
+
         public async Task<SendMessageResult> SendOneTimeCodeMessageAsync(string applicationId, string sendTo, string oneTimeCode)
         {
             _logger.LogDebug("Sending one time code message");

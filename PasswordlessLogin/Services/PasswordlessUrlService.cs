@@ -24,6 +24,16 @@ namespace SimpleIAM.PasswordlessLogin.Services
             _urls = idProviderConfig.Urls;
         }
 
+        public string GetCancelChangeLinkUrl(string longCode, bool absolute = false)
+        {
+            var url = _urls.CancelChangeLink.Replace("{long_code}", longCode);
+            if (absolute)
+            {
+                return AbsoluteUrl(url);
+            }
+            return url;
+        }
+
         public string GetDefaultRedirectUrl(bool absolute = false)
         {
             if (absolute)
