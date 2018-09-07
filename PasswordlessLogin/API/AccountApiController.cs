@@ -78,7 +78,7 @@ namespace SimpleIAM.PasswordlessLogin.API
                         return Unauthenticated("Old password was incorrect, locked, or missing");
                     }
                 }
-                else if (UserSignedInRecentlyEnoughToChangeSecuritySettings())
+                else if (!UserSignedInRecentlyEnoughToChangeSecuritySettings())
                 {
                     return Unauthenticated("Please reauthenticate to proceed");
                 }
@@ -120,7 +120,7 @@ namespace SimpleIAM.PasswordlessLogin.API
                         return Unauthenticated("Old password was incorrect, locked, or missing");
                     }
                 }
-                else if (UserSignedInRecentlyEnoughToChangeSecuritySettings())
+                else if (!UserSignedInRecentlyEnoughToChangeSecuritySettings())
                 {
                     return Unauthenticated("Please reauthenticate to proceed");
                 }
@@ -159,7 +159,7 @@ namespace SimpleIAM.PasswordlessLogin.API
                         return Unauthenticated("Password was incorrect, locked, or missing");
                     }
                 }
-                else if (UserSignedInRecentlyEnoughToChangeSecuritySettings())
+                else if (!UserSignedInRecentlyEnoughToChangeSecuritySettings())
                 {
                     return Unauthenticated("Please reauthenticate to proceed");
                 }
@@ -172,7 +172,8 @@ namespace SimpleIAM.PasswordlessLogin.API
 
         private bool UserSignedInRecentlyEnoughToChangeSecuritySettings()
         {
-            return User.GetAuthTimeUTC().AddMinutes(_idProviderConfig.ChangeSecuritySettingsTimeWindowMinutes) < DateTime.UtcNow;
+            // Must be less than X minutes since the user signed in
+            return User.GetAuthTimeUTC().AddMinutes(_idProviderConfig.ChangeSecuritySettingsTimeWindowMinutes) > DateTime.UtcNow;
         }
 
         private JsonResult Ok(string message = null)
