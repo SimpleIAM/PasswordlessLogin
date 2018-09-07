@@ -1,14 +1,11 @@
 ﻿// Copyright (c) Ryan Foster. All rights reserved. 
 // Licensed under the Apache License, Version 2.0.
 
-using System.Linq;
-
 namespace SimpleIAM.PasswordlessLogin.Orchestrators
 {
-    public class PatchUserModel
+    public class ChangeEmailViewModel
     {
-        public string SubjectId { get; set; }
-
-        public ILookup<string, string> Properties { get; set; }
+        public string OldEmail { get; set; }
+        public string NewEmail { get; set; }
     }
 }

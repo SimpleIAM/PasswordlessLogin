@@ -116,7 +116,12 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                     [PasswordlessLoginConstants.Security.PreviousEmailClaimType] = oldEmail
                 };
                 var updatedUser = await _userStore.PatchUserAsync(subjectId, changes.ToLookup(x => x.Key, x => x.Value), true);
-                return new ActionResponse(updatedUser);
+                var viewModel = new ChangeEmailViewModel()
+                {
+                    OldEmail = user.Email,
+                    NewEmail = updatedUser.Email,
+                };
+                return new ActionResponse(viewModel);
             }
             else
             {
@@ -144,7 +149,12 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 [PasswordlessLoginConstants.Security.PreviousEmailClaimType] = null
             };
             var updatedUser = await _userStore.PatchUserAsync(user.SubjectId, changes.ToLookup(x => x.Key, x => x.Value), true);
-            return new ActionResponse(updatedUser);
+            var viewModel = new ChangeEmailViewModel()
+            {
+                OldEmail = user.Email,
+                NewEmail = updatedUser.Email,
+            };
+            return new ActionResponse(viewModel);
         }
 
         public async Task<bool> UsernameIsReallyAvailableAsync(string email)
