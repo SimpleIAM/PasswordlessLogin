@@ -143,7 +143,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 ["email"] = response.SentTo,
                 [PasswordlessLoginConstants.Security.PreviousEmailClaimType] = null
             };
-            var updatedUser = await _userStore.PatchUserAsync(user.SubjectId, changes.ToLookup(x => x.Key, x => x.Value));
+            var updatedUser = await _userStore.PatchUserAsync(user.SubjectId, changes.ToLookup(x => x.Key, x => x.Value), true);
             return new ActionResponse(updatedUser);
         }
 
