@@ -63,6 +63,14 @@ namespace SimpleIAM.PasswordlessLogin.API
             return response.ToJsonResult();
         }
 
+        [HttpGet("date-password-set")]
+        public async Task<IActionResult> DatePasswordSet()
+        {
+            var subjectId = User.GetSubjectId();
+            var date = await _passwordService.PasswordLastChangedAsync(subjectId);
+            return Json(new { date });
+        }
+
         [HttpPost("set-password")]
         public async Task<IActionResult> SetPassword([FromBody] SetPasswordInputModel model)
         {
