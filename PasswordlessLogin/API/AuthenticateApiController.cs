@@ -83,6 +83,12 @@ namespace SimpleIAM.PasswordlessLogin.API
             return new ActionResponse(ModelState).ToJsonResult();
         }
 
+        [HttpPost("sign-out")]
+        public async Task<IActionResult> SignOut()
+        {
+            return (await _authenticateOrchestrator.SignOutAsync()).ToJsonResult();
+        }
+
         private IActionResult NextUrlJsonResult(string nextUrl)
         {
             return new JsonResult(new

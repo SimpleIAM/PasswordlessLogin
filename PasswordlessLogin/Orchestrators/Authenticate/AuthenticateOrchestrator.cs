@@ -321,6 +321,13 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             return ServerError("Hmm. Something went wrong. Please try again.");
         }
 
+        public async Task<ActionResponse> SignOutAsync()
+        {
+            await _signInService.SignOutAsync();
+
+            return Ok();
+        }
+
         private ActionResponse ReturnAppropriateResponse(SendMessageResult sendMessageResult, string clientNonce, string successMessage)
         {
             if (clientNonce != null)
