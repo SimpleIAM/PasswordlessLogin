@@ -21,9 +21,9 @@ namespace SimpleIAM.PasswordlessLogin
             return request.Cookies[DeviceIdCookieName];
         }
 
-        public static void SetClientNonce(this HttpResponse response, string value)
+        public static void SetClientNonce(this HttpResponse response, string value, int validityInMinutes)
         {
-            response.SetSecureCookie(ClientNonceCookieName, value, TimeSpan.FromMinutes(PasswordlessLoginConstants.OneTimeCode.DefaultValidityMinutes));
+            response.SetSecureCookie(ClientNonceCookieName, value, TimeSpan.FromMinutes(validityInMinutes));
         }
 
         public static void SetDeviceId(this HttpResponse response, string value)

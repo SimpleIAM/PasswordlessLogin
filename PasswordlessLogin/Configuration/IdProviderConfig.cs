@@ -20,6 +20,11 @@ namespace SimpleIAM.PasswordlessLogin.Configuration
         public bool RememberUsernames { get; set; } = true;
         public int MinimumPasswordLength { get; set; } = PasswordlessLoginConstants.Security.DefaultMinimumPasswordLength;
         public int MinimumPasswordStrengthInBits { get; set; } = PasswordlessLoginConstants.Security.DefaultMinimumPasswordStrengthInBits;
+        public int MaxPasswordFailedAttempts { get; set; } = PasswordlessLoginConstants.Security.DefaultMaxPasswordFailedAttempts;
+        public int TempLockPasswordMinutes { get; set; } = PasswordlessLoginConstants.Security.DefaultTempLockPasswordMinutes;
+        public bool ResetFailedAttemptCountOnTempLock { get; set; } = false;
+        public int OneTimeCodeValidityMinutes { get; set; } = PasswordlessLoginConstants.OneTimeCode.DefaultValidityMinutes;
+        public int ConfirmAccountLinkValidityMinutes { get; set; } = PasswordlessLoginConstants.OneTimeCode.ConfirmAccountDefaultValidityMinutes;        
         public UrlConfig Urls { get; set; }
         public IDictionary<string, string> CustomProperties { get; set; }
     }

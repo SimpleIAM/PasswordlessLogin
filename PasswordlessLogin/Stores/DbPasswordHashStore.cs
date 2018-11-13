@@ -79,7 +79,7 @@ namespace SimpleIAM.PasswordlessLogin.Stores
             return success;
         }
 
-        public async Task<bool> TempLockPasswordHashAsync(string uniqueIdentifier, DateTime lockUntil)
+        public async Task<bool> TempLockPasswordHashAsync(string uniqueIdentifier, DateTime lockUntil, int failureCount)
         {
             _logger.LogTrace("Temp lock password hash");
             var count = 0;
@@ -87,9 +87,9 @@ namespace SimpleIAM.PasswordlessLogin.Stores
             if (record != null)
             {
                 record.TempLockUntilUTC = lockUntil;
+                record.FailedAttemptCount = failureCount;
                 _context.Entry(record).Property(x => x.Hash).IsModified = false;
                 _context.Entry(record).Property(x => x.LastChangedUTC).IsModified = false;
-                _context.Entry(record).Property(x => x.FailedAttemptCount).IsModified = false;
                 count = await _context.SaveChangesAsync();
             }
             var success = count > 0;

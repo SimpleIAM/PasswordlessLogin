@@ -13,7 +13,7 @@ namespace SimpleIAM.PasswordlessLogin.Stores
         Task<bool> AddPasswordHashAsync(string uniqueIdentifier, string hash);
         Task<bool> UpdatePasswordHashAsync(string uniqueIdentifier, string newHash);
         Task<bool> UpdatePasswordHashFailureCountAsync(string uniqueIdentifier, int failureCount);
-        Task<bool> TempLockPasswordHashAsync(string uniqueIdentifier, DateTime lockUntil);
+        Task<bool> TempLockPasswordHashAsync(string uniqueIdentifier, DateTime lockUntil, int failureCount);
         Task<bool> RemovePasswordHashAsync(string uniqueIdentifier);
     }
 }

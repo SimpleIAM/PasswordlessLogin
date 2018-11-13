@@ -5,6 +5,7 @@ using System;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using SimpleIAM.PasswordlessLogin.Configuration;
 using SimpleIAM.PasswordlessLogin.Models;
 using SimpleIAM.PasswordlessLogin.Services.Message;
 using SimpleIAM.PasswordlessLogin.Stores;
@@ -17,16 +18,19 @@ namespace SimpleIAM.PasswordlessLogin.Services.OTC
         private readonly ILogger _logger;
         private readonly IOneTimeCodeStore _oneTimeCodeStore;
         private readonly IMessageService _messageService;
+        private readonly IdProviderConfig _config;
 
         public OneTimeCodeService(
             ILogger<OneTimeCodeService> logger,
             IOneTimeCodeStore oneTimeCodeStore,
-            IMessageService messageService
+            IMessageService messageService,
+            IdProviderConfig config
             )
         {
             _logger = logger;
             _oneTimeCodeStore = oneTimeCodeStore;
             _messageService = messageService;
+            _config = config;
         }
 
         public async Task<CheckOneTimeCodeResponse> CheckOneTimeCodeAsync(string longCode, string clientNonce)
@@ -116,7 +120,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.OTC
 
             if (otc != null && 
                 otc.ExpiresUTC > DateTime.UtcNow.AddMinutes(PasswordlessLoginConstants.OneTimeCode.IssueNewCodeIfValidityLessThanXMinutes) && 
-                otc.ExpiresUTC < DateTime.UtcNow.AddMinutes(PasswordlessLoginConstants.OneTimeCode.DefaultValidityMinutes))
+                otc.ExpiresUTC < DateTime.UtcNow.AddMinutes(_config.OneTimeCodeValidityMinutes))
             {
                 _logger.LogDebug("A once time code exists that has enough time left to use");
                 // existing code has at least X minutes of validity remaining, so resend it

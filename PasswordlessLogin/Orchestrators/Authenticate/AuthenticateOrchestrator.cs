@@ -96,12 +96,12 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                         .Select(x => new UserClaim() { Type = x.Key, Value = x.Value })
                 };
                 newUser = await _userStore.AddUserAsync(newUser);
-                linkValidity = TimeSpan.FromMinutes(PasswordlessLoginConstants.OneTimeCode.ConfirmAccountDefaultValidityMinutes);
+                linkValidity = TimeSpan.FromMinutes(_config.ConfirmAccountLinkValidityMinutes);
             }
             else
             {
                 _logger.LogDebug("Existing user found.");
-                linkValidity = TimeSpan.FromMinutes(PasswordlessLoginConstants.OneTimeCode.DefaultValidityMinutes);
+                linkValidity = TimeSpan.FromMinutes(_config.OneTimeCodeValidityMinutes);
                 //may want allow admins to configure a different email to send to existing users. However, it could be that the user
                 // exists but just never got a welcome email?
             }
@@ -144,10 +144,9 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 if (await _userStore.UserExists(model.Username))
                 {
                     _logger.LogDebug("User found");
-                    //todo: get validity timespan from config
                     var oneTimeCodeResponse = await _oneTimeCodeService.GetOneTimeCodeAsync(
                         model.Username, 
-                        TimeSpan.FromMinutes(PasswordlessLoginConstants.OneTimeCode.DefaultValidityMinutes), 
+                        TimeSpan.FromMinutes(_config.OneTimeCodeValidityMinutes), 
                         model.NextUrl);
                     switch (oneTimeCodeResponse.Result)
                     {
@@ -310,7 +309,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             var nextUrl = SendToSetPasswordFirst(!string.IsNullOrEmpty(model.NextUrl) ? model.NextUrl : _urlService.GetDefaultRedirectUrl());
             var oneTimeCodeResponse = await _oneTimeCodeService.GetOneTimeCodeAsync(
                 model.Username, 
-                TimeSpan.FromMinutes(PasswordlessLoginConstants.OneTimeCode.DefaultValidityMinutes), 
+                TimeSpan.FromMinutes(_config.OneTimeCodeValidityMinutes), 
                 nextUrl);
             if (oneTimeCodeResponse.Result == GetOneTimeCodeResult.Success)
             {
@@ -333,7 +332,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             if (clientNonce != null)
             {
                 _logger.LogDebug("Saving client nonce in a browser cookie");
-                _httpContext.Response.SetClientNonce(clientNonce);
+                _httpContext.Response.SetClientNonce(clientNonce, _config.OneTimeCodeValidityMinutes);
             }
             if (sendMessageResult.MessageSent)
             {
@@ -475,7 +474,6 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 return nextUrl;
             }
             _logger.LogWarning("Next url was not valid: '{0}'. Using default redirect url instead.", nextUrl);
-            // todo: get default redirect url from config
             return _urlService.GetDefaultRedirectUrl();
         }
 

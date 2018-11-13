@@ -73,12 +73,17 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
             {
                 case CheckPaswordHashResult.DoesNotMatch:
                     _logger.LogDebug("Password does not match");
-                    if (hashInfo.FailedAttemptCount > 3) // todo, get from settings
-                    {
-                        var lockUntil = DateTime.UtcNow.AddMinutes(5); // todo: get from settings
+                    var currentFailedAttemptCount = hashInfo.FailedAttemptCount + 1;
+                    if (currentFailedAttemptCount >= _idProviderConfig.MaxPasswordFailedAttempts)
+                    {                        
+                        var lockUntil = DateTime.UtcNow.AddMinutes(_idProviderConfig.TempLockPasswordMinutes);
                         _logger.LogDebug("Locking password until {0} (UTC)", lockUntil);
-                        //todo: consider if failure count should be reset or not. (should first subsequent failure after lockout initiate another lockout period?)
-                        await _passwordHashStore.TempLockPasswordHashAsync(uniqueIdentifier, lockUntil);
+                        if(_idProviderConfig.ResetFailedAttemptCountOnTempLock)
+                        {
+                            // if not reset, the next failure after a lockout initiates another lockout period
+                            currentFailedAttemptCount = 0;
+                        }
+                        await _passwordHashStore.TempLockPasswordHashAsync(uniqueIdentifier, lockUntil, currentFailedAttemptCount);
                         return CheckPasswordResult.TemporarilyLocked;
                     }
                     else

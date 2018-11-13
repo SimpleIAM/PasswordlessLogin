@@ -35,7 +35,7 @@ namespace SimpleIAM.PasswordlessLogin
 
         public static class OneTimeCode
         {
-            public const int DefaultValidityMinutes = 15;
+            public const int DefaultValidityMinutes = 15; // 15 minutes is short enough to prevent abuse and long enough to protect against brute force of a 6-digit code
             public const int ConfirmAccountDefaultValidityMinutes = 1440;
             public const int IssueNewCodeIfValidityLessThanXMinutes = 3;
             public const int MaxFailedAttemptCount = 3;
@@ -57,6 +57,8 @@ namespace SimpleIAM.PasswordlessLogin
             public const int DefaultPbkdf2Iterations = 50000;
             public const int DefaultMinimumPasswordLength = 8;
             public const int DefaultMinimumPasswordStrengthInBits = 30;
+            public const int DefaultMaxPasswordFailedAttempts = 5;
+            public const int DefaultTempLockPasswordMinutes = 5;
             public const int DefaultDefaultSessionLengthMinutes = 720; // 12 hours
             public const int DefaultMaxSessionLengthMinutes = 44640; // 31 days
             public const int DefaultChangeSecuritySettingsTimeWindowMinutes = 5;
