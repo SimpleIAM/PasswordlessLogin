@@ -21,7 +21,7 @@ module.exports = {
         exclude: /node_modules/, 
         options: {
           babelrc: false,
-          presets: [['es2015', { modules: false }], 'stage-3']
+          presets: [['env', { modules: false }], 'stage-3']
         }
       }
     ]
