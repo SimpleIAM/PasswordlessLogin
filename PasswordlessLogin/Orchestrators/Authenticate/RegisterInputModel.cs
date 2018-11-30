@@ -15,6 +15,9 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
         [RegularExpression(PasswordlessLoginConstants.BasicEmailRegexPattern, ErrorMessage = "Enter a valid email address")]
         public string Email { get; set; }
 
+        // Optional password
+        public string Password { get; set; }
+
         public Dictionary<string, string> Claims {get; set;}
 
         public bool SetPassword { get; set; } = false;

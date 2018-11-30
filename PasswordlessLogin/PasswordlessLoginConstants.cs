@@ -64,8 +64,9 @@ namespace SimpleIAM.PasswordlessLogin
             public const int DefaultChangeSecuritySettingsTimeWindowMinutes = 5;
             public const int DefaultCancelEmailChangeTimeWindowHours = 72; // 3 days
             public const string PreviousEmailClaimType = "__previous_email";
+            public const string EmailNotConfirmedClaimType = "__email_not_confirmed";
             public static readonly string[] ForbiddenClaims = { "iss", "sub", "aud", "exp", "iat", "auth_time", "nonce", "acr", "amr", "azp", "email" };
-            public static readonly string[] ProtectedClaims = { PreviousEmailClaimType };
+            public static readonly string[] ProtectedClaims = { PreviousEmailClaimType, EmailNotConfirmedClaimType };
         }
     }
 }

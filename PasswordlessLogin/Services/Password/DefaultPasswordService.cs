@@ -40,6 +40,10 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
 
         public async Task<SetPasswordResult> SetPasswordAsync(string uniqueIdentifier, string password)
         {
+            if(string.IsNullOrEmpty(uniqueIdentifier))
+            {
+                throw new ArgumentException($"{nameof(uniqueIdentifier)} is required");
+            }
             _logger.LogDebug("Setting password for {0}", uniqueIdentifier);
             if (!PasswordIsStrongEnough(password))
             {

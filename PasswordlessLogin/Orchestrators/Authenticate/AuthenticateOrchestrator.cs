@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
@@ -86,16 +87,34 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 }
                 _logger.LogDebug("Email address not used by an existing user. Creating a new user.");
                 // todo: consider restricting claims to a list predefined by the system administrator
+
+                if(model.Claims == null)
+                {
+                    model.Claims = new Dictionary<string, string>();
+                }
+                var internalClaims = new KeyValuePair<string, string>[] 
+                {
+                    new KeyValuePair<string, string>(
+                        PasswordlessLoginConstants.Security.EmailNotConfirmedClaimType, "!")
+                };
                 var newUser = new User()
                 {
                     Email = model.Email,
-                    Claims = model.Claims?
+                    Claims = model.Claims
                         .Where(x => 
                             !PasswordlessLoginConstants.Security.ForbiddenClaims.Contains(x.Key) && 
-                            !PasswordlessLoginConstants.Security.ProtectedClaims.Contains(x.Key))
+                            !PasswordlessLoginConstants.Security.ProtectedClaims.Contains(x.Key))                        
+                        .Union(internalClaims)
                         .Select(x => new UserClaim() { Type = x.Key, Value = x.Value })
                 };
                 newUser = await _userStore.AddUserAsync(newUser);
+
+                if (!string.IsNullOrEmpty(model.Password))
+                {
+                    var setPasswordResult = await _passwordService.SetPasswordAsync(newUser.SubjectId, model.Password);
+                    //todo: consider what to do if set password failed. It's non-fatal, but ideal should be communicated
+                }
+                
                 linkValidity = TimeSpan.FromMinutes(_config.ConfirmAccountLinkValidityMinutes);
             }
             else
@@ -378,7 +397,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             //do 2FA and figure out new device, etc here
 
             var user = await _userStore.GetUserByEmailAsync(username); //todo: support non-email addresses
-            if(user == null)
+            if (user == null)
             {
                 // this could only happen if an account was removed, but a method of signing in remained
                 _logger.LogError("Strangely, there is no account for {0} anymore", username);
@@ -388,11 +407,11 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             var deviceIsAuthorized = await _authorizedDeviceStore
                 .GetAuthorizedDeviceAsync(user.SubjectId, _httpContext.Request.GetDeviceId()) != null;
 
-            if(!deviceIsAuthorized)
+            if (!deviceIsAuthorized)
             {
                 _logger.LogDebug("Device user is signing in from is not authorized");
                 var anyAuthorizedDevices = (await _authorizedDeviceStore.GetAuthorizedDevicesAsync(user.SubjectId))?.Any() ?? false;
-                if(anyAuthorizedDevices)
+                if (anyAuthorizedDevices)
                 {
                     _logger.LogDebug("User does have other devices that are authorized");
                     // todo: if SecurityLevel == High OR first thing was a password, do a partial sign in and prompt for second thing
@@ -431,6 +450,16 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             else
             {
                 _logger.LogTrace("Using default session length of {0} minutes", _config.DefaultSessionLengthMinutes);
+            }
+
+            if(method == SignInMethod.Link || method == SignInMethod.OneTimeCode)
+            {
+                // remove email unconfirmed claim, if present
+                var removeClaims = new Dictionary<string, string>()
+                {
+                    { PasswordlessLoginConstants.Security.EmailNotConfirmedClaimType, null }
+                }.ToLookup(x => x.Key, x => x.Value);
+                await _userStore.PatchUserAsync(user.SubjectId, removeClaims, true);
             }
 
             _logger.LogDebug("Signing user in: {0}", user.Email);

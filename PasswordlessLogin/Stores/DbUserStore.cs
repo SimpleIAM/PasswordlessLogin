@@ -44,6 +44,7 @@ namespace SimpleIAM.PasswordlessLogin.Stores
             var success = count > 0;
             _logger.LogDebug("{0}uccessfully added user", success ? "S" : "Uns");
 
+            user.SubjectId = dbUser.SubjectId;
             return user;
         }
 
@@ -106,7 +107,7 @@ namespace SimpleIAM.PasswordlessLogin.Stores
                 else
                 {
                     _context.Claims.RemoveRange(_context.Claims.Where(x => x.SubjectId == subjectId && x.Type == values.Key));
-                    _context.Claims.AddRange(values.Where(x => x != null).Select(x=> new Entities.UserClaim() { SubjectId = subjectId, Type = values.Key, Value = x }));
+                    _context.Claims.AddRange(values.Where(x => x != null && x != "").Select(x=> new Entities.UserClaim() { SubjectId = subjectId, Type = values.Key, Value = x }));
                 }
             }
             var count = await _context.SaveChangesAsync();
