@@ -57,7 +57,6 @@ namespace SimpleIAM.PasswordlessLogin.API
             return new ActionResponse(ModelState).ToJsonResult();
         }
 
-        [DisableCors]
         [HttpPost("authenticate-password")]
         public async Task<IActionResult> AuthenticatePassword([FromBody] AuthenticatePasswordInputModel model)
         {
