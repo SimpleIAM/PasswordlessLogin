@@ -43,12 +43,27 @@ namespace SimpleIAM.PasswordlessLogin.API
         }
 
         [HttpPost("authenticate")]
-        public async Task<IActionResult> Authenticate([FromBody] AuthenticateInputModel model)
+        public async Task<IActionResult> Authenticate([FromBody] AuthenticatePasswordInputModel model)
+        {
+            if (ModelState.IsValid)
+            {
+                var response = await _authenticateOrchestrator.AuthenticateAsync(model);
+                if(response.StatusCode == HttpStatusCode.Redirect)
+                {
+                    return NextUrlJsonResult(response.RedirectUrl);
+                }
+                return response.ToJsonResult();
+            }
+            return new ActionResponse(ModelState).ToJsonResult();
+        }
+
+        [HttpPost("authenticate-one-time-code")]
+        public async Task<IActionResult> AuthenticateCode([FromBody] AuthenticateInputModel model)
         {
             if (ModelState.IsValid)
             {
                 var response = await _authenticateOrchestrator.AuthenticateCodeAsync(model);
-                if(response.StatusCode == HttpStatusCode.Redirect)
+                if (response.StatusCode == HttpStatusCode.Redirect)
                 {
                     return NextUrlJsonResult(response.RedirectUrl);
                 }

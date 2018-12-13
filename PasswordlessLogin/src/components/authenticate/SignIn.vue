@@ -228,7 +228,7 @@ export default {
       if(this.signInEnabled) {
         let oneTimeCode = this.password.replace(' ', '');
         if (this.signInType == 'code' || /^[0-9]{6}$/.test(oneTimeCode)) {
-          api.authenticate(this.username, oneTimeCode, this.staySignedIn)
+          api.authenticateOneTimeCode(this.username, oneTimeCode, this.staySignedIn)
             .then(data => this.signInDone(data))
             .catch(error => this.signInFailed(error));
         }

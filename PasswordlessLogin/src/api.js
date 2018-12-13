@@ -11,8 +11,8 @@ const api = {
   sendOneTimeCode(username, nextUrl) {
     return this.transformPromise(url.post('send-one-time-code', { username, nextUrl }));
   },
-  authenticate(username, oneTimeCode, staySignedIn) {
-    return this.transformPromise(url.post('authenticate', { username, oneTimeCode, staySignedIn }));
+  authenticateOneTimeCode(username, oneTimeCode, staySignedIn) {
+    return this.transformPromise(url.post('authenticate-one-time-code', { username, oneTimeCode, staySignedIn }));
   },
   authenticatePassword(username, password, staySignedIn, nextUrl) {
     return this.transformPromise(url.post('authenticate-password', { username, password, staySignedIn, nextUrl }));
