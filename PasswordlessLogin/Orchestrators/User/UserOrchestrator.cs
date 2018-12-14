@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using SimpleIAM.PasswordlessLogin.Configuration;
+using SimpleIAM.PasswordlessLogin.Services.EventNotification;
 using SimpleIAM.PasswordlessLogin.Services.Message;
 using SimpleIAM.PasswordlessLogin.Services.OTC;
 using SimpleIAM.PasswordlessLogin.Services.Password;
@@ -18,6 +19,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
     public class UserOrchestrator : ActionResponder
     {
         private readonly ILogger _logger;
+        private readonly IEventNotificationService _eventNotificationService;
         private readonly HttpContext _httpContext;
         private readonly IUserStore _userStore;
         private readonly IPasswordService _passwordService;
@@ -28,6 +30,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
 
         public UserOrchestrator(
             ILogger<UserOrchestrator> logger,
+            IEventNotificationService eventNotificationService,
             IHttpContextAccessor httpContextAccessor,
             IUserStore userStore,
             IPasswordService passwordService,
@@ -37,6 +40,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             )
         {
             _logger = logger;
+            _eventNotificationService = eventNotificationService;
             _httpContext = httpContextAccessor.HttpContext;
             _userStore = userStore;
             _passwordService = passwordService;
@@ -77,6 +81,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 return BadRequest("User does not exist");
             }
             var updatedUser = await _userStore.PatchUserAsync(model.SubjectId, model.Properties);
+            await _eventNotificationService.NotifyEventAsync(updatedUser.Email, EventType.UpdateAccount);
             return new ActionResponse(updatedUser);
         }
 
@@ -121,6 +126,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                     OldEmail = user.Email,
                     NewEmail = updatedUser.Email,
                 };
+                await _eventNotificationService.NotifyEventAsync(viewModel.OldEmail, EventType.EmailChange, $"Changed to {viewModel.NewEmail}");
                 return new ActionResponse(viewModel);
             }
             else
@@ -154,6 +160,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 OldEmail = user.Email,
                 NewEmail = updatedUser.Email,
             };
+            await _eventNotificationService.NotifyEventAsync(viewModel.OldEmail, EventType.CancelEmailChange, $"Reverted to {viewModel.NewEmail}");
             return new ActionResponse(viewModel);
         }
 

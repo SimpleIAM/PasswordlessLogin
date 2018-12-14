@@ -111,7 +111,29 @@ GO
 IF NOT EXISTS(SELECT * FROM [auth].[__PasswordlessMigrationsHistory] WHERE [MigrationId] = N'20180815171813_v0.3.0')
 BEGIN
     INSERT INTO [auth].[__PasswordlessMigrationsHistory] ([MigrationId], [ProductVersion])
-    VALUES (N'20180815171813_v0.3.0', N'2.1.1-rtm-30846');
+    VALUES (N'20180815171813_v0.3.0', N'2.1.4-rtm-31024');
+END;
+
+GO
+
+IF NOT EXISTS(SELECT * FROM [auth].[__PasswordlessMigrationsHistory] WHERE [MigrationId] = N'20181214010145_v0.4.0')
+BEGIN
+    CREATE TABLE [auth].[EventLog] (
+        [Id] bigint NOT NULL IDENTITY,
+        [Time] datetime2 NOT NULL,
+        [Username] nvarchar(254) NOT NULL,
+        [EventType] nvarchar(30) NOT NULL,
+        [Details] nvarchar(255) NULL,
+        CONSTRAINT [PK_EventLog] PRIMARY KEY ([Id])
+    );
+END;
+
+GO
+
+IF NOT EXISTS(SELECT * FROM [auth].[__PasswordlessMigrationsHistory] WHERE [MigrationId] = N'20181214010145_v0.4.0')
+BEGIN
+    INSERT INTO [auth].[__PasswordlessMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20181214010145_v0.4.0', N'2.1.4-rtm-31024');
 END;
 
 GO

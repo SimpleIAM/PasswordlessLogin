@@ -21,6 +21,7 @@ namespace SimpleIAM.PasswordlessLogin.Entities
         public DbSet<OneTimeCode> OneTimeCodes { get; set; }
         public DbSet<PasswordHash> PasswordHashes { get; set; }
         public DbSet<AuthorizedDevice> AuthorizedDevices { get; set; }
+        public DbSet<EventLog> EventLog { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -79,6 +80,16 @@ namespace SimpleIAM.PasswordlessLogin.Entities
                 ad.Property(x => x.DeviceIdHash).IsRequired();
                 ad.Property(x => x.Description);
                 ad.Property(x => x.AddedOn).IsRequired();
+            });
+
+            modelBuilder.Entity<EventLog>(el =>
+            {
+                el.HasKey(x => x.Id);
+
+                el.Property(x => x.Time).IsRequired();
+                el.Property(x => x.Username).HasMaxLength(254).IsRequired();
+                el.Property(x => x.EventType).HasMaxLength(30).IsRequired();
+                el.Property(x => x.Details).HasMaxLength(255);
             });
         }
     }

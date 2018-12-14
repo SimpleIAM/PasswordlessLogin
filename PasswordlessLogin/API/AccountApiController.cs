@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using SimpleIAM.PasswordlessLogin.Configuration;
 using SimpleIAM.PasswordlessLogin.Orchestrators;
+using SimpleIAM.PasswordlessLogin.Services.EventNotification;
 using SimpleIAM.PasswordlessLogin.Services.Message;
 using SimpleIAM.PasswordlessLogin.Services.Password;
 
@@ -19,18 +20,21 @@ namespace SimpleIAM.PasswordlessLogin.API
     [Authorize]
     public class AccountApiController : Controller
     {
+        private readonly IEventNotificationService _eventNotificationService;
         private readonly UserOrchestrator _userOrchestrator;
         private readonly IPasswordService _passwordService;
         private readonly IMessageService _messageService;
         private readonly IdProviderConfig _idProviderConfig;
 
         public AccountApiController(
+            IEventNotificationService eventNotificationService,
             UserOrchestrator userOrchestrator,
             IPasswordService passwordService,
             IMessageService messageService,
             IdProviderConfig idProviderConfig
             )
         {
+            _eventNotificationService = eventNotificationService;
             _userOrchestrator = userOrchestrator;
             _passwordService = passwordService;
             _messageService = messageService;
@@ -99,6 +103,7 @@ namespace SimpleIAM.PasswordlessLogin.API
                         if (response.Content is Models.User)
                         {
                             var user = response.Content as Models.User;
+                            await _eventNotificationService.NotifyEventAsync(user.Email, EventType.SetPassword);
                             await _messageService.SendPasswordChangedNoticeAsync(user.Email);
                         }
                         return Ok();
@@ -141,6 +146,7 @@ namespace SimpleIAM.PasswordlessLogin.API
                         if (response.Content is Models.User)
                         {
                             var user = response.Content as Models.User;
+                            await _eventNotificationService.NotifyEventAsync(user.Email, EventType.RemovePassword);
                             await _messageService.SendPasswordRemovedNoticeAsync(user.Email);
                         }
                         return Ok();

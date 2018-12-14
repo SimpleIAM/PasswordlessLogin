@@ -18,6 +18,7 @@ using SimpleIAM.PasswordlessLogin.Entities;
 using SimpleIAM.PasswordlessLogin.Orchestrators;
 using SimpleIAM.PasswordlessLogin.Services;
 using SimpleIAM.PasswordlessLogin.Services.Email;
+using SimpleIAM.PasswordlessLogin.Services.EventNotification;
 using SimpleIAM.PasswordlessLogin.Services.Message;
 using SimpleIAM.PasswordlessLogin.Services.OTC;
 using SimpleIAM.PasswordlessLogin.Services.Password;
@@ -108,6 +109,7 @@ namespace Microsoft.Extensions.DependencyInjection
             var connection = configuration.GetConnectionString(PasswordlessLoginConstants.ConfigurationSections.ConnectionStringName);
 
             services.AddDbContext<PasswordlessLoginDbContext>(options => options.UseSqlServer(connection));
+            services.TryAddTransient<IEventNotificationService, DefaultEventNotificationService>();
             services.TryAddTransient<IOneTimeCodeStore, DbOneTimeCodeStore>();
             services.TryAddTransient<IOneTimeCodeService, OneTimeCodeService>();
             services.TryAddTransient<IUserStore, DbUserStore>();

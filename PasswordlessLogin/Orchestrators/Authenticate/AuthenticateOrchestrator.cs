@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging;
 using SimpleIAM.PasswordlessLogin.Configuration;
 using SimpleIAM.PasswordlessLogin.Models;
 using SimpleIAM.PasswordlessLogin.Services;
+using SimpleIAM.PasswordlessLogin.Services.EventNotification;
 using SimpleIAM.PasswordlessLogin.Services.Message;
 using SimpleIAM.PasswordlessLogin.Services.OTC;
 using SimpleIAM.PasswordlessLogin.Services.Password;
@@ -29,6 +30,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             Link
         }
         private readonly ILogger _logger;
+        private readonly IEventNotificationService _eventNotificationService;
         private readonly IOneTimeCodeService _oneTimeCodeService;
         private readonly IMessageService _messageService;
         private readonly IUserStore _userStore;
@@ -42,6 +44,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
 
         public AuthenticateOrchestrator(
             ILogger<AuthenticateOrchestrator> logger,
+            IEventNotificationService eventNotificationService,
             IOneTimeCodeService oneTimeCodeService,
             IMessageService messageService,
             IUserStore userStore,
@@ -54,6 +57,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             IApplicationService applicationService)
         {
             _logger = logger;
+            _eventNotificationService = eventNotificationService;
             _oneTimeCodeService = oneTimeCodeService;
             _userStore = userStore;
             _messageService = messageService;
@@ -108,10 +112,15 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                         .Select(x => new UserClaim() { Type = x.Key, Value = x.Value })
                 };
                 newUser = await _userStore.AddUserAsync(newUser);
+                await _eventNotificationService.NotifyEventAsync(newUser.Email, EventType.Register);
 
                 if (!string.IsNullOrEmpty(model.Password))
                 {
                     var setPasswordResult = await _passwordService.SetPasswordAsync(newUser.SubjectId, model.Password);
+                    if(setPasswordResult == SetPasswordResult.Success)
+                    {
+                        await _eventNotificationService.NotifyEventAsync(newUser.Email, EventType.SetPassword);
+                    }
                     //todo: consider what to do if set password failed. It's non-fatal, but ideal should be communicated
                 }
                 
@@ -171,6 +180,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                     {
                         case GetOneTimeCodeResult.Success:
                             var result = await _messageService.SendOneTimeCodeAndLinkMessageAsync(model.ApplicationId, model.Username, oneTimeCodeResponse.ShortCode, oneTimeCodeResponse.LongCode);
+                            await _eventNotificationService.NotifyEventAsync(model.Username, EventType.RequestOneTimeCode);
                             return ReturnAppropriateResponse(result, oneTimeCodeResponse.ClientNonce, "Message sent. Please check your email.");
                         case GetOneTimeCodeResult.TooManyRequests:
                             return BadRequest("Please wait a few minutes before requesting a new code");
@@ -188,6 +198,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                     {
                         return ServerError(result.ErrorMessageForEndUser);
                     }
+                    await _eventNotificationService.NotifyEventAsync(model.Username, EventType.AccountNotFound);
                     return Ok("Message sent. Please check your email.");
                 }
             }
@@ -232,11 +243,14 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 case CheckOneTimeCodeResult.VerifiedWithNonce:
                 case CheckOneTimeCodeResult.VerifiedWithoutNonce:
                     var nonceWasValid = response.Result == CheckOneTimeCodeResult.VerifiedWithNonce;
+                    await _eventNotificationService.NotifyEventAsync(model.Username, EventType.SignInSuccess, SignInType.OneTimeCode.ToString());
                     return await SignInAndRedirectAsync(SignInMethod.OneTimeCode, model.Username, model.StaySignedIn, response.RedirectUrl, nonceWasValid);
                 case CheckOneTimeCodeResult.Expired:
+                    await _eventNotificationService.NotifyEventAsync(model.Username, EventType.SignInFail, SignInType.OneTimeCode.ToString());
                     return Unauthenticated("Your one time code has expired. Please request a new one.");
                 case CheckOneTimeCodeResult.CodeIncorrect:
                 case CheckOneTimeCodeResult.NotFound:
+                    await _eventNotificationService.NotifyEventAsync(model.Username, EventType.SignInFail, SignInType.OneTimeCode.ToString());
                     return Unauthenticated("Invalid one time code");
                 case CheckOneTimeCodeResult.ShortCodeLocked:
                     return Unauthenticated("The one time code is locked. Please request a new one after a few minutes.");
@@ -263,10 +277,12 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 {
                     case CheckPasswordResult.NotFound:
                     case CheckPasswordResult.PasswordIncorrect:
+                        await _eventNotificationService.NotifyEventAsync(model.Username, EventType.SignInFail, SignInType.Password.ToString());
                         return Unauthenticated("The email address or password wasn't right");
                     case CheckPasswordResult.TemporarilyLocked:
                         return Unauthenticated("Your password is temporarily locked. Use a one time code to sign in.");
                     case CheckPasswordResult.Success:
+                        await _eventNotificationService.NotifyEventAsync(model.Username, EventType.SignInSuccess, SignInType.Password.ToString());
                         return await SignInAndRedirectAsync(SignInMethod.Password, model.Username, model.StaySignedIn, model.NextUrl, null);
                     case CheckPasswordResult.ServiceFailure:
                     default:
@@ -284,9 +300,11 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             {
                 case CheckOneTimeCodeResult.VerifiedWithoutNonce:
                 case CheckOneTimeCodeResult.VerifiedWithNonce:
+                    await _eventNotificationService.NotifyEventAsync(response.SentTo, EventType.SignInSuccess, SignInType.LongCode.ToString());
                     var nonceWasValid = response.Result == CheckOneTimeCodeResult.VerifiedWithNonce;
                     return await SignInAndRedirectAsync(SignInMethod.Link, response.SentTo, null, response.RedirectUrl, nonceWasValid);
                 case CheckOneTimeCodeResult.Expired:
+                    await _eventNotificationService.NotifyEventAsync(response.SentTo, EventType.SignInFail, SignInType.LongCode.ToString());
                     return Unauthenticated("The sign in link expired.");
                 case CheckOneTimeCodeResult.CodeIncorrect:
                     return NotFound();
@@ -318,6 +336,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                     {
                         return ServerError(result.ErrorMessageForEndUser);
                     }
+                    await _eventNotificationService.NotifyEventAsync(model.Username, EventType.AccountNotFound);
                 }
                 else
                 {
@@ -333,6 +352,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             if (oneTimeCodeResponse.Result == GetOneTimeCodeResult.Success)
             {
                 var result = await _messageService.SendPasswordResetMessageAsync(model.ApplicationId, model.Username, oneTimeCodeResponse.ShortCode, oneTimeCodeResponse.LongCode);
+                await _eventNotificationService.NotifyEventAsync(model.Username, EventType.RequestPasswordReset);
                 return ReturnAppropriateResponse(result, oneTimeCodeResponse.ClientNonce, "Check your email for password reset instructions.");
             }
             _logger.LogError("Password reset message was not be sent due to error encountered while generating a one time link");
