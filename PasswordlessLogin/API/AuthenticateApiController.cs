@@ -72,6 +72,21 @@ namespace SimpleIAM.PasswordlessLogin.API
             return new ActionResponse(ModelState).ToJsonResult();
         }
 
+        [HttpPost("authenticate-long-code")]
+        public async Task<IActionResult> AuthenticateLongCode([FromBody] AuthenticateLongCodeInputModel model)
+        {
+            if (ModelState.IsValid)
+            {
+                var response = await _authenticateOrchestrator.AuthenticateLongCodeAsync(model.LongCode);
+                if (response.StatusCode == HttpStatusCode.Redirect)
+                {
+                    return NextUrlJsonResult(response.RedirectUrl);
+                }
+                return response.ToJsonResult();
+            }
+            return new ActionResponse(ModelState).ToJsonResult();
+        }
+
         [HttpPost("authenticate-password")]
         public async Task<IActionResult> AuthenticatePassword([FromBody] AuthenticatePasswordInputModel model)
         {
