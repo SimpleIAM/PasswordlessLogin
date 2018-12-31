@@ -8,7 +8,7 @@ namespace SimpleIAM.PasswordlessLogin.Services
 {
     public interface ISignInService
     {
-        Task SignInAsync(string subjectId, string username, AuthenticationProperties authProps);
+        Task SignInAsync(string subjectId, string username, AuthenticationProperties authProps, string authMethodReference, bool fromTrustedBrowser);
         Task SignOutAsync();
     }
 }

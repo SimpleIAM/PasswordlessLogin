@@ -424,13 +424,32 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 return Unauthenticated("Account not found");
             }
 
+            var addTrustForThisBrowser = false;
             var deviceIsAuthorized = await _authorizedDeviceStore
                 .GetAuthorizedDeviceAsync(user.SubjectId, _httpContext.Request.GetDeviceId()) != null;
 
-            if (!deviceIsAuthorized)
+            var authMethodReference = (method == SignInMethod.Password) ? "pwd" : "otp";
+            if (_httpContext.User.Identity.IsAuthenticated && _httpContext.User.GetSubjectId() == user.SubjectId)
+            {
+                var previousAuthMethod = _httpContext.User.GetClaim("amr");
+                if (previousAuthMethod != null && previousAuthMethod != authMethodReference)
+                {
+                    // If already signed in and now the user has authenticated with another 
+                    // type of credential, this is now a multi-factor session
+                    authMethodReference = "mfa";
+                    if (!deviceIsAuthorized)
+                    {
+                        _logger.LogInformation("Trusting browser because {0} performed multi-factor authentication", username);
+                        addTrustForThisBrowser = true;
+                    }
+                }
+            }
+
+            var anyAuthorizedDevices = true;
+            if (!deviceIsAuthorized && !addTrustForThisBrowser)
             {
                 _logger.LogDebug("Device user is signing in from is not authorized");
-                var anyAuthorizedDevices = (await _authorizedDeviceStore.GetAuthorizedDevicesAsync(user.SubjectId))?.Any() ?? false;
+                anyAuthorizedDevices = (await _authorizedDeviceStore.GetAuthorizedDevicesAsync(user.SubjectId))?.Any() ?? false;
                 if (anyAuthorizedDevices)
                 {
                     _logger.LogDebug("User does have other devices that are authorized");
@@ -443,29 +462,34 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                         return Unauthenticated("Your one time code has expired. Please request a new one.");
                     }
                 }
-                else
+                else if (method == SignInMethod.Link || method == SignInMethod.OneTimeCode)
                 {
+                    // If no trusted browsers, trust the first browser that is used to verify a one time code
+                    _logger.LogInformation("Trusting first browser used by {0}", username);
+                    addTrustForThisBrowser = true;
+                }
+                else { 
                     _logger.LogDebug("User does not have any devices that are authorized");
                 }
             }
 
-            if (!deviceIsAuthorized && staySignedIn == true)
+            if (addTrustForThisBrowser)
             {
-                // todo: instead of auto approving a device when they check stay signed in, do a partial 
-                // login and redirect them to a screen where they can approve the new device
                 var description = _httpContext.Request.Headers["User-Agent"];
                 var deviceId = await AuthorizeDeviceAsync(user.SubjectId, description);
+                deviceIsAuthorized = true;
+                anyAuthorizedDevices = true;
             }
 
-            var authProps = (AuthenticationProperties)null;
+            var authProps = new AuthenticationProperties {
+                AllowRefresh = true,
+                IsPersistent = false,
+            };
             if (staySignedIn == true || (method == SignInMethod.Link && deviceIsAuthorized))
             {
                 _logger.LogTrace("Using maximum session length of {0} minutes", _config.MaxSessionLengthMinutes);
-                authProps = new AuthenticationProperties
-                {
-                    IsPersistent = true,
-                    ExpiresUtc = DateTimeOffset.UtcNow.Add(TimeSpan.FromMinutes(_config.MaxSessionLengthMinutes))
-                };
+                authProps.IsPersistent = true;
+                authProps.ExpiresUtc = DateTimeOffset.UtcNow.Add(TimeSpan.FromMinutes(_config.MaxSessionLengthMinutes));
             }
             else
             {
@@ -483,8 +507,8 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             }
 
             _logger.LogDebug("Signing user in: {0}", user.Email);
-            _logger.LogTrace("SubjectId: {0}", user.SubjectId);
-            await _signInService.SignInAsync(user.SubjectId, user.Email, authProps);
+            _logger.LogTrace("SubjectId: {0}", user.SubjectId);            
+            await _signInService.SignInAsync(user.SubjectId, user.Email, authProps, authMethodReference, deviceIsAuthorized);
 
             nextUrl = ValidatedNextUrl(nextUrl);
             _logger.LogDebug("Redirecting user to: {0}", nextUrl);
