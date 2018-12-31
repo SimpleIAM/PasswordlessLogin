@@ -24,7 +24,8 @@ namespace SimpleIAM.PasswordlessLogin.Configuration
         public int TempLockPasswordMinutes { get; set; } = PasswordlessLoginConstants.Security.DefaultTempLockPasswordMinutes;
         public bool ResetFailedAttemptCountOnTempLock { get; set; } = false;
         public int OneTimeCodeValidityMinutes { get; set; } = PasswordlessLoginConstants.OneTimeCode.DefaultValidityMinutes;
-        public int ConfirmAccountLinkValidityMinutes { get; set; } = PasswordlessLoginConstants.OneTimeCode.ConfirmAccountDefaultValidityMinutes;        
+        public int ConfirmAccountLinkValidityMinutes { get; set; } = PasswordlessLoginConstants.OneTimeCode.ConfirmAccountDefaultValidityMinutes;
+        public bool ResendWelcomeEmailOnReRegister { get; set; } = true;
         public UrlConfig Urls { get; set; }
         public IDictionary<string, string> CustomProperties { get; set; }
     }

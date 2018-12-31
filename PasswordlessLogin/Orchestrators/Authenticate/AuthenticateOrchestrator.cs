@@ -129,9 +129,12 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             else
             {
                 _logger.LogDebug("Existing user found.");
+                if(!_config.ResendWelcomeEmailOnReRegister)
+                {
+                    return Conflict("Already registered! Please go to sign in and request a one time code if you don't have a password.");
+                }
+                // If re-sending thew welcome email, only make the link valid for a short time
                 linkValidity = TimeSpan.FromMinutes(_config.OneTimeCodeValidityMinutes);
-                //may want allow admins to configure a different email to send to existing users. However, it could be that the user
-                // exists but just never got a welcome email?
             }
 
             var nextUrl = !string.IsNullOrEmpty(model.NextUrl) ? model.NextUrl : _urlService.GetDefaultRedirectUrl();
