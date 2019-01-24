@@ -107,6 +107,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
             var fields = GetCustomFields(clientId);
             fields["one_time_code"] = oneTimeCode;
             fields["sign_in_link"] = link;
+            fields["long_code"] = longCode.ToString();
             return await _emailTemplateService.SendEmailAsync(template, sendTo, fields);
         }
 
