@@ -476,7 +476,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 }
             }
 
-            if (addTrustForThisBrowser)
+            if (_config.AutoTrustBrowsers && addTrustForThisBrowser)
             {
                 var description = _httpContext.Request.Headers["User-Agent"];
                 var deviceId = await AuthorizeDeviceAsync(user.SubjectId, description);
