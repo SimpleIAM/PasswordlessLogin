@@ -162,6 +162,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
             var fields = GetCustomFields(applicationId);
             fields["one_time_code"] = oneTimeCode;
             fields["password_reset_link"] = link;
+            fields["long_code"] = longCode.ToString();
 
             return await _emailTemplateService.SendEmailAsync(PasswordlessLoginConstants.EmailTemplates.PasswordReset, sendTo, fields);
         }
