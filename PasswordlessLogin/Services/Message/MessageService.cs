@@ -145,6 +145,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
             fields["one_time_code"] = oneTimeCode;
             fields["sign_in_link"] = link;
             fields["sign_in_url"] = signInUrl;
+            fields["long_code"] = longCode.ToString();
 
             return await _emailTemplateService.SendEmailAsync(PasswordlessLoginConstants.EmailTemplates.Welcome, sendTo, fields);
         }
