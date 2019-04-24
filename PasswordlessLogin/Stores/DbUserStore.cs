@@ -35,7 +35,8 @@ namespace SimpleIAM.PasswordlessLogin.Stores
             var dbUser = new Entities.User()
             {
                 SubjectId = user.SubjectId ?? Guid.NewGuid().ToString("N"),
-                Email = user.Email
+                Email = user.Email,
+                CreatedUTC = DateTime.UtcNow
             };
             dbUser.Claims = user.Claims?.Select(x => new Entities.UserClaim() { SubjectId = dbUser.SubjectId, Type = x.Type, Value = x.Value }).ToList();
             await _context.AddAsync(dbUser);

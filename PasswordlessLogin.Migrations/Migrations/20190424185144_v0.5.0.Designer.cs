@@ -3,15 +3,17 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SimpleIAM.PasswordlessLogin.Entities;
 
 namespace SimpleIAM.PasswordlessLogin.Migrations.Migrations
 {
     [DbContext(typeof(PasswordlessLoginDbContext))]
-    partial class PasswordlessLoginDbContextModelSnapshot : ModelSnapshot
+    [Migration("20190424185144_v0.5.0")]
+    partial class v050
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

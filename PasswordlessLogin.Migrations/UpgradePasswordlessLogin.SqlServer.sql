@@ -138,3 +138,31 @@ END;
 
 GO
 
+IF NOT EXISTS(SELECT * FROM [auth].[__PasswordlessMigrationsHistory] WHERE [MigrationId] = N'20190424185144_v0.5.0')
+BEGIN
+    ALTER TABLE [auth].[Users] ADD [CreatedUTC] datetime2 NOT NULL DEFAULT '0001-01-01T00:00:00.0000000';
+END;
+
+GO
+
+IF NOT EXISTS(SELECT * FROM [auth].[__PasswordlessMigrationsHistory] WHERE [MigrationId] = N'20190424185144_v0.5.0')
+BEGIN
+    DECLARE @var0 sysname;
+    SELECT @var0 = [d].[name]
+    FROM [sys].[default_constraints] [d]
+    INNER JOIN [sys].[columns] [c] ON [d].[parent_column_id] = [c].[column_id] AND [d].[parent_object_id] = [c].[object_id]
+    WHERE ([d].[parent_object_id] = OBJECT_ID(N'[auth].[EventLog]') AND [c].[name] = N'Username');
+    IF @var0 IS NOT NULL EXEC(N'ALTER TABLE [auth].[EventLog] DROP CONSTRAINT [' + @var0 + '];');
+    ALTER TABLE [auth].[EventLog] ALTER COLUMN [Username] nvarchar(254) NULL;
+END;
+
+GO
+
+IF NOT EXISTS(SELECT * FROM [auth].[__PasswordlessMigrationsHistory] WHERE [MigrationId] = N'20190424185144_v0.5.0')
+BEGIN
+    INSERT INTO [auth].[__PasswordlessMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20190424185144_v0.5.0', N'2.1.4-rtm-31024');
+END;
+
+GO
+

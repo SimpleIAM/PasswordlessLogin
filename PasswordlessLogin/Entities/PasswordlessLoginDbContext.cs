@@ -33,6 +33,7 @@ namespace SimpleIAM.PasswordlessLogin.Entities
 
                 user.Property(x => x.SubjectId).HasMaxLength(36).IsRequired();
                 user.Property(x => x.Email).HasMaxLength(254).IsRequired();
+                user.Property(x => x.CreatedUTC).IsRequired();
 
                 user.HasIndex(x => x.Email).IsUnique();
 
@@ -87,7 +88,7 @@ namespace SimpleIAM.PasswordlessLogin.Entities
                 el.HasKey(x => x.Id);
 
                 el.Property(x => x.Time).IsRequired();
-                el.Property(x => x.Username).HasMaxLength(254).IsRequired();
+                el.Property(x => x.Username).HasMaxLength(254);
                 el.Property(x => x.EventType).HasMaxLength(30).IsRequired();
                 el.Property(x => x.Details).HasMaxLength(255);
             });
