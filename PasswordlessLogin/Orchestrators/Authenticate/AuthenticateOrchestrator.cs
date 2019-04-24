@@ -561,6 +561,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
 
         private bool ApplicationIdIsNullOrValid(string applicationId)
         {
+            // Duplicate code in UserOrchestrator
             if(applicationId == null)
             {
                 return true;

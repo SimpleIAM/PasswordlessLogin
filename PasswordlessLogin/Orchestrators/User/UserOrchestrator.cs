@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using SimpleIAM.PasswordlessLogin.Configuration;
+using SimpleIAM.PasswordlessLogin.Services;
 using SimpleIAM.PasswordlessLogin.Services.EventNotification;
 using SimpleIAM.PasswordlessLogin.Services.Message;
 using SimpleIAM.PasswordlessLogin.Services.OTC;
@@ -27,7 +28,6 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
         private readonly IMessageService _messageService;
         private readonly IdProviderConfig _idProviderConfig;
 
-
         public UserOrchestrator(
             ILogger<UserOrchestrator> logger,
             IEventNotificationService eventNotificationService,
@@ -36,8 +36,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             IPasswordService passwordService,
             IOneTimeCodeService oneTimeCodeService,
             IMessageService messageService,
-            IdProviderConfig idProviderConfig
-            )
+            IdProviderConfig idProviderConfig)
         {
             _logger = logger;
             _eventNotificationService = eventNotificationService;
@@ -85,7 +84,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             return new ActionResponse(updatedUser);
         }
 
-        public async Task<ActionResponse> ChangeEmailAddressAsync(string subjectId, string newEmail)
+        public async Task<ActionResponse> ChangeEmailAddressAsync(string subjectId, string newEmail, string applicationId = null)
         {
             _logger.LogTrace("Change email for user {0} to {1}", subjectId, newEmail);
 
@@ -112,7 +111,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             var oldEmail = user.Email;
             
             var otc = await _oneTimeCodeService.GetOneTimeCodeAsync(oldEmail, TimeSpan.FromHours(_idProviderConfig.CancelEmailChangeTimeWindowHours));
-            var result = await _messageService.SendEmailChangedNoticeAsync(oldEmail, otc.LongCode);
+            var result = await _messageService.SendEmailChangedNoticeAsync(applicationId, oldEmail, otc.LongCode);
             if(result.MessageSent)
             {
                 var changes = new Dictionary<string, string>

@@ -7,6 +7,8 @@ namespace SimpleIAM.PasswordlessLogin.API
 {
     public class SetPasswordInputModel
     {
+        public string ApplicationId { get; set; }
+
         public string OldPassword { get; set; }
 
         [Required]

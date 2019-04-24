@@ -7,6 +7,7 @@ namespace SimpleIAM.PasswordlessLogin.API
 {
     public class ChangeEmailInputModel
     {
+        public string ApplicationId { get; set; }
         public string Password { get; set; }
 
         [Required]

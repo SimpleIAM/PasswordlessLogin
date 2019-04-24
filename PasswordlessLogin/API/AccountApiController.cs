@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using SimpleIAM.PasswordlessLogin.Configuration;
 using SimpleIAM.PasswordlessLogin.Orchestrators;
+using SimpleIAM.PasswordlessLogin.Services;
 using SimpleIAM.PasswordlessLogin.Services.EventNotification;
 using SimpleIAM.PasswordlessLogin.Services.Message;
 using SimpleIAM.PasswordlessLogin.Services.Password;
@@ -25,13 +26,15 @@ namespace SimpleIAM.PasswordlessLogin.API
         private readonly IPasswordService _passwordService;
         private readonly IMessageService _messageService;
         private readonly IdProviderConfig _idProviderConfig;
+        private readonly IApplicationService _applicationService;
 
         public AccountApiController(
             IEventNotificationService eventNotificationService,
             UserOrchestrator userOrchestrator,
             IPasswordService passwordService,
             IMessageService messageService,
-            IdProviderConfig idProviderConfig
+            IdProviderConfig idProviderConfig,
+            IApplicationService applicationService
             )
         {
             _eventNotificationService = eventNotificationService;
@@ -39,6 +42,7 @@ namespace SimpleIAM.PasswordlessLogin.API
             _passwordService = passwordService;
             _messageService = messageService;
             _idProviderConfig = idProviderConfig;
+            _applicationService = applicationService;
         }
 
         [HttpGet("")]
@@ -80,6 +84,11 @@ namespace SimpleIAM.PasswordlessLogin.API
         {
             if (ModelState.IsValid)
             {
+                if (!ApplicationIdIsNullOrValid(model.ApplicationId))
+                {
+                    return (new ActionResponse("Invalid application id", HttpStatusCode.BadRequest)).ToJsonResult();
+                }
+
                 var subjectId = User.GetSubjectId();
 
                 if (!string.IsNullOrEmpty(model.OldPassword))
@@ -104,7 +113,7 @@ namespace SimpleIAM.PasswordlessLogin.API
                         {
                             var user = response.Content as Models.User;
                             await _eventNotificationService.NotifyEventAsync(user.Email, EventType.SetPassword);
-                            await _messageService.SendPasswordChangedNoticeAsync(user.Email);
+                            await _messageService.SendPasswordChangedNoticeAsync(model.ApplicationId, user.Email);
                         }
                         return Ok();
                     case SetPasswordResult.PasswordDoesNotMeetStrengthRequirements:
@@ -123,6 +132,11 @@ namespace SimpleIAM.PasswordlessLogin.API
         {
             if (ModelState.IsValid)
             {
+                if (!ApplicationIdIsNullOrValid(model.ApplicationId))
+                {
+                    return (new ActionResponse("Invalid application id", HttpStatusCode.BadRequest)).ToJsonResult();
+                }
+
                 var subjectId = User.GetSubjectId();
 
                 if (!string.IsNullOrEmpty(model.OldPassword))
@@ -147,7 +161,7 @@ namespace SimpleIAM.PasswordlessLogin.API
                         {
                             var user = response.Content as Models.User;
                             await _eventNotificationService.NotifyEventAsync(user.Email, EventType.RemovePassword);
-                            await _messageService.SendPasswordRemovedNoticeAsync(user.Email);
+                            await _messageService.SendPasswordRemovedNoticeAsync(model.ApplicationId, user.Email);
                         }
                         return Ok();
                     case RemovePasswordResult.ServiceFailure:
@@ -163,6 +177,11 @@ namespace SimpleIAM.PasswordlessLogin.API
         {
             if (ModelState.IsValid)
             {
+                if (!ApplicationIdIsNullOrValid(model.ApplicationId))
+                {
+                    return (new ActionResponse("Invalid application id", HttpStatusCode.BadRequest)).ToJsonResult();
+                }
+
                 var subjectId = User.GetSubjectId();
 
                 if (!string.IsNullOrEmpty(model.Password))
@@ -178,7 +197,7 @@ namespace SimpleIAM.PasswordlessLogin.API
                     return Unauthenticated("Please reauthenticate to proceed");
                 }
 
-                var response = await _userOrchestrator.ChangeEmailAddressAsync(subjectId, model.NewEmail);
+                var response = await _userOrchestrator.ChangeEmailAddressAsync(subjectId, model.NewEmail, model.ApplicationId);
                 return response.ToJsonResult();
             }
             return new ActionResponse(ModelState).ToJsonResult();
@@ -198,6 +217,21 @@ namespace SimpleIAM.PasswordlessLogin.API
         private JsonResult Unauthenticated(string message = null)
         {
             return (new ActionResponse(message, HttpStatusCode.Unauthorized)).ToJsonResult();
+        }
+
+        private bool ApplicationIdIsNullOrValid(string applicationId)
+        {
+            // Duplicate code in AuthenticateOrchestrator
+            if (applicationId == null)
+            {
+                return true;
+            }
+            if (!_applicationService.ApplicationExists(applicationId))
+            {
+                //_logger.LogError("Invalid application id '{0}'", applicationId);
+                return false;
+            }
+            return true;
         }
     }
 }

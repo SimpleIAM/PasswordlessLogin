@@ -13,8 +13,8 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
         Task<SendMessageResult> SendOneTimeCodeAndLinkMessageAsync(string applicationId, string sendTo, string oneTimeCode, string longCode);
         Task<SendMessageResult> SendWelcomeMessageAsync(string applicationId, string sendTo, string oneTimeCode, string longCode, IDictionary<string, string> additionalMailMergeValues);
         Task<SendMessageResult> SendPasswordResetMessageAsync(string applicationId, string sendTo, string oneTimeCode, string longCode);
-        Task<SendMessageResult> SendPasswordChangedNoticeAsync(string sendTo);
-        Task<SendMessageResult> SendPasswordRemovedNoticeAsync(string sendTo);
-        Task<SendMessageResult> SendEmailChangedNoticeAsync(string sendTo, string longCode);
+        Task<SendMessageResult> SendPasswordChangedNoticeAsync(string applicationId, string sendTo);
+        Task<SendMessageResult> SendPasswordRemovedNoticeAsync(string applicationId, string sendTo);
+        Task<SendMessageResult> SendEmailChangedNoticeAsync(string applicationId, string sendTo, string longCode);
     }
 }

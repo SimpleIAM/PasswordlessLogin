@@ -45,7 +45,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
             return await _emailTemplateService.SendEmailAsync(PasswordlessLoginConstants.EmailTemplates.AccountNotFound, sendTo, fields);
         }
 
-        public async Task<SendMessageResult> SendPasswordChangedNoticeAsync(string sendTo)
+        public async Task<SendMessageResult> SendPasswordChangedNoticeAsync(string applicationId, string sendTo)
         {
             _logger.LogDebug("Sending password changed notice");
             if (!IsValidEmailAddress(sendTo))
@@ -53,11 +53,11 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
                 return NotAnEmailAddress();
             }
 
-            var fields = GetCustomFields(null);
+            var fields = GetCustomFields(applicationId);
             return await _emailTemplateService.SendEmailAsync(PasswordlessLoginConstants.EmailTemplates.PasswordChangedNotice, sendTo, fields);
         }
 
-        public async Task<SendMessageResult> SendPasswordRemovedNoticeAsync(string sendTo)
+        public async Task<SendMessageResult> SendPasswordRemovedNoticeAsync(string applicationId, string sendTo)
         {
             _logger.LogDebug("Sending password removed notice");
             if (!IsValidEmailAddress(sendTo))
@@ -65,11 +65,11 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
                 return NotAnEmailAddress();
             }
 
-            var fields = GetCustomFields(null);
+            var fields = GetCustomFields(applicationId);
             return await _emailTemplateService.SendEmailAsync(PasswordlessLoginConstants.EmailTemplates.PasswordRemovedNotice, sendTo, fields);
         }
 
-        public async Task<SendMessageResult> SendEmailChangedNoticeAsync(string sendTo, string longCode)
+        public async Task<SendMessageResult> SendEmailChangedNoticeAsync(string applicationId, string sendTo, string longCode)
         {
             if (!IsValidEmailAddress(sendTo))
             {
@@ -77,7 +77,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
             }
 
             var link = _urlService.GetCancelChangeLinkUrl(longCode, true);
-            var fields = GetCustomFields(null);
+            var fields = GetCustomFields(applicationId);
             fields["old_email_address"] = sendTo;
             fields["link_validity_hours"] = _idProviderConfig.CancelEmailChangeTimeWindowHours.ToString();
             fields["cancel_email_change_link"] = link;

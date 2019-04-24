@@ -5,6 +5,7 @@ namespace SimpleIAM.PasswordlessLogin.API
 {
     public class RemovePasswordInputModel
     {
+        public string ApplicationId { get; set; }
         public string OldPassword { get; set; }
     }
 }
