@@ -458,7 +458,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                     _logger.LogDebug("User does have other devices that are authorized");
                     // todo: if SecurityLevel == High OR first thing was a password, do a partial sign in and prompt for second thing
 
-                    if ((method == SignInMethod.OneTimeCode || method == SignInMethod.Link) && nonceWasValid == false)
+                    if ((method == SignInMethod.OneTimeCode || method == SignInMethod.Link) && _config.NonceRequiredOnUntrustedBrowser && nonceWasValid == false)
                     {
                         _logger.LogWarning("Client nonce was missing or invalid. Perhaps the one time code has " +
                             "been intercepted and an unathorized party is trying to user it. Authentication blocked.");
