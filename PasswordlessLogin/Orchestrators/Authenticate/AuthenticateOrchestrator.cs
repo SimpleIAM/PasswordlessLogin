@@ -70,6 +70,60 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             _applicationService = applicationService;
         }
 
+        public async Task<bool> CreateAccountAsync(string email, Dictionary<string, string> claims, string password = null, bool sendRegistrationMessage = true)
+        {
+            // NOTE: this method was extracted for a special use case by TTS
+            if (await _userStore.UsernameIsAvailable(email))
+            {
+                if (await _oneTimeCodeService.UnexpiredOneTimeCodeExistsAsync(email))
+                {
+                    // Although the username is available, there is a valid one time code
+                    // that can be used to cancel an email address change, so we can't
+                    // reuse the address quite yet
+                    return false;
+                }
+                _logger.LogDebug("Email address not used by an existing user. Creating a new user.");
+                // todo: consider restricting claims to a list predefined by the system administrator
+
+                if (claims == null)
+                {
+                    claims = new Dictionary<string, string>();
+                }
+                var internalClaims = new KeyValuePair<string, string>[]
+                {
+                    new KeyValuePair<string, string>(
+                        PasswordlessLoginConstants.Security.EmailNotConfirmedClaimType, "!")
+                };
+                var newUser = new User()
+                {
+                    Email = email,
+                    Claims = claims
+                        .Where(x =>
+                            !PasswordlessLoginConstants.Security.ForbiddenClaims.Contains(x.Key) &&
+                            !PasswordlessLoginConstants.Security.ProtectedClaims.Contains(x.Key))
+                        .Union(internalClaims)
+                        .Select(x => new UserClaim() { Type = x.Key, Value = x.Value })
+                };
+                newUser = await _userStore.AddUserAsync(newUser);
+                if (sendRegistrationMessage)
+                {
+                    await _eventNotificationService.NotifyEventAsync(newUser.Email, EventType.Register);
+                }
+
+                if (!string.IsNullOrEmpty(password))
+                {
+                    var setPasswordResult = await _passwordService.SetPasswordAsync(newUser.SubjectId, password);
+                    if (setPasswordResult == SetPasswordResult.Success)
+                    {
+                        await _eventNotificationService.NotifyEventAsync(newUser.Email, EventType.SetPassword);
+                    }
+                    //todo: Consider what to do if set password failed. It's non-fatal, but ideally should be communicated. This is an edge case.
+                }
+                return true;
+            }
+            return false;
+        }
+
         public async Task<ActionResponse> RegisterAsync(RegisterInputModel model)
         {
             _logger.LogDebug("Begin registration for {0}", model.Email);
@@ -80,60 +134,26 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             }
 
             TimeSpan linkValidity;
-            if (await _userStore.UsernameIsAvailable(model.Email))
+            var accountCreated = await CreateAccountAsync(model.Email, model.Claims, model.Password);
+            if (accountCreated)
             {
-                if(await _oneTimeCodeService.UnexpiredOneTimeCodeExistsAsync(model.Email))
+                linkValidity = TimeSpan.FromMinutes(_config.ConfirmAccountLinkValidityMinutes);
+            }
+            else
+            {
+                if (await _oneTimeCodeService.UnexpiredOneTimeCodeExistsAsync(model.Email))
                 {
                     // alternatively, we could send an email message explaining that the recently freed up email
                     // address can't be linked to a new account yet (must wait until the link that can cancel
                     // the username change expires)
                     return BadRequest("Email address is temporarily reserved");
                 }
-                _logger.LogDebug("Email address not used by an existing user. Creating a new user.");
-                // todo: consider restricting claims to a list predefined by the system administrator
-
-                if(model.Claims == null)
-                {
-                    model.Claims = new Dictionary<string, string>();
-                }
-                var internalClaims = new KeyValuePair<string, string>[] 
-                {
-                    new KeyValuePair<string, string>(
-                        PasswordlessLoginConstants.Security.EmailNotConfirmedClaimType, "!")
-                };
-                var newUser = new User()
-                {
-                    Email = model.Email,
-                    Claims = model.Claims
-                        .Where(x => 
-                            !PasswordlessLoginConstants.Security.ForbiddenClaims.Contains(x.Key) && 
-                            !PasswordlessLoginConstants.Security.ProtectedClaims.Contains(x.Key))                        
-                        .Union(internalClaims)
-                        .Select(x => new UserClaim() { Type = x.Key, Value = x.Value })
-                };
-                newUser = await _userStore.AddUserAsync(newUser);
-                await _eventNotificationService.NotifyEventAsync(newUser.Email, EventType.Register);
-
-                if (!string.IsNullOrEmpty(model.Password))
-                {
-                    var setPasswordResult = await _passwordService.SetPasswordAsync(newUser.SubjectId, model.Password);
-                    if(setPasswordResult == SetPasswordResult.Success)
-                    {
-                        await _eventNotificationService.NotifyEventAsync(newUser.Email, EventType.SetPassword);
-                    }
-                    //todo: consider what to do if set password failed. It's non-fatal, but ideal should be communicated
-                }
-                
-                linkValidity = TimeSpan.FromMinutes(_config.ConfirmAccountLinkValidityMinutes);
-            }
-            else
-            {
                 _logger.LogDebug("Existing user found.");
-                if(!_config.ResendWelcomeEmailOnReRegister)
+                if (!_config.ResendWelcomeEmailOnReRegister)
                 {
                     return Conflict("Already registered! Please go to sign in and request a one time code if you don't have a password.");
                 }
-                // If re-sending thew welcome email, only make the link valid for a short time
+                // If re-sending the welcome email, only make the link valid for a short time
                 linkValidity = TimeSpan.FromMinutes(_config.OneTimeCodeValidityMinutes);
             }
 
