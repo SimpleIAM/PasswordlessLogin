@@ -11,33 +11,7 @@ namespace Microsoft.AspNetCore.Builder
     {
         public static IApplicationBuilder UsePasswordlessLogin(this IApplicationBuilder app, IFileProvider webRootFileProvider)
         {
-            app.UsePasswordlessLoginWithoutAuthentication(webRootFileProvider);
             app.UseAuthentication();
-
-            return app;
-        }
-
-        public static IApplicationBuilder UsePasswordlessLoginWithoutAuthentication(this IApplicationBuilder app, IFileProvider webRootFileProvider)
-        {
-            if (app == null)
-            {
-                throw new ArgumentNullException(nameof(app));
-            }
-            if (webRootFileProvider == null)
-            {
-                throw new ArgumentNullException(nameof(webRootFileProvider));
-            }
-
-            var compositeFileProvider = new CompositeFileProvider(
-                new EmbeddedFileProvider(typeof(PasswordlessLoginApplicationBuilderExtensions).GetTypeInfo().Assembly, "SimpleIAM.PasswordlessLogin.wwwroot"),
-                webRootFileProvider
-            );
-            webRootFileProvider = compositeFileProvider;
-
-            app.UseStaticFiles(new StaticFileOptions
-            {
-                FileProvider = compositeFileProvider
-            });
 
             return app;
         }
