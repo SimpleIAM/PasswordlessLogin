@@ -33,9 +33,9 @@ namespace Microsoft.Extensions.DependencyInjection
 {
     public static class PasswordlessLoginServiceCollectionExtensions
     {
-        public static IServiceCollection AddPasswordlessLogin(this IServiceCollection services, IConfiguration configuration, IHostingEnvironment env, string[] apiAllowedOrigins = null)
+        public static IServiceCollection AddPasswordlessLogin(this IServiceCollection services, IConfiguration configuration, IWebHostEnvironment env)
         {
-            services.AddPasswordlessLoginWithoutAuthentication(configuration, env, apiAllowedOrigins);
+            services.AddPasswordlessLoginWithoutAuthentication(configuration, env);
 
             var idProviderConfig = new IdProviderConfig();
             configuration.Bind(PasswordlessLoginConstants.ConfigurationSections.IdProvider, idProviderConfig);
@@ -66,7 +66,10 @@ namespace Microsoft.Extensions.DependencyInjection
                 context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
                 return Task.FromResult(0);
             };
-            options.Events.OnRedirectToLogin = options.Events.OnRedirectToLogin.ReturnStatusCode(HttpStatusCode.Unauthorized, urls.ApiBase);
+            if (urls.ApiBase != null)
+            {
+                options.Events.OnRedirectToLogin = options.Events.OnRedirectToLogin.ReturnStatusCode(HttpStatusCode.Unauthorized, urls.ApiBase);
+            }
             if (urls.CustomApiBase != null)
             {
                 options.Events.OnRedirectToLogin = options.Events.OnRedirectToLogin.ReturnStatusCode(HttpStatusCode.Unauthorized, urls.CustomApiBase);
@@ -83,7 +86,7 @@ namespace Microsoft.Extensions.DependencyInjection
             return existingRedirector(context);
         };
 
-        public static IServiceCollection AddPasswordlessLoginWithoutAuthentication(this IServiceCollection services, IConfiguration configuration, IHostingEnvironment env, string[] apiAllowedOrigins = null)
+        public static IServiceCollection AddPasswordlessLoginWithoutAuthentication(this IServiceCollection services, IConfiguration configuration, IWebHostEnvironment env)
         {
             if (services == null)
             {
@@ -159,34 +162,7 @@ namespace Microsoft.Extensions.DependencyInjection
 
             services.TryAddScoped<IUrlService, PasswordlessUrlService>();
 
-            services.AddPasswordlessCorsPolicy(apiAllowedOrigins);
-
             return services;
-        }
-
-        private static IServiceCollection AddPasswordlessCorsPolicy(this IServiceCollection services, string[] allowedOrigins = null)
-        {
-            if (allowedOrigins?.Length > 0)
-            {
-                services.AddCors(options =>
-                {
-                    options.AddPolicy(PasswordlessLoginConstants.Security.CorsPolicyName, builder => builder
-                        .WithOrigins(allowedOrigins)
-                        .AllowAnyMethod()
-                        .AllowAnyHeader()
-                        .AllowCredentials());
-                });
-            }
-            else
-            {
-                services.AddCors(options =>
-                {
-                    options.AddPolicy(PasswordlessLoginConstants.Security.CorsPolicyName, builder => builder
-                        .DisallowCredentials());
-                });
-            }
-
-            return services;
-        }
+        }        
     }
 }
