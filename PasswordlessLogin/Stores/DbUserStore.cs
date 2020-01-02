@@ -73,6 +73,12 @@ namespace SimpleIAM.PasswordlessLogin.Stores
             return model;
         }
 
+        public async Task<Models.User> GetUserByUsernameAsync(string username, bool fetchClaims = false)
+        {
+            // NOTE: For this user store username = email. However, other user stores may implement this differently.
+            return await GetUserByEmailAsync(username, fetchClaims);
+        }
+
         public async Task<Models.User> GetUserByPreviousEmailAsync(string previousEmail)
         {
             _logger.LogTrace("Fetch user (by previous email) {0}");

@@ -15,6 +15,7 @@ using Microsoft.Extensions.FileProviders;
 using SimpleIAM.PasswordlessLogin;
 using SimpleIAM.PasswordlessLogin.Configuration;
 using SimpleIAM.PasswordlessLogin.Entities;
+using SimpleIAM.PasswordlessLogin.Helpers;
 using SimpleIAM.PasswordlessLogin.Orchestrators;
 using SimpleIAM.PasswordlessLogin.Services;
 using SimpleIAM.PasswordlessLogin.Services.Email;

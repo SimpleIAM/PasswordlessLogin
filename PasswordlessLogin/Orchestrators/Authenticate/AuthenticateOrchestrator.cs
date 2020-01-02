@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using SimpleIAM.PasswordlessLogin.Configuration;
+using SimpleIAM.PasswordlessLogin.Helpers;
 using SimpleIAM.PasswordlessLogin.Models;
 using SimpleIAM.PasswordlessLogin.Services;
 using SimpleIAM.PasswordlessLogin.Services.EventNotification;
@@ -187,49 +188,59 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 return BadRequest("Invalid application id");
             }
 
-            // todo: support usernames/phone numbers
-            // Note: Need to keep messages generic as to not reveal whether an account exists or not. 
+            // Note: Need to keep messages generic as to not reveal whether an account exists or not.
+            var usernameIsValidEmail = EmailAddressChecker.EmailIsValid(model.Username);
+            var defaultMessage = usernameIsValidEmail
+                ? "Message sent. Please check your email."
+                : "We sent a code to the email address asociated with your account (if found). Please check your email.";
+
             // If the username provide is not an email address or phone number, tell the user "we sent you a code if you have an account"
-            if (model.Username?.Contains("@") == true) // temporary rough email check
+            var user = await _userStore.GetUserByUsernameAsync(model.Username);
+            if (user == null)
             {
-                if (await _userStore.UserExists(model.Username))
+                _logger.LogDebug("User not found");
+
+                if (!usernameIsValidEmail)
                 {
-                    _logger.LogDebug("User found");
-                    var oneTimeCodeResponse = await _oneTimeCodeService.GetOneTimeCodeAsync(
-                        model.Username, 
-                        TimeSpan.FromMinutes(_config.OneTimeCodeValidityMinutes), 
-                        model.NextUrl);
-                    switch (oneTimeCodeResponse.Result)
-                    {
-                        case GetOneTimeCodeResult.Success:
-                            var result = await _messageService.SendOneTimeCodeAndLinkMessageAsync(model.ApplicationId, model.Username, oneTimeCodeResponse.ShortCode, oneTimeCodeResponse.LongCode);
-                            await _eventNotificationService.NotifyEventAsync(model.Username, EventType.RequestOneTimeCode);
-                            return ReturnAppropriateResponse(result, oneTimeCodeResponse.ClientNonce, "Message sent. Please check your email.");
-                        case GetOneTimeCodeResult.TooManyRequests:
-                            return BadRequest("Please wait a few minutes before requesting a new code");
-                        case GetOneTimeCodeResult.ServiceFailure:
-                        default:
-                            return ServerError("Hmm, something went wrong. Can you try again?");
-                    }
+                    _logger.LogError("No valid email address found for user {0}", model.Username);
+                    return Ok(defaultMessage); // generic message prevent account enumeration
                 }
-                else
+
+                var result = await _messageService.SendAccountNotFoundMessageAsync(model.ApplicationId, model.Username);
+                if (!result.MessageSent)
                 {
-                    _logger.LogDebug("User not found");
-                    // if valid email or phone number, send a message inviting them to register
-                    var result = await _messageService.SendAccountNotFoundMessageAsync(model.ApplicationId, model.Username);
-                    if (!result.MessageSent)
-                    {
-                        return ServerError(result.ErrorMessageForEndUser);
-                    }
-                    await _eventNotificationService.NotifyEventAsync(model.Username, EventType.AccountNotFound);
-                    return Ok("Message sent. Please check your email.");
+                    return ServerError(result.ErrorMessageForEndUser);
                 }
+                // the fact that the user doesn't have an account is communicated privately via email
+                await _eventNotificationService.NotifyEventAsync(model.Username, EventType.AccountNotFound);
+                return Ok(defaultMessage); // generic message prevent account enumeration
             }
-            else
+
+            _logger.LogDebug("User found");
+
+            if (!EmailAddressChecker.EmailIsValid(user.Email))
             {
-                _logger.LogError("{0} is not a valid email address", model.Username);
-                return BadRequest("Please enter a valid email address");
+                _logger.LogError("No valid email address found for user {0}", model.Username);
+                return Ok(defaultMessage); // generic message prevent account enumeration
             }
+
+            var oneTimeCodeResponse = await _oneTimeCodeService.GetOneTimeCodeAsync(
+                user.Email, 
+                TimeSpan.FromMinutes(_config.OneTimeCodeValidityMinutes), 
+                model.NextUrl);
+
+            switch (oneTimeCodeResponse.Result)
+            {
+                case GetOneTimeCodeResult.Success:
+                    var result = await _messageService.SendOneTimeCodeAndLinkMessageAsync(model.ApplicationId, model.Username, oneTimeCodeResponse.ShortCode, oneTimeCodeResponse.LongCode);
+                    await _eventNotificationService.NotifyEventAsync(model.Username, EventType.RequestOneTimeCode);
+                    return ReturnAppropriateResponse(result, oneTimeCodeResponse.ClientNonce, defaultMessage);
+                case GetOneTimeCodeResult.TooManyRequests:
+                    return BadRequest("Please wait a few minutes before requesting a new code");
+                case GetOneTimeCodeResult.ServiceFailure:
+                default:
+                    return ServerError("Hmm, something went wrong. Can you try again?");
+            }            
         }
 
         public async Task<ActionResponse> AuthenticateAsync(AuthenticatePasswordInputModel model)
@@ -287,7 +298,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
         {
             _logger.LogDebug("Begin password authentication for {0}", model.Username);
 
-            var user = await _userStore.GetUserByEmailAsync(model.Username); //todo: handle non-email addresses
+            var user = await _userStore.GetUserByUsernameAsync(model.Username);
             if (user == null)
             {
                 _logger.LogDebug("User not found: {0}", model.Username);
@@ -439,7 +450,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             */
             //do 2FA and figure out new device, etc here
 
-            var user = await _userStore.GetUserByEmailAsync(username); //todo: support non-email addresses
+            var user = await _userStore.GetUserByUsernameAsync(username);
             if (user == null)
             {
                 // this could only happen if an account was removed, but a method of signing in remained

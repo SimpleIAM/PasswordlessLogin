@@ -210,7 +210,12 @@ export default {
     getOneTimeCode: function() {
       api.sendOneTimeCode(this.username, this.nextUrl)
         .then(data => {
-          this.message = 'We sent sent a one time code to your email or phone';
+          if (data.message) {
+            this.message = data.message;
+          }
+          else {
+            this.message = 'We sent sent a one time code to your email or phone';
+          }          
           this.$nextTick(() => {
             this.$refs.password.focus();
           });

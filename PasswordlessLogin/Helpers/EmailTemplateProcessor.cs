@@ -6,7 +6,7 @@ using SimpleIAM.PasswordlessLogin.Services.Email;
 using System.IO;
 using System.Text.RegularExpressions;
 
-namespace SimpleIAM.PasswordlessLogin.Configuration
+namespace SimpleIAM.PasswordlessLogin.Helpers
 {
     public static class EmailTemplateProcessor
     {

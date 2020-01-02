@@ -113,7 +113,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
 
         private bool IsValidEmailAddress(string sendTo)
         {
-            return sendTo?.Contains("@") == true; // todo: have a better email check
+            return sendTo?.Contains("@") == true; // todo: have a better email check, possibly using MailboxAddress.Parse
         }
 
         private SendMessageResult NotAnEmailAddress()
