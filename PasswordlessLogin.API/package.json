@@ -1,34 +1,34 @@
 {
-  "name": "passwordlesslogin",
+  "name": "passwordlessloginapi",
   "private": true,
   "version": "0.0.0",
   "description": "",
   "author": "Ryan Foster",
   "license": "Apache-2.0",
   "scripts": {
-    "dev": "yarn run build-ui:dev && cross-env ASPNETCORE_ENVIRONMENT=Development dotnet run --project ../PasswordlessLogin.StarterApp/PasswordlessLogin.StarterApp.csproj",
+    "dev": "npm run build-ui:dev && cross-env ASPNETCORE_ENVIRONMENT=Development dotnet run --project ../PasswordlessLogin.StarterApp/PasswordlessLogin.StarterApp.csproj",
     "build-ui:dev": "cross-env NODE_ENV=development npx webpack --mode development",
     "build-ui:prod": "cross-env NODE_ENV=production npx webpack --mode production",
-    "pack": "yarn run build-ui:prod && dotnet pack --configuration Release --output ../"
+    "pack": "npm run build-ui:prod && dotnet pack --configuration Release --output ../"
   },
   "devDependencies": {
-    "axios": "^0.18.0",
+    "axios": "^0.18.1",
     "babel-core": "^6.26.3",
     "babel-loader": "7.1.4",
     "babel-preset-env": "1.6.1",
     "babel-preset-stage-3": "^6.24.1",
-    "cross-env": "^5.1.4",
-    "css-loader": "^0.28.11",
-    "document-register-element": "^1.8.1",
+    "cross-env": "^5.2.1",
+    "css-loader": "^3.4.0",
+    "document-register-element": "^1.14.3",
     "promise-polyfill": "^7.1.2",
-    "vue": "^2.5.16",
+    "vue": "^2.6.11",
     "vue-cookie": "^1.1.4",
-    "vue-custom-element": "^3.0.6",
-    "vue-loader": "^15.0.9",
-    "vue-template-compiler": "^2.5.16",
-    "webpack": "4.25.1",
+    "vue-custom-element": "^3.2.12",
+    "vue-loader": "^15.8.3",
+    "vue-template-compiler": "^2.6.11",
+    "webpack": "^4.41.5",
     "webpack-cleanup-plugin": "^0.5.1",
-    "webpack-cli": "^3.1.2",
+    "webpack-cli": "^3.3.10",
     "zxcvbn": "^4.4.2"
   }
 }

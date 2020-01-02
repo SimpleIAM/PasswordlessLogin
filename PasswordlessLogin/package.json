@@ -1,0 +1,11 @@
+{
+  "name": "openidauthority",
+  "private": true,
+  "version": "0.0.0",
+  "description": "",
+  "author": "Ryan Foster",
+  "license": "Apache-2.0",
+  "scripts": {
+    "pack": "dotnet pack --configuration Release --output ../"
+  }
+}
