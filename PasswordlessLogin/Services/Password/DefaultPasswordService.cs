@@ -3,6 +3,7 @@
 
 using Microsoft.Extensions.Logging;
 using SimpleIAM.PasswordlessLogin.Configuration;
+using SimpleIAM.PasswordlessLogin.Models;
 using SimpleIAM.PasswordlessLogin.Stores;
 using System;
 using System.Threading.Tasks;
@@ -59,10 +60,10 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
             return result ? SetPasswordResult.Success : SetPasswordResult.ServiceFailure;
         }
 
-        public async Task<CheckPasswordResult> CheckPasswordAsync(string uniqueIdentifier, string password)
+        public async Task<CheckPasswordResult> CheckPasswordAsync(User user, string password)
         {
-            _logger.LogDebug("Checking password for {0}", uniqueIdentifier);
-            var hashInfo = await _passwordHashStore.GetPasswordHashAsync(uniqueIdentifier);
+            _logger.LogDebug("Checking password for {0}", user.SubjectId);
+            var hashInfo = await _passwordHashStore.GetPasswordHashAsync(user.SubjectId);
             if(hashInfo == null)
             {
                 return CheckPasswordResult.NotFound;
@@ -87,19 +88,19 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
                             // if not reset, the next failure after a lockout initiates another lockout period
                             currentFailedAttemptCount = 0;
                         }
-                        await _passwordHashStore.TempLockPasswordHashAsync(uniqueIdentifier, lockUntil, currentFailedAttemptCount);
+                        await _passwordHashStore.TempLockPasswordHashAsync(user.SubjectId, lockUntil, currentFailedAttemptCount);
                         return CheckPasswordResult.TemporarilyLocked;
                     }
                     else
                     {
                         _logger.LogDebug("Updating failed attempt count");
-                        await _passwordHashStore.UpdatePasswordHashFailureCountAsync(uniqueIdentifier, hashInfo.FailedAttemptCount + 1);
+                        await _passwordHashStore.UpdatePasswordHashFailureCountAsync(user.SubjectId, hashInfo.FailedAttemptCount + 1);
                         return CheckPasswordResult.PasswordIncorrect;
                     }
                 case CheckPaswordHashResult.MatchesNeedsRehash:
                     _logger.LogDebug("Rehashing password");
                     var newHash = _passwordHashService.HashPassword(password);
-                    await _passwordHashStore.UpdatePasswordHashAsync(uniqueIdentifier, newHash);
+                    await _passwordHashStore.UpdatePasswordHashAsync(user.SubjectId, newHash);
                     return CheckPasswordResult.Success;
                 case CheckPaswordHashResult.Matches:
                     _logger.LogDebug("Password matches");

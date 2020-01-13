@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Ryan Foster. All rights reserved. 
 // Licensed under the Apache License, Version 2.0.
 
+using SimpleIAM.PasswordlessLogin.Models;
 using System.Threading.Tasks;
 
 namespace SimpleIAM.PasswordlessLogin.Services.Password
@@ -9,6 +10,6 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
     {
         string UniqueIdentifierClaimType { get; }
 
-        Task<CheckPasswordResult> CheckPasswordAsync(string uniqueIdentifier, string password);
+        Task<CheckPasswordResult> CheckPasswordAsync(User user, string password);
     }
 }

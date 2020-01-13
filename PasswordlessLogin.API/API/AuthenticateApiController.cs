@@ -5,6 +5,7 @@ using System.Net;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
+using SimpleIAM.PasswordlessLogin.Extensions;
 using SimpleIAM.PasswordlessLogin.Orchestrators;
 
 namespace SimpleIAM.PasswordlessLogin.API
@@ -47,12 +48,12 @@ namespace SimpleIAM.PasswordlessLogin.API
         {
             if (ModelState.IsValid)
             {
-                var response = await _authenticateOrchestrator.AuthenticateAsync(model);
-                if(response.StatusCode == HttpStatusCode.Redirect)
+                var status = await _authenticateOrchestrator.AuthenticateAsync(model);
+                if(status.StatusCode == HttpStatusCode.Redirect)
                 {
-                    return NextUrlJsonResult(response.RedirectUrl);
+                    return NextUrlJsonResult(status.RedirectUrl);
                 }
-                return response.ToJsonResult();
+                return status.ToJsonResult();
             }
             return new ActionResponse(ModelState).ToJsonResult();
         }
@@ -62,12 +63,12 @@ namespace SimpleIAM.PasswordlessLogin.API
         {
             if (ModelState.IsValid)
             {
-                var response = await _authenticateOrchestrator.AuthenticateCodeAsync(model);
-                if (response.StatusCode == HttpStatusCode.Redirect)
+                var status = await _authenticateOrchestrator.AuthenticateCodeAsync(model);
+                if (status.StatusCode == HttpStatusCode.Redirect)
                 {
-                    return NextUrlJsonResult(response.RedirectUrl);
+                    return NextUrlJsonResult(status.RedirectUrl); 
                 }
-                return response.ToJsonResult();
+                return status.ToJsonResult();
             }
             return new ActionResponse(ModelState).ToJsonResult();
         }
@@ -77,12 +78,12 @@ namespace SimpleIAM.PasswordlessLogin.API
         {
             if (ModelState.IsValid)
             {
-                var response = await _authenticateOrchestrator.AuthenticateLongCodeAsync(model.LongCode);
-                if (response.StatusCode == HttpStatusCode.Redirect)
+                var status = await _authenticateOrchestrator.AuthenticateLongCodeAsync(model.LongCode);
+                if (status.StatusCode == HttpStatusCode.Redirect)
                 {
-                    return NextUrlJsonResult(response.RedirectUrl);
+                    return NextUrlJsonResult(status.RedirectUrl);
                 }
-                return response.ToJsonResult();
+                return status.ToJsonResult();
             }
             return new ActionResponse(ModelState).ToJsonResult();
         }
@@ -92,12 +93,12 @@ namespace SimpleIAM.PasswordlessLogin.API
         {
             if (ModelState.IsValid)
             {
-                var response = await _authenticateOrchestrator.AuthenticatePasswordAsync(model);
-                if (response.StatusCode == HttpStatusCode.Redirect)
+                var status = await _authenticateOrchestrator.AuthenticatePasswordAsync(model);
+                if (status.StatusCode == HttpStatusCode.Redirect)
                 {
-                    return NextUrlJsonResult(response.RedirectUrl);
+                    return NextUrlJsonResult(status.RedirectUrl);
                 }
-                return response.ToJsonResult();
+                return status.ToJsonResult();
             }
             return new ActionResponse(ModelState).ToJsonResult();
         }

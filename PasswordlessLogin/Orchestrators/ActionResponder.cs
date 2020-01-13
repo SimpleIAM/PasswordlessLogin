@@ -7,37 +7,37 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
 {
     public abstract class ActionResponder
     {
-        protected ActionResponse Ok(string message = null)
+        protected Status Ok(string message = null)
         {
-            return new ActionResponse(message, HttpStatusCode.OK);
+            return Status.Success(message);
         }
-        protected ActionResponse Redirect(string url)
+        protected Status Redirect(string url)
         {
-            return new ActionResponse(HttpStatusCode.Redirect) { RedirectUrl = url };
+            return Status.Redirect(url);
         }
-        protected ActionResponse BadRequest(string message = null)
+        protected Status BadRequest(string message = null)
         {
-            return new ActionResponse(message, HttpStatusCode.BadRequest);
+            return Status.Error(message, HttpStatusCode.BadRequest);
         }
-        protected ActionResponse Unauthenticated(string message = null)
+        protected Status Unauthenticated(string message = null)
         {
-            return new ActionResponse(message, HttpStatusCode.Unauthorized);
+            return Status.Error(message, HttpStatusCode.Unauthorized);
         }
-        protected ActionResponse PermissionDenied(string message = null)
+        protected Status PermissionDenied(string message = null)
         {
-            return new ActionResponse(message, HttpStatusCode.Forbidden);
+            return Status.Error(message, HttpStatusCode.Forbidden);
         }
-        protected ActionResponse NotFound(string message = null)
+        protected Status NotFound(string message = null)
         {
-            return new ActionResponse(message, HttpStatusCode.NotFound);
+            return Status.Error(message, HttpStatusCode.NotFound);
         }
-        protected ActionResponse Conflict(string message = null)
+        protected Status Conflict(string message = null)
         {
-            return new ActionResponse(message, HttpStatusCode.Conflict);
+            return Status.Error(message, HttpStatusCode.Conflict);
         }
-        protected ActionResponse ServerError(string message = null)
+        protected Status ServerError(string message = null)
         {
-            return new ActionResponse(message, HttpStatusCode.InternalServerError);
+            return Status.Error(message, HttpStatusCode.InternalServerError);
         }
     }
 }

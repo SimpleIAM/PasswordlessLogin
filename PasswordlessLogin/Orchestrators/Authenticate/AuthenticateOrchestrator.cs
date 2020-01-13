@@ -125,7 +125,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             return false;
         }
 
-        public async Task<ActionResponse> RegisterAsync(RegisterInputModel model)
+        public async Task<Status> RegisterAsync(RegisterInputModel model)
         {
             _logger.LogDebug("Begin registration for {0}", model.Email);
 
@@ -179,7 +179,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             }
         }
 
-        public async Task<ActionResponse> SendOneTimeCodeAsync(SendCodeInputModel model)
+        public async Task<Status> SendOneTimeCodeAsync(SendCodeInputModel model)
         {
             _logger.LogDebug("Begin send one time code for {0}", model.Username);
 
@@ -243,7 +243,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             }            
         }
 
-        public async Task<ActionResponse> AuthenticateAsync(AuthenticatePasswordInputModel model)
+        public async Task<Status> AuthenticateAsync(AuthenticatePasswordInputModel model)
         {
             _logger.LogDebug("Begin authentication for {0}", model.Username);
 
@@ -266,7 +266,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             }
         }
 
-        public async Task<ActionResponse> AuthenticateCodeAsync(AuthenticateInputModel model)
+        public async Task<Status> AuthenticateCodeAsync(AuthenticateInputModel model)
         {
             _logger.LogDebug("Begin one time code authentication for {0}", model.Username);
 
@@ -294,7 +294,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             }
         }
 
-        public async Task<ActionResponse> AuthenticatePasswordAsync(AuthenticatePasswordInputModel model)
+        public async Task<Status> AuthenticatePasswordAsync(AuthenticatePasswordInputModel model)
         {
             _logger.LogDebug("Begin password authentication for {0}", model.Username);
 
@@ -306,7 +306,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             }
             else
             {
-                var checkPasswordResult = await _passwordService.CheckPasswordAsync(user.SubjectId, model.Password);
+                var checkPasswordResult = await _passwordService.CheckPasswordAsync(user, model.Password);
                 switch (checkPasswordResult)
                 {
                     case CheckPasswordResult.NotFound:
@@ -325,7 +325,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             }
         }
 
-        public async Task<ActionResponse> AuthenticateLongCodeAsync(string longCode)
+        public async Task<Status> AuthenticateLongCodeAsync(string longCode)
         {
             _logger.LogDebug("Begin long code (one time link) authentication");
 
@@ -350,7 +350,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             }
         }
 
-        public async Task<ActionResponse> SendPasswordResetMessageAsync(SendPasswordResetMessageInputModel model)
+        public async Task<Status> SendPasswordResetMessageAsync(SendPasswordResetMessageInputModel model)
         {
             _logger.LogDebug("Begin send password reset message for {0}", model.Username);
 
@@ -393,14 +393,14 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             return ServerError("Hmm. Something went wrong. Please try again.");
         }
 
-        public async Task<ActionResponse> SignOutAsync()
+        public async Task<Status> SignOutAsync()
         {
             await _signInService.SignOutAsync();
 
             return Ok();
         }
 
-        private ActionResponse ReturnAppropriateResponse(SendMessageResult sendMessageResult, string clientNonce, string successMessage)
+        private Status ReturnAppropriateResponse(SendMessageResult sendMessageResult, string clientNonce, string successMessage)
         {
             if (clientNonce != null)
             {
@@ -418,7 +418,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             }
         }
 
-        private async Task<ActionResponse> SignInAndRedirectAsync(SignInMethod method, string username, bool? staySignedIn, string nextUrl, bool? nonceWasValid)
+        private async Task<Status> SignInAndRedirectAsync(SignInMethod method, string username, bool? staySignedIn, string nextUrl, bool? nonceWasValid)
         {
             _logger.LogTrace("Begining sign in and redirect logic for {0}", username);
             /*
