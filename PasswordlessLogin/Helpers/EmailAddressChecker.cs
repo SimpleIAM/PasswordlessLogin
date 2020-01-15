@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Text;
 
 namespace SimpleIAM.PasswordlessLogin.Helpers
@@ -8,12 +9,11 @@ namespace SimpleIAM.PasswordlessLogin.Helpers
     {
         public static bool EmailIsValid(string email)
         {
-            // TODO: implement better check
-            if (email == null || email.Length > 254)
+            if (email == null || email.Length > 254 || email.IndexOf("@") < 1)
             {
                 return false;
             }
-            return email.IndexOf("@") > 0;
+            return new EmailAddressAttribute().IsValid(email);
         }
     }
 }
