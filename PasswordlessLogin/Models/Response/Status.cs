@@ -23,6 +23,10 @@ namespace SimpleIAM.PasswordlessLogin
         public void Add(Status status)
         {
             Messages = Messages.Concat(status.Messages).ToList();
+            if(status.StatusCode != HttpStatusCode.OK)
+            {
+                StatusCode = status.StatusCode;
+            }
         }
 
         public void AddError(string message, HttpStatusCode httpStatusCode = HttpStatusCode.InternalServerError)

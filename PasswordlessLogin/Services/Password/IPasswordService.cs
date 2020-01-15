@@ -8,8 +8,8 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
 {
     public interface IPasswordService : IReadOnlyPasswordService
     {
-        Task<DateTime?> PasswordLastChangedAsync(string uniqueIdentifier);
-        Task<SetPasswordResult> SetPasswordAsync(string uniqueIdentifier, string password);
-        Task<RemovePasswordResult> RemovePasswordAsync(string uniqueIdentifier);
+        Task<Response<DateTime>> PasswordLastChangedAsync(string uniqueIdentifier);
+        Task<SetPasswordStatus> SetPasswordAsync(string uniqueIdentifier, string password);
+        Task<Status> RemovePasswordAsync(string uniqueIdentifier);
     }
 }

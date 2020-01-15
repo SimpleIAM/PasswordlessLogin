@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 using System;
+using System.Net;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using SimpleIAM.PasswordlessLogin.Entities;
@@ -19,7 +20,7 @@ namespace SimpleIAM.PasswordlessLogin.Stores
             _context = context;
         }
 
-        public async Task<bool> AddPasswordHashAsync(string uniqueIdentifier, string passwordHash)
+        public async Task<Status> AddPasswordHashAsync(string uniqueIdentifier, string passwordHash)
         {
             _logger.LogTrace("Add password hash");
             var record = new PasswordHash()
@@ -32,21 +33,26 @@ namespace SimpleIAM.PasswordlessLogin.Stores
             };
             await _context.AddAsync(record);
             var count = await _context.SaveChangesAsync();
-            var success = count > 0;
-            _logger.LogDebug("{0}uccessfully persisting password hash", success ? "S" : "Uns");
-            return success;
+            if(count == 0)
+            {
+                return Status.Error("Failed to save password.");
+            }
+
+            return Status.Success("Password saved.");
         }
 
-        public async Task<Models.PasswordHash> GetPasswordHashAsync(string uniqueIdentifier)
+        public async Task<Response<Models.PasswordHash>> GetPasswordHashAsync(string uniqueIdentifier)
         {
-            _logger.LogTrace("Fecth password hash");
+            _logger.LogTrace("Fetch password hash");
             var record = await _context.PasswordHashes.FindAsync(uniqueIdentifier);
-            var model = record?.ToModel();
-            _logger.LogDebug("Password hash was ", model != null ? "found" : "not found");
-            return model;
+            if (record == null)
+            {
+                return Response.Error<Models.PasswordHash>("Password not found.", HttpStatusCode.NotFound);
+            }
+            return Response.Success(record.ToModel(), "Password found.");
         }
 
-        public async Task<bool> UpdatePasswordHashFailureCountAsync(string uniqueIdentifier, int failureCount)
+        public async Task<Status> UpdatePasswordHashFailureCountAsync(string uniqueIdentifier, int failureCount)
         {
             _logger.LogTrace("Update password hash failure count");
             var count = 0;
@@ -59,12 +65,15 @@ namespace SimpleIAM.PasswordlessLogin.Stores
                 _context.Entry(record).Property(x => x.TempLockUntilUTC).IsModified = false;
                 count = await _context.SaveChangesAsync();
             }
-            var success = count > 0;
-            _logger.LogDebug("{0}uccessfully updated password hash failure count", success ? "S" : "Uns");
-            return success;
+            if (count == 0)
+            {
+                return Status.Error("Password failure count not updated.");
+            }
+
+            return Status.Success("Password failure count updated.");
         }
 
-        public async Task<bool> RemovePasswordHashAsync(string uniqueIdentifier)
+        public async Task<Status> RemovePasswordHashAsync(string uniqueIdentifier)
         {
             _logger.LogTrace("Remove password hash");
             var count = 1;
@@ -74,12 +83,15 @@ namespace SimpleIAM.PasswordlessLogin.Stores
                 _context.Remove(record);
                 count = await _context.SaveChangesAsync();
             }
-            var success = count > 0;
-            _logger.LogDebug("{0}uccessfully removed password hash", success ? "S" : "Uns");
-            return success;
+            if (count == 0)
+            {
+                return Status.Error("Password not removed.");
+            }
+
+            return Status.Success("Password removed.");
         }
 
-        public async Task<bool> TempLockPasswordHashAsync(string uniqueIdentifier, DateTime lockUntil, int failureCount)
+        public async Task<Status> TempLockPasswordHashAsync(string uniqueIdentifier, DateTime lockUntil, int failureCount)
         {
             _logger.LogTrace("Temp lock password hash");
             var count = 0;
@@ -92,12 +104,15 @@ namespace SimpleIAM.PasswordlessLogin.Stores
                 _context.Entry(record).Property(x => x.LastChangedUTC).IsModified = false;
                 count = await _context.SaveChangesAsync();
             }
-            var success = count > 0;
-            _logger.LogDebug("{0}uccessfully updated password hash temp lock", success ? "S" : "Uns");
-            return success;
+            if (count == 0)
+            {
+                return Status.Error("Failed to temporarily lock the account.");
+            }
+
+            return Status.Success("Account temporarily locked.");
         }
 
-        public async Task<bool> UpdatePasswordHashAsync(string uniqueIdentifier, string newHash)
+        public async Task<Status> UpdatePasswordHashAsync(string uniqueIdentifier, string newHash)
         {
             _logger.LogTrace("Update password hash");
             var count = 0;
@@ -110,9 +125,12 @@ namespace SimpleIAM.PasswordlessLogin.Stores
                 _context.Entry(record).Property(x => x.TempLockUntilUTC).IsModified = false;
                 count = await _context.SaveChangesAsync();
             }
-            var success = count > 0;
-            _logger.LogDebug("{0}uccessfully updated password hash", success ? "S" : "Uns");
-            return success;
+            if (count == 0)
+            {
+                return Status.Error("Password not updated.");
+            }
+
+            return Status.Success("Password updated.");
         }
     }
 }

@@ -10,6 +10,6 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
     {
         string UniqueIdentifierClaimType { get; }
 
-        Task<CheckPasswordResult> CheckPasswordAsync(User user, string password);
+        Task<CheckPasswordStatus> CheckPasswordAsync(User user, string password);
     }
 }

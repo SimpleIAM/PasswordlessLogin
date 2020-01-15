@@ -9,11 +9,11 @@ namespace SimpleIAM.PasswordlessLogin.Stores
 {
     public interface IPasswordHashStore
     {
-        Task<PasswordHash> GetPasswordHashAsync(string uniqueIdentifier);
-        Task<bool> AddPasswordHashAsync(string uniqueIdentifier, string hash);
-        Task<bool> UpdatePasswordHashAsync(string uniqueIdentifier, string newHash);
-        Task<bool> UpdatePasswordHashFailureCountAsync(string uniqueIdentifier, int failureCount);
-        Task<bool> TempLockPasswordHashAsync(string uniqueIdentifier, DateTime lockUntil, int failureCount);
-        Task<bool> RemovePasswordHashAsync(string uniqueIdentifier);
+        Task<Response<PasswordHash>> GetPasswordHashAsync(string uniqueIdentifier);
+        Task<Status> AddPasswordHashAsync(string uniqueIdentifier, string hash);
+        Task<Status> UpdatePasswordHashAsync(string uniqueIdentifier, string newHash);
+        Task<Status> UpdatePasswordHashFailureCountAsync(string uniqueIdentifier, int failureCount);
+        Task<Status> TempLockPasswordHashAsync(string uniqueIdentifier, DateTime lockUntil, int failureCount);
+        Task<Status> RemovePasswordHashAsync(string uniqueIdentifier);
     }
 }

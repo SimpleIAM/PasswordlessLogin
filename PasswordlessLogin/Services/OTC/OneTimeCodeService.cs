@@ -43,13 +43,14 @@ namespace SimpleIAM.PasswordlessLogin.Services.OTC
                 return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.CodeIncorrect);
             }
 
-            var otc = await _oneTimeCodeStore.GetOneTimeCodeByLongCodeAsync(longCode);
+            var response = await _oneTimeCodeStore.GetOneTimeCodeByLongCodeAsync(longCode);
 
-            if(otc == null)
+            if(response.HasError)
             {
                 return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.NotFound);
             }
-            if(otc.ExpiresUTC < DateTime.UtcNow)
+            var otc = response.Result;
+            if (otc.ExpiresUTC < DateTime.UtcNow)
             {
                 _logger.LogDebug("The one time code has expired");
                 return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.Expired);
@@ -61,11 +62,12 @@ namespace SimpleIAM.PasswordlessLogin.Services.OTC
         {
             _logger.LogTrace("Checking short code");
 
-            var otc = await _oneTimeCodeStore.GetOneTimeCodeAsync(sentTo);
-            if (otc == null)
+            var response = await _oneTimeCodeStore.GetOneTimeCodeAsync(sentTo);
+            if (response.HasError)
             {
                 return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.NotFound);
             }
+            var otc = response.Result;
             if (otc.ExpiresUTC < DateTime.UtcNow)
             {
                 _logger.LogDebug("The one time code has expired");
@@ -116,7 +118,8 @@ namespace SimpleIAM.PasswordlessLogin.Services.OTC
 
         public async Task<GetOneTimeCodeResponse> GetOneTimeCodeAsync(string sendTo, TimeSpan validity, string redirectUrl = null)
         {
-            var otc = await _oneTimeCodeStore.GetOneTimeCodeAsync(sendTo);
+            var response = await _oneTimeCodeStore.GetOneTimeCodeAsync(sendTo);
+            var otc = response.Result;
 
             if (otc != null && 
                 otc.ExpiresUTC > DateTime.UtcNow.AddMinutes(PasswordlessLoginConstants.OneTimeCode.IssueNewCodeIfValidityLessThanXMinutes) && 
@@ -171,8 +174,8 @@ namespace SimpleIAM.PasswordlessLogin.Services.OTC
                 SentCount = 1
             };
             await _oneTimeCodeStore.RemoveOneTimeCodeAsync(sendTo);
-            var codeSaved = await _oneTimeCodeStore.AddOneTimeCodeAsync(otc);
-            if (!codeSaved)
+            var codeSavedStatus = await _oneTimeCodeStore.AddOneTimeCodeAsync(otc);
+            if (codeSavedStatus.IsOk)
             {
                 _logger.LogError("Failed to store the code.");
                 return new GetOneTimeCodeResponse(GetOneTimeCodeResult.ServiceFailure);
@@ -190,12 +193,13 @@ namespace SimpleIAM.PasswordlessLogin.Services.OTC
         {
             _logger.LogTrace("Check if unexpired one time code exists");
 
-            var otc = await _oneTimeCodeStore.GetOneTimeCodeAsync(sentTo);
-            if (otc == null)
+            var response = await _oneTimeCodeStore.GetOneTimeCodeAsync(sentTo);
+
+            if (response.HasError)
             {
                 return false;
             }
-            return (otc.ExpiresUTC >= DateTime.UtcNow);
+            return (response.Result.ExpiresUTC >= DateTime.UtcNow);
         }
     }
 }

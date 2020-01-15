@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -71,58 +72,65 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             _applicationService = applicationService;
         }
 
-        public async Task<bool> CreateAccountAsync(string email, Dictionary<string, string> claims, string password = null, bool sendRegistrationMessage = true)
+        public async Task<Status> CreateAccountAsync(string email, Dictionary<string, string> claims, string password = null, bool sendRegistrationMessage = true)
         {
-            // NOTE: this method was extracted for a special use case by TTS
-            if (await _userStore.UsernameIsAvailable(email))
+            if (!await _userStore.UsernameIsAvailable(email))
             {
-                if (await _oneTimeCodeService.UnexpiredOneTimeCodeExistsAsync(email))
-                {
-                    // Although the username is available, there is a valid one time code
-                    // that can be used to cancel an email address change, so we can't
-                    // reuse the address quite yet
-                    return false;
-                }
-                _logger.LogDebug("Email address not used by an existing user. Creating a new user.");
-                // todo: consider restricting claims to a list predefined by the system administrator
-
-                if (claims == null)
-                {
-                    claims = new Dictionary<string, string>();
-                }
-                var internalClaims = new KeyValuePair<string, string>[]
-                {
-                    new KeyValuePair<string, string>(
-                        PasswordlessLoginConstants.Security.EmailNotConfirmedClaimType, "!")
-                };
-                var newUser = new User()
-                {
-                    Email = email,
-                    Claims = claims
-                        .Where(x =>
-                            !PasswordlessLoginConstants.Security.ForbiddenClaims.Contains(x.Key) &&
-                            !PasswordlessLoginConstants.Security.ProtectedClaims.Contains(x.Key))
-                        .Union(internalClaims)
-                        .Select(x => new UserClaim() { Type = x.Key, Value = x.Value })
-                };
-                newUser = await _userStore.AddUserAsync(newUser);
-                if (sendRegistrationMessage)
-                {
-                    await _eventNotificationService.NotifyEventAsync(newUser.Email, EventType.Register);
-                }
-
-                if (!string.IsNullOrEmpty(password))
-                {
-                    var setPasswordResult = await _passwordService.SetPasswordAsync(newUser.SubjectId, password);
-                    if (setPasswordResult == SetPasswordResult.Success)
-                    {
-                        await _eventNotificationService.NotifyEventAsync(newUser.Email, EventType.SetPassword);
-                    }
-                    //todo: Consider what to do if set password failed. It's non-fatal, but ideally should be communicated. This is an edge case.
-                }
-                return true;
+                return Status.Error("Account already exists.", HttpStatusCode.Conflict);
             }
-            return false;
+
+            if (await _oneTimeCodeService.UnexpiredOneTimeCodeExistsAsync(email))
+            {
+                // Although the username is available, there is a valid one time code
+                // that can be used to cancel an email address change, so we can't
+                // reuse the address quite yet
+                return Status.Error("Username is not available.", HttpStatusCode.Conflict);
+            }
+            _logger.LogDebug("Email address not used by an existing user. Creating a new user.");
+            // todo: consider restricting claims to a list predefined by the system administrator
+
+            var status = new Status();
+
+            if (claims == null)
+            {
+                claims = new Dictionary<string, string>();
+            }
+            var internalClaims = new KeyValuePair<string, string>[]
+            {
+                new KeyValuePair<string, string>(
+                    PasswordlessLoginConstants.Security.EmailNotConfirmedClaimType, "!")
+            };
+            var newUser = new User()
+            {
+                Email = email,
+                Claims = claims
+                    .Where(x =>
+                        !PasswordlessLoginConstants.Security.ForbiddenClaims.Contains(x.Key) &&
+                        !PasswordlessLoginConstants.Security.ProtectedClaims.Contains(x.Key))
+                    .Union(internalClaims)
+                    .Select(x => new UserClaim() { Type = x.Key, Value = x.Value })
+            };
+            newUser = await _userStore.AddUserAsync(newUser);
+            if (sendRegistrationMessage)
+            {
+                await _eventNotificationService.NotifyEventAsync(newUser.Email, EventType.Register);
+            }
+
+            if (!string.IsNullOrEmpty(password))
+            {
+                var setPasswordStatus = await _passwordService.SetPasswordAsync(newUser.SubjectId, password);
+                if (setPasswordStatus.IsOk)
+                {
+                    await _eventNotificationService.NotifyEventAsync(newUser.Email, EventType.SetPassword);
+                }
+                else
+                {
+                    status.AddWarning("Password was not set.");
+                }
+            }
+
+            status.AddSuccess("Account created.");
+            return status;
         }
 
         public async Task<Status> RegisterAsync(RegisterInputModel model)
@@ -131,12 +139,12 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
 
             if (!ApplicationIdIsNullOrValid(model.ApplicationId))
             {
-                return BadRequest("Invalid application id");
+                return BadRequest("Invalid application id.");
             }
 
             TimeSpan linkValidity;
-            var accountCreated = await CreateAccountAsync(model.Email, model.Claims, model.Password);
-            if (accountCreated)
+            var createStatus = await CreateAccountAsync(model.Email, model.Claims, model.Password);
+            if (createStatus.IsOk)
             {
                 linkValidity = TimeSpan.FromMinutes(_config.ConfirmAccountLinkValidityMinutes);
             }
@@ -147,7 +155,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                     // alternatively, we could send an email message explaining that the recently freed up email
                     // address can't be linked to a new account yet (must wait until the link that can cancel
                     // the username change expires)
-                    return BadRequest("Email address is temporarily reserved");
+                    return BadRequest("Email address is temporarily reserved.");
                 }
                 _logger.LogDebug("Existing user found.");
                 if (!_config.ResendWelcomeEmailOnReRegister)
@@ -172,7 +180,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                     var result = await _messageService.SendWelcomeMessageAsync(model.ApplicationId, model.Email, oneTimeCodeResponse.ShortCode, oneTimeCodeResponse.LongCode, model.Claims);
                     return ReturnAppropriateResponse(result, oneTimeCodeResponse.ClientNonce, "Thanks for registering. Please check your email.");
                 case GetOneTimeCodeResult.TooManyRequests:
-                    return BadRequest("Please wait a few minutes and try again");
+                    return BadRequest("Please wait a few minutes and try again.");
                 case GetOneTimeCodeResult.ServiceFailure:
                 default:
                     return ServerError("Hmm, something went wrong. Can you try again?");
@@ -298,30 +306,32 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
         {
             _logger.LogDebug("Begin password authentication for {0}", model.Username);
 
+            var genericErrorMessage = "The username or password wasn't right.";
             var user = await _userStore.GetUserByUsernameAsync(model.Username);
             if (user == null)
             {
                 _logger.LogDebug("User not found: {0}", model.Username);
-                return Unauthenticated("The email address or password wasn't right");
+                return Unauthenticated(genericErrorMessage);
             }
             else
             {
-                var checkPasswordResult = await _passwordService.CheckPasswordAsync(user, model.Password);
-                switch (checkPasswordResult)
+                var checkPasswordStatus = await _passwordService.CheckPasswordAsync(user, model.Password);
+                _logger.LogDebug(checkPasswordStatus.Text);
+                if(checkPasswordStatus.IsOk)
                 {
-                    case CheckPasswordResult.NotFound:
-                    case CheckPasswordResult.PasswordIncorrect:
-                        await _eventNotificationService.NotifyEventAsync(model.Username, EventType.SignInFail, SignInType.Password.ToString());
-                        return Unauthenticated("The email address or password wasn't right");
-                    case CheckPasswordResult.TemporarilyLocked:
-                        return Unauthenticated("Your password is temporarily locked. Use a one time code to sign in.");
-                    case CheckPasswordResult.Success:
-                        await _eventNotificationService.NotifyEventAsync(model.Username, EventType.SignInSuccess, SignInType.Password.ToString());
-                        return await SignInAndRedirectAsync(SignInMethod.Password, model.Username, model.StaySignedIn, model.NextUrl, null);
-                    case CheckPasswordResult.ServiceFailure:
-                    default:
-                        return ServerError("Hmm. Something went wrong. Please try again.");
+                    await _eventNotificationService.NotifyEventAsync(model.Username, EventType.SignInSuccess, SignInType.Password.ToString());
+                    return await SignInAndRedirectAsync(SignInMethod.Password, model.Username, model.StaySignedIn, model.NextUrl, null);
                 }
+                if(checkPasswordStatus.TemporarilyLocked)
+                {
+                    return Unauthenticated("Your password is temporarily locked. Use a one time code to sign in.");
+                }
+                if(checkPasswordStatus.PasswordIncorrect || checkPasswordStatus.StatusCode == HttpStatusCode.NotFound)
+                {
+                    await _eventNotificationService.NotifyEventAsync(model.Username, EventType.SignInFail, SignInType.Password.ToString());
+                    return Unauthenticated(genericErrorMessage);
+                }
+                return ServerError("Hmm. Something went wrong. Please try again.");
             }
         }
 

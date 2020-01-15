@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 using System;
+using System.Net;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -20,36 +21,45 @@ namespace SimpleIAM.PasswordlessLogin.Stores
             _context = context;
         }
 
-        public async Task<Models.OneTimeCode> GetOneTimeCodeAsync(string sentTo)
+        public async Task<Response<Models.OneTimeCode>> GetOneTimeCodeAsync(string sentTo)
         {
             _logger.LogTrace("Fetching the one time code for {0}", sentTo);
             var record = await _context.OneTimeCodes.FindAsync(sentTo);
-            var model = record?.ToModel();
-            _logger.LogDebug(model == null ? "OTC not found" : "OTC found");
-            return model;
+            if (record != null)
+            {
+                return Response.Error<Models.OneTimeCode>("One time code not found.", HttpStatusCode.NotFound);
+            }
+
+            return Response.Success(record?.ToModel(), "One time code found.");
         }
 
-        public async Task<Models.OneTimeCode> GetOneTimeCodeByLongCodeAsync(string longCodeHash)
+        public async Task<Response<Models.OneTimeCode>> GetOneTimeCodeByLongCodeAsync(string longCodeHash)
         {
             _logger.LogTrace("Fetching the one time code matching the long code hash");
             var record = await _context.OneTimeCodes.SingleOrDefaultAsync(x => x.LongCode == longCodeHash);
-            var model = record?.ToModel();
-            _logger.LogDebug(model == null ? "OTC not found" : "OTC found");
-            return model;
+            if (record != null)
+            {
+                return Response.Error<Models.OneTimeCode>("One time code not found.", HttpStatusCode.NotFound);
+            }
+
+            return Response.Success(record?.ToModel(), "One time code found.");
         }
 
-        public async Task<bool> AddOneTimeCodeAsync(Models.OneTimeCode oneTimeCode)
+        public async Task<Status> AddOneTimeCodeAsync(Models.OneTimeCode oneTimeCode)
         {
             _logger.LogTrace("Persisting one time code for {0}", oneTimeCode.SentTo);
             var record = oneTimeCode.ToEntity();
             await _context.AddAsync(record);
             var count = await _context.SaveChangesAsync();
-            var success = count > 0;
-            _logger.LogDebug("{0}uccessfully persisting one time code", success ? "S" : "Uns");
-            return success;
+            if (count == 0)
+            {
+                return Status.Error("One time code was not saved.");
+            }
+
+            return Status.Success("One time code saved.");
         }
 
-        public async Task<bool> UpdateOneTimeCodeSentCountAsync(string sentTo, int sentCount, string newRedirectUrl = null)
+        public async Task<Status> UpdateOneTimeCodeSentCountAsync(string sentTo, int sentCount, string newRedirectUrl = null)
         {
             _logger.LogTrace("Update one time code sent count to {0}", sentCount);
             var count = 0;
@@ -72,12 +82,15 @@ namespace SimpleIAM.PasswordlessLogin.Stores
                 }
                 count = await _context.SaveChangesAsync();
             }
-            var success = count > 0;
-            _logger.LogTrace("{0}uccessfully updated one time code sent count", success ? "S" : "Uns");
-            return success;
+            if (count == 0)
+            {
+                return Status.Error("One time code sent count was not updated.");
+            }
+
+            return Status.Success("One time code sent count was updated.");
         }
 
-        public async Task<bool> UpdateOneTimeCodeFailureAsync(string sentTo, int failureCount)
+        public async Task<Status> UpdateOneTimeCodeFailureAsync(string sentTo, int failureCount)
         {
             _logger.LogTrace("Update one time code failure count to {0}", failureCount);
             var count = 0;
@@ -92,12 +105,15 @@ namespace SimpleIAM.PasswordlessLogin.Stores
                 _context.Entry(record).Property(x => x.RedirectUrl).IsModified = false;
                 count = await _context.SaveChangesAsync();
             }
-            var success = count > 0;
-            _logger.LogTrace("{0}uccessfully updated one time code failure count", success ? "S" : "Uns");
-            return success;
+            if (count == 0)
+            {
+                return Status.Error("One time code failure count was not updated.");
+            }
+
+            return Status.Success("One time code failure count was updated.");
         }
 
-        public async Task<bool> ExpireOneTimeCodeAsync(string sentTo)
+        public async Task<Status> ExpireOneTimeCodeAsync(string sentTo)
         {
             _logger.LogTrace("Expiring one time code for {0}", sentTo);
             var count = 0;
@@ -107,12 +123,15 @@ namespace SimpleIAM.PasswordlessLogin.Stores
                 record.ExpiresUTC = DateTime.UtcNow;
                 count = await _context.SaveChangesAsync();
             }
-            var success = count > 0;
-            _logger.LogTrace("{0}uccessfully expired one time code", success ? "S" : "Uns");
-            return success;
+            if (count == 0)
+            {
+                return Status.Error("One time code was not cancelled.");
+            }
+
+            return Status.Success("One time code was cancelled.");
         }
 
-        public async Task<bool> RemoveOneTimeCodeAsync(string sentTo)
+        public async Task<Status> RemoveOneTimeCodeAsync(string sentTo)
         {
             _logger.LogTrace("Removing one time code for {0}", sentTo);
             var count = 1;
@@ -122,9 +141,12 @@ namespace SimpleIAM.PasswordlessLogin.Stores
                 _context.Remove(record);
                 count = await _context.SaveChangesAsync();
             }
-            var success = count > 0;
-            _logger.LogTrace("{0}uccessfully removed one time code", success ? "S" : "Uns");
-            return success;
+            if (count == 0)
+            {
+                return Status.Error("One time code was not removed.");
+            }
+
+            return Status.Success("One time code was removed.");
         }
     }
 }

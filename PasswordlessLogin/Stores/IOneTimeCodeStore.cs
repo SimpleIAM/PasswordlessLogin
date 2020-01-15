@@ -9,12 +9,12 @@ namespace SimpleIAM.PasswordlessLogin.Stores
 {
     public interface IOneTimeCodeStore
     {
-        Task<OneTimeCode> GetOneTimeCodeAsync(string sentTo);
-        Task<OneTimeCode> GetOneTimeCodeByLongCodeAsync(string longCodeHash);
-        Task<bool> AddOneTimeCodeAsync(OneTimeCode oneTimeCode);
-        Task<bool> UpdateOneTimeCodeFailureAsync(string sentTo, int failureCount);
-        Task<bool> UpdateOneTimeCodeSentCountAsync(string sentTo, int sentCount, string newRedirectUrl = null);
-        Task<bool> ExpireOneTimeCodeAsync(string sentTo);
-        Task<bool> RemoveOneTimeCodeAsync(string sentTo);
+        Task<Response<OneTimeCode>> GetOneTimeCodeAsync(string sentTo);
+        Task<Response<OneTimeCode>> GetOneTimeCodeByLongCodeAsync(string longCodeHash);
+        Task<Status> AddOneTimeCodeAsync(OneTimeCode oneTimeCode);
+        Task<Status> UpdateOneTimeCodeFailureAsync(string sentTo, int failureCount);
+        Task<Status> UpdateOneTimeCodeSentCountAsync(string sentTo, int sentCount, string newRedirectUrl = null);
+        Task<Status> ExpireOneTimeCodeAsync(string sentTo);
+        Task<Status> RemoveOneTimeCodeAsync(string sentTo);
     }
 }

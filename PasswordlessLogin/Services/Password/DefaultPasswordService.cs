@@ -6,6 +6,7 @@ using SimpleIAM.PasswordlessLogin.Configuration;
 using SimpleIAM.PasswordlessLogin.Models;
 using SimpleIAM.PasswordlessLogin.Stores;
 using System;
+using System.Net;
 using System.Threading.Tasks;
 
 namespace SimpleIAM.PasswordlessLogin.Services.Password
@@ -32,52 +33,64 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
 
         public string UniqueIdentifierClaimType => "sub";
 
-        public async Task<RemovePasswordResult> RemovePasswordAsync(string uniqueIdentifier)
+        public async Task<Status> RemovePasswordAsync(string uniqueIdentifier)
         {
             _logger.LogDebug("Removing password for {0}", uniqueIdentifier);
-            var result = await _passwordHashStore.RemovePasswordHashAsync(uniqueIdentifier);
-            return result ? RemovePasswordResult.Success : RemovePasswordResult.ServiceFailure;
+            return await _passwordHashStore.RemovePasswordHashAsync(uniqueIdentifier);
         }
 
-        public async Task<SetPasswordResult> SetPasswordAsync(string uniqueIdentifier, string password)
+        public async Task<SetPasswordStatus> SetPasswordAsync(string uniqueIdentifier, string password)
         {
-            if(string.IsNullOrEmpty(uniqueIdentifier))
+            var status = new SetPasswordStatus();
+            if (string.IsNullOrEmpty(uniqueIdentifier))
             {
-                throw new ArgumentException($"{nameof(uniqueIdentifier)} is required");
+                status.AddError("Unique identifier is required.", HttpStatusCode.BadRequest);
+                return status;
             }
             _logger.LogDebug("Setting password for {0}", uniqueIdentifier);
             if (!PasswordIsStrongEnough(password))
             {
-                _logger.LogDebug("Password does not meet strength requirements");
-                return SetPasswordResult.PasswordDoesNotMeetStrengthRequirements;
+                status.AddError("Password does not meet strength requirements.", HttpStatusCode.BadRequest);
+                status.PasswordDoesNotMeetStrengthRequirements = true;
+                return status;
             }
             var hash = _passwordHashService.HashPassword(password);
-            if(await RemovePasswordAsync(uniqueIdentifier) == RemovePasswordResult.ServiceFailure)
+            var removeStatus = await RemovePasswordAsync(uniqueIdentifier);
+            if(status.HasError)
             {
-                return SetPasswordResult.ServiceFailure;
+                status.AddError("Failed to update old password.");
+                return status;
             }
-            var result = await _passwordHashStore.AddPasswordHashAsync(uniqueIdentifier, hash);
-            return result ? SetPasswordResult.Success : SetPasswordResult.ServiceFailure;
+            var addStatus = await _passwordHashStore.AddPasswordHashAsync(uniqueIdentifier, hash);
+            status.Add(addStatus);
+            return status;
         }
 
-        public async Task<CheckPasswordResult> CheckPasswordAsync(User user, string password)
+        public async Task<CheckPasswordStatus> CheckPasswordAsync(User user, string password)
         {
             _logger.LogDebug("Checking password for {0}", user.SubjectId);
-            var hashInfo = await _passwordHashStore.GetPasswordHashAsync(user.SubjectId);
-            if(hashInfo == null)
+            var status = new CheckPasswordStatus();
+            var response = await _passwordHashStore.GetPasswordHashAsync(user.SubjectId);
+            if(response.HasError)
             {
-                return CheckPasswordResult.NotFound;
+                status.Add(response.Status);
+                status.StatusCode = HttpStatusCode.Unauthorized;
+                return status;
             }
+            var hashInfo = response.Result;
             if(hashInfo.TempLockUntilUTC > DateTime.UtcNow)
             {
-                _logger.LogDebug("Password is temporarily locked");
-                return CheckPasswordResult.TemporarilyLocked;
+                status.AddError("Password is temporarily locked.", HttpStatusCode.Unauthorized);
+                status.TemporarilyLocked = true;
+                return status;
             }
             var checkHashResult = _passwordHashService.CheckPasswordHash(hashInfo.Hash, password);
             switch(checkHashResult)
             {
                 case CheckPaswordHashResult.DoesNotMatch:
                     _logger.LogDebug("Password does not match");
+                    status.PasswordIncorrect = true;
+
                     var currentFailedAttemptCount = hashInfo.FailedAttemptCount + 1;
                     if (currentFailedAttemptCount >= _idProviderConfig.MaxPasswordFailedAttempts)
                     {                        
@@ -89,25 +102,32 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
                             currentFailedAttemptCount = 0;
                         }
                         await _passwordHashStore.TempLockPasswordHashAsync(user.SubjectId, lockUntil, currentFailedAttemptCount);
-                        return CheckPasswordResult.TemporarilyLocked;
+
+                        status.TemporarilyLocked = true;
+                        status.AddError("Password is temporarily locked.", HttpStatusCode.Unauthorized);
+                        return status;
                     }
                     else
                     {
                         _logger.LogDebug("Updating failed attempt count");
                         await _passwordHashStore.UpdatePasswordHashFailureCountAsync(user.SubjectId, hashInfo.FailedAttemptCount + 1);
-                        return CheckPasswordResult.PasswordIncorrect;
+                        status.AddError("Password was incorrect.", HttpStatusCode.Unauthorized);
+                        return status;
                     }
                 case CheckPaswordHashResult.MatchesNeedsRehash:
                     _logger.LogDebug("Rehashing password");
                     var newHash = _passwordHashService.HashPassword(password);
                     await _passwordHashStore.UpdatePasswordHashAsync(user.SubjectId, newHash);
-                    return CheckPasswordResult.Success;
+                    status.AddSuccess("Password was correct.");
+                    return status;
                 case CheckPaswordHashResult.Matches:
                     _logger.LogDebug("Password matches");
-                    return CheckPasswordResult.Success;
+                    status.AddSuccess("Password was correct.");
+                    return status;
                 default:
                     // this should never happen
-                    return CheckPasswordResult.ServiceFailure;
+                    status.AddError("An unexpected error occurred.");
+                    return status;
             }
         }
 
@@ -116,10 +136,14 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
             return password?.Length >= _idProviderConfig.MinimumPasswordLength;
         }
 
-        public async Task<DateTime?> PasswordLastChangedAsync(string uniqueIdentifier)
+        public async Task<Response<DateTime>> PasswordLastChangedAsync(string uniqueIdentifier)
         {
-            var record = await _passwordHashStore.GetPasswordHashAsync(uniqueIdentifier);
-            return record?.LastChangedUTC;
+            var response = await _passwordHashStore.GetPasswordHashAsync(uniqueIdentifier);
+            if(response.HasError)
+            {
+                return Response.StatusOnly<DateTime>(response.Status);
+            }
+            return Response.Success(response.Result.LastChangedUTC, "Password last changed date found.");
         }
     }
 }

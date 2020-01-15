@@ -100,30 +100,31 @@ namespace SimpleIAM.PasswordlessLogin.API
 
                 if (!string.IsNullOrEmpty(model.OldPassword))
                 {
-                    var result1 = await _passwordService.CheckPasswordAsync(user, model.OldPassword);
-                    if (result1 != CheckPasswordResult.Success)
+                    var scheckStatus = await _passwordService.CheckPasswordAsync(user, model.OldPassword);
+                    if (scheckStatus.HasError)
                     {
-                        return Unauthenticated("Old password was incorrect, locked, or missing");
+                        return Unauthenticated("Old password was incorrect, locked, or missing.");
                     }
                 }
                 else if (!UserSignedInRecentlyEnoughToChangeSecuritySettings())
                 {
-                    return Unauthenticated("Please reauthenticate to proceed");
+                    return Unauthenticated("Please reauthenticate to proceed.");
                 }
 
-                var result = await _passwordService.SetPasswordAsync(subjectId, model.NewPassword);
-                switch (result)
+                var status = await _passwordService.SetPasswordAsync(subjectId, model.NewPassword);
+                if(status.IsOk)
                 {
-                    case SetPasswordResult.Success:
-                        await _eventNotificationService.NotifyEventAsync(user.Email, EventType.SetPassword);
-                        await _messageService.SendPasswordChangedNoticeAsync(model.ApplicationId, user.Email);
-                        return Ok();
-                    case SetPasswordResult.PasswordDoesNotMeetStrengthRequirements:
-                        ModelState.AddModelError("NewPassword", "Password does not meet minimum password strength requirements (try something longer).");
-                        break;
-                    case SetPasswordResult.ServiceFailure:
-                        ModelState.AddModelError("", "Something went wrong.");
-                        break;
+                    await _eventNotificationService.NotifyEventAsync(user.Email, EventType.SetPassword);
+                    await _messageService.SendPasswordChangedNoticeAsync(model.ApplicationId, user.Email);
+                    return Ok();
+                }
+                if(status.PasswordDoesNotMeetStrengthRequirements)
+                {
+                    ModelState.AddModelError("NewPassword", "Password does not meet minimum password strength requirements (try something longer).");
+                }
+                else
+                {
+                    ModelState.AddModelError("", "Something went wrong.");
                 }
             }
             return new ActionResponse(ModelState).ToJsonResult();
@@ -149,10 +150,10 @@ namespace SimpleIAM.PasswordlessLogin.API
 
                 if (!string.IsNullOrEmpty(model.OldPassword))
                 {
-                    var result1 = await _passwordService.CheckPasswordAsync(user, model.OldPassword);
-                    if (result1 != CheckPasswordResult.Success)
+                    var status = await _passwordService.CheckPasswordAsync(user, model.OldPassword);
+                    if (status.HasError)
                     {
-                        return Unauthenticated("Old password was incorrect, locked, or missing");
+                        return Unauthenticated("Old password was incorrect, locked, or missing.");
                     }
                 }
                 else if (!UserSignedInRecentlyEnoughToChangeSecuritySettings())
@@ -160,17 +161,14 @@ namespace SimpleIAM.PasswordlessLogin.API
                     return Unauthenticated("Please reauthenticate to proceed");
                 }
 
-                var result = await _passwordService.RemovePasswordAsync(subjectId);
-                switch (result)
-                {
-                    case RemovePasswordResult.Success:
-                        await _eventNotificationService.NotifyEventAsync(user.Email, EventType.RemovePassword);
-                        await _messageService.SendPasswordRemovedNoticeAsync(model.ApplicationId, user.Email);
-                        return Ok();
-                    case RemovePasswordResult.ServiceFailure:
-                        ModelState.AddModelError("", "Something went wrong.");
-                        break;
+                var removeStatus = await _passwordService.RemovePasswordAsync(subjectId);
+                if (removeStatus.IsOk)
+                { 
+                    await _eventNotificationService.NotifyEventAsync(user.Email, EventType.RemovePassword);
+                    await _messageService.SendPasswordRemovedNoticeAsync(model.ApplicationId, user.Email);
+                    return Ok();
                 }
+                ModelState.AddModelError("", "Something went wrong.");
             }
             return new ActionResponse(ModelState).ToJsonResult();
         }
@@ -182,7 +180,7 @@ namespace SimpleIAM.PasswordlessLogin.API
             {
                 if (!ApplicationIdIsNullOrValid(model.ApplicationId))
                 {
-                    return (new ActionResponse("Invalid application id", HttpStatusCode.BadRequest)).ToJsonResult();
+                    return (new ActionResponse("Invalid application id.", HttpStatusCode.BadRequest)).ToJsonResult();
                 }
 
                 var subjectId = User.GetSubjectId();
@@ -195,15 +193,15 @@ namespace SimpleIAM.PasswordlessLogin.API
 
                 if (!string.IsNullOrEmpty(model.Password))
                 {
-                    var result1 = await _passwordService.CheckPasswordAsync(user, model.Password);
-                    if (result1 != CheckPasswordResult.Success)
+                    var checkStatus = await _passwordService.CheckPasswordAsync(user, model.Password);
+                    if (checkStatus.HasError)
                     {
-                        return Unauthenticated("Password was incorrect, locked, or missing");
+                        return Unauthenticated("Password was incorrect, locked, or missing.");
                     }
                 }
                 else if (!UserSignedInRecentlyEnoughToChangeSecuritySettings())
                 {
-                    return Unauthenticated("Please reauthenticate to proceed");
+                    return Unauthenticated("Please reauthenticate to proceed.");
                 }
 
                 var response = await _userOrchestrator.ChangeEmailAddressAsync(subjectId, model.NewEmail, model.ApplicationId);
