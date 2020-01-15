@@ -7,6 +7,6 @@ namespace SimpleIAM.PasswordlessLogin.Services.Email
 {
     public interface IEmailService
     {
-        Task<SendMessageResult> SendEmailAsync(string from, string to, string subject, string body);
+        Task<Status> SendEmailAsync(string from, string to, string subject, string body);
     }
 }

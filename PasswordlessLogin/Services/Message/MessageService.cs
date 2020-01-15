@@ -32,7 +32,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
             _applicationService = applicationService;
         }
 
-        public async Task<SendMessageResult> SendAccountNotFoundMessageAsync(string applicationId, string sendTo)
+        public async Task<Status> SendAccountNotFoundMessageAsync(string applicationId, string sendTo)
         {
             _logger.LogDebug("Sending account not found message");
             if (!IsValidEmailAddress(sendTo)) {
@@ -45,7 +45,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
             return await _emailTemplateService.SendEmailAsync(PasswordlessLoginConstants.EmailTemplates.AccountNotFound, sendTo, fields);
         }
 
-        public async Task<SendMessageResult> SendPasswordChangedNoticeAsync(string applicationId, string sendTo)
+        public async Task<Status> SendPasswordChangedNoticeAsync(string applicationId, string sendTo)
         {
             _logger.LogDebug("Sending password changed notice");
             if (!IsValidEmailAddress(sendTo))
@@ -57,7 +57,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
             return await _emailTemplateService.SendEmailAsync(PasswordlessLoginConstants.EmailTemplates.PasswordChangedNotice, sendTo, fields);
         }
 
-        public async Task<SendMessageResult> SendPasswordRemovedNoticeAsync(string applicationId, string sendTo)
+        public async Task<Status> SendPasswordRemovedNoticeAsync(string applicationId, string sendTo)
         {
             _logger.LogDebug("Sending password removed notice");
             if (!IsValidEmailAddress(sendTo))
@@ -69,7 +69,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
             return await _emailTemplateService.SendEmailAsync(PasswordlessLoginConstants.EmailTemplates.PasswordRemovedNotice, sendTo, fields);
         }
 
-        public async Task<SendMessageResult> SendEmailChangedNoticeAsync(string applicationId, string sendTo, string longCode)
+        public async Task<Status> SendEmailChangedNoticeAsync(string applicationId, string sendTo, string longCode)
         {
             if (!IsValidEmailAddress(sendTo))
             {
@@ -84,19 +84,19 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
             return await _emailTemplateService.SendEmailAsync(PasswordlessLoginConstants.EmailTemplates.EmailChangedNotice, sendTo, fields);
         }
 
-        public async Task<SendMessageResult> SendOneTimeCodeMessageAsync(string applicationId, string sendTo, string oneTimeCode)
+        public async Task<Status> SendOneTimeCodeMessageAsync(string applicationId, string sendTo, string oneTimeCode)
         {
             _logger.LogDebug("Sending one time code message");
             return await SendOneTimeCodeMessageInternalAsync(PasswordlessLoginConstants.EmailTemplates.OneTimeCode, applicationId, sendTo, oneTimeCode, "");
         }
 
-        public async Task<SendMessageResult> SendOneTimeCodeAndLinkMessageAsync(string applicationId, string sendTo, string oneTimeCode, string longCode)
+        public async Task<Status> SendOneTimeCodeAndLinkMessageAsync(string applicationId, string sendTo, string oneTimeCode, string longCode)
         {
             _logger.LogDebug("Sending one time code and link message");
             return await SendOneTimeCodeMessageInternalAsync(PasswordlessLoginConstants.EmailTemplates.SignInWithEmail, applicationId, sendTo, oneTimeCode, longCode);
         }
 
-        private async Task<SendMessageResult> SendOneTimeCodeMessageInternalAsync(string template, string clientId, string sendTo, string oneTimeCode, string longCode)
+        private async Task<Status> SendOneTimeCodeMessageInternalAsync(string template, string clientId, string sendTo, string oneTimeCode, string longCode)
         {
             if (!IsValidEmailAddress(sendTo))
             {
@@ -116,12 +116,12 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
             return sendTo?.Contains("@") == true; // todo: have a better email check, possibly using MailboxAddress.Parse
         }
 
-        private SendMessageResult NotAnEmailAddress()
+        private Status NotAnEmailAddress()
         {
-            return SendMessageResult.Failed("Could not deliver message. Email address is not valid."); // non-email addresses not implemented
+            return Status.Error("Could not deliver message. Email address is not valid."); // non-email addresses not implemented
         }
 
-        public async Task<SendMessageResult> SendWelcomeMessageAsync(string applicationId, string sendTo, string oneTimeCode, string longCode, IDictionary<string, string> userFields)
+        public async Task<Status> SendWelcomeMessageAsync(string applicationId, string sendTo, string oneTimeCode, string longCode, IDictionary<string, string> userFields)
         {
             _logger.LogDebug("Sending welcome message");
             if (!IsValidEmailAddress(sendTo))
@@ -150,7 +150,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
             return await _emailTemplateService.SendEmailAsync(PasswordlessLoginConstants.EmailTemplates.Welcome, sendTo, fields);
         }
 
-        public async Task<SendMessageResult> SendPasswordResetMessageAsync(string applicationId, string sendTo, string oneTimeCode, string longCode)
+        public async Task<Status> SendPasswordResetMessageAsync(string applicationId, string sendTo, string oneTimeCode, string longCode)
         {
             _logger.LogDebug("Sending password reset message");
             if (!IsValidEmailAddress(sendTo))

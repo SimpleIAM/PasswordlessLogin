@@ -114,8 +114,8 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             var oldEmail = user.Email;
             
             var otc = await _oneTimeCodeService.GetOneTimeCodeAsync(oldEmail, TimeSpan.FromHours(_idProviderConfig.CancelEmailChangeTimeWindowHours));
-            var result = await _messageService.SendEmailChangedNoticeAsync(applicationId, oldEmail, otc.LongCode);
-            if(result.MessageSent)
+            var status = await _messageService.SendEmailChangedNoticeAsync(applicationId, oldEmail, otc.LongCode);
+            if(status.IsOk)
             {
                 var changes = new Dictionary<string, string>
                 {
@@ -133,7 +133,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             }
             else
             {
-                return Response.Error<ChangeEmailViewModel>($"Change cancelled because of failure to send email notice: {result.ErrorMessageForEndUser}");
+                return Response.Error<ChangeEmailViewModel>($"Change cancelled because of failure to send email notice: {status.Text}");
             }
         }
 

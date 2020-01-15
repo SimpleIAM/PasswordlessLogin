@@ -22,7 +22,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Email
             _smtpConfig = smtpConfig;
         }
 
-        public async Task<SendMessageResult> SendEmailAsync(string from, string to, string subject, string body)
+        public async Task<Status> SendEmailAsync(string from, string to, string subject, string body)
         {
             _logger.LogDebug("Sending email to {0} with subject {1}", to, subject);
             var message = new MimeMessage()
@@ -63,19 +63,19 @@ namespace SimpleIAM.PasswordlessLogin.Services.Email
                 catch (Exception ex) when (ItIsANetworkError(ex))
                 {
                     _logger.LogError("Network error. Failed to send message. Exception: {0}", ex.ToString());
-                    return SendMessageResult.Failed("Failed to send email. Please try again.");
+                    return Status.Error("Failed to send email. Please try again.");
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError("Failed to send message. Exception: {0}", ex.ToString());
-                    return SendMessageResult.Failed("Failed to send email");
+                    return Status.Error("Failed to send email");
                 }
                 finally
                 {
                     await client.DisconnectAsync(true);
                 }
             }
-            return SendMessageResult.Success();
+            return Status.Success();
         }
 
         private bool ItIsANetworkError(Exception ex)

@@ -8,6 +8,6 @@ namespace SimpleIAM.PasswordlessLogin.Services.Email
 {
     public interface IEmailTemplateService
     {
-        Task<SendMessageResult> SendEmailAsync(string templateName, string to, IDictionary<string, string> fields);        
+        Task<Status> SendEmailAsync(string templateName, string to, IDictionary<string, string> fields);        
     }
 }

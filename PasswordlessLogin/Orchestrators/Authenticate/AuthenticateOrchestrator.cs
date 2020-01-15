@@ -207,9 +207,9 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 }
 
                 var result = await _messageService.SendAccountNotFoundMessageAsync(model.ApplicationId, model.Username);
-                if (!result.MessageSent)
+                if (result.HasError)
                 {
-                    return ServerError(result.ErrorMessageForEndUser);
+                    return ServerError(result.Text);
                 }
                 // the fact that the user doesn't have an account is communicated privately via email
                 await _eventNotificationService.NotifyEventAsync(model.Username, EventType.AccountNotFound);
@@ -366,9 +366,9 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 if (model.Username.Contains("@"))
                 {
                     var result = await _messageService.SendAccountNotFoundMessageAsync(model.ApplicationId, model.Username);
-                    if (!result.MessageSent)
+                    if (result.HasError)
                     {
-                        return ServerError(result.ErrorMessageForEndUser);
+                        return ServerError(result.Text);
                     }
                     await _eventNotificationService.NotifyEventAsync(model.Username, EventType.AccountNotFound);
                 }
@@ -400,21 +400,21 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             return Ok();
         }
 
-        private Status ReturnAppropriateResponse(SendMessageResult sendMessageResult, string clientNonce, string successMessage)
+        private Status ReturnAppropriateResponse(Status status, string clientNonce, string successMessage)
         {
             if (clientNonce != null)
             {
                 _logger.LogDebug("Saving client nonce in a browser cookie");
                 _httpContext.Response.SetClientNonce(clientNonce, _config.OneTimeCodeValidityMinutes);
             }
-            if (sendMessageResult.MessageSent)
+            if (status.IsOk)
             {
                 return Ok(successMessage);
             }
             else
             {
-                _logger.LogDebug("Returning error message to user: {0}", sendMessageResult.ErrorMessageForEndUser);
-                return ServerError(sendMessageResult.ErrorMessageForEndUser);
+                _logger.LogDebug("Returning error message to user: {0}", status.Text);
+                return ServerError(status.Text);
             }
         }
 
