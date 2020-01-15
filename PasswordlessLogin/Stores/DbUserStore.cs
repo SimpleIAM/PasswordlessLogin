@@ -13,8 +13,8 @@ namespace SimpleIAM.PasswordlessLogin.Stores
 {
     public class DbUserStore : IUserStore
     {
-        private readonly ILogger _logger;
-        private readonly PasswordlessLoginDbContext _context;
+        protected readonly ILogger _logger;
+        protected readonly PasswordlessLoginDbContext _context;
 
         public DbUserStore(ILogger<DbUserStore> logger, PasswordlessLoginDbContext context)
         {
@@ -123,11 +123,11 @@ namespace SimpleIAM.PasswordlessLogin.Stores
             return await GetUserAsync(subjectId);
         }
 
-        public async Task<bool> UserExists(string email)
+        public async Task<bool> UserExists(string username)
         {
-            _logger.LogTrace("Check if user with username {0} exists", email);
+            _logger.LogTrace("Check if user with username {0} exists", username);
 
-            var user = await GetUserByEmailAsync(email);
+            var user = await GetUserByUsernameAsync(username);
             if (user != null)
             {
                 return true;
@@ -135,9 +135,9 @@ namespace SimpleIAM.PasswordlessLogin.Stores
             return false;
         }
 
-        public async Task<bool> UsernameIsAvailable(string email)
+        public async Task<bool> UsernameIsAvailable(string username)
         {            
-            return !(await UserExists(email));
+            return !(await UserExists(username));
         }
     }
 }
