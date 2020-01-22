@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using MimeKit;
 using MimeKit.Text;
 using SimpleIAM.PasswordlessLogin.Configuration;
+using StandardResponse;
 using System;
 using System.Threading.Tasks;
 

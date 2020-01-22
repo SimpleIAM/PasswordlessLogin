@@ -1,12 +1,14 @@
 ﻿// Copyright (c) Ryan Foster. All rights reserved. 
 // Licensed under the Apache License, Version 2.0.
 
+using System;
+
 namespace SimpleIAM.PasswordlessLogin.Services.OTC
 {
-    public enum GetOneTimeCodeResult
+    public class GetOneTimeCodeResult
     {
-        Success,
-        TooManyRequests, // there is a valid code that hasn't expired
-        ServiceFailure,
+        public string ClientNonce { get; set; }
+        public string ShortCode { get; set; }
+        public string LongCode { get; set; }
     }
 }

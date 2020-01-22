@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SimpleIAM.PasswordlessLogin.Entities;
+using StandardResponse;
 
 namespace SimpleIAM.PasswordlessLogin.Stores
 {
@@ -21,25 +22,25 @@ namespace SimpleIAM.PasswordlessLogin.Stores
             _context = context;
         }
 
-        public async Task<Response<Models.OneTimeCode>> GetOneTimeCodeAsync(string sentTo)
+        public async Task<Response<Models.OneTimeCode, Status>> GetOneTimeCodeAsync(string sentTo)
         {
             _logger.LogTrace("Fetching the one time code for {0}", sentTo);
             var record = await _context.OneTimeCodes.FindAsync(sentTo);
-            if (record != null)
+            if (record == null)
             {
-                return Response.Error<Models.OneTimeCode>("One time code not found.", HttpStatusCode.NotFound);
+                return Response.Error<Models.OneTimeCode>("One time code not found.");
             }
 
             return Response.Success(record?.ToModel(), "One time code found.");
         }
 
-        public async Task<Response<Models.OneTimeCode>> GetOneTimeCodeByLongCodeAsync(string longCodeHash)
+        public async Task<Response<Models.OneTimeCode, Status>> GetOneTimeCodeByLongCodeAsync(string longCodeHash)
         {
             _logger.LogTrace("Fetching the one time code matching the long code hash");
             var record = await _context.OneTimeCodes.SingleOrDefaultAsync(x => x.LongCode == longCodeHash);
-            if (record != null)
+            if (record == null)
             {
-                return Response.Error<Models.OneTimeCode>("One time code not found.", HttpStatusCode.NotFound);
+                return Response.Error<Models.OneTimeCode, Status>("One time code not found.");
             }
 
             return Response.Success(record?.ToModel(), "One time code found.");

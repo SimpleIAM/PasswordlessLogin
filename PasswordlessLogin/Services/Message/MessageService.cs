@@ -3,7 +3,9 @@
 
 using Microsoft.Extensions.Logging;
 using SimpleIAM.PasswordlessLogin.Configuration;
+using SimpleIAM.PasswordlessLogin.Helpers;
 using SimpleIAM.PasswordlessLogin.Services.Email;
+using StandardResponse;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -113,7 +115,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
 
         private bool IsValidEmailAddress(string sendTo)
         {
-            return sendTo?.Contains("@") == true; // todo: have a better email check, possibly using MailboxAddress.Parse
+            return EmailAddressChecker.EmailIsValid(sendTo);
         }
 
         private Status NotAnEmailAddress()

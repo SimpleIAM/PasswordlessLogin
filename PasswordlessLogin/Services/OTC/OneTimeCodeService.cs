@@ -9,7 +9,7 @@ using SimpleIAM.PasswordlessLogin.Configuration;
 using SimpleIAM.PasswordlessLogin.Models;
 using SimpleIAM.PasswordlessLogin.Services.Message;
 using SimpleIAM.PasswordlessLogin.Stores;
-
+using StandardResponse;
 
 namespace SimpleIAM.PasswordlessLogin.Services.OTC
 {
@@ -33,45 +33,51 @@ namespace SimpleIAM.PasswordlessLogin.Services.OTC
             _config = config;
         }
 
-        public async Task<CheckOneTimeCodeResponse> CheckOneTimeCodeAsync(string longCode, string clientNonce)
+        public async Task<Response<CheckOneTimeCodeResult, CheckOneTimeCodeStatus>> CheckOneTimeCodeAsync(string longCode, string clientNonce)
         {
             _logger.LogTrace("Checking long code");
 
             if(string.IsNullOrEmpty(longCode) || longCode.Length > PasswordlessLoginConstants.OneTimeCode.LongCodeMaxLength )
             {
-                _logger.LogError("The long code provided had an invalid format");
-                return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.CodeIncorrect);
+                _logger.LogError("The long code provided had an invalid format.");
+                return new Response<CheckOneTimeCodeResult, CheckOneTimeCodeStatus>(
+                    CheckOneTimeCodeStatus.Error("The code had an invalid format.", CheckOneTimeCodeStatusCode.CodeIncorrect));
             }
 
             var response = await _oneTimeCodeStore.GetOneTimeCodeByLongCodeAsync(longCode);
 
             if(response.HasError)
             {
-                return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.NotFound);
+                return new Response<CheckOneTimeCodeResult, CheckOneTimeCodeStatus>(
+                    CheckOneTimeCodeStatus.Error("Code not found.", CheckOneTimeCodeStatusCode.NotFound));
             }
             var otc = response.Result;
             if (otc.ExpiresUTC < DateTime.UtcNow)
             {
-                _logger.LogDebug("The one time code has expired");
-                return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.Expired);
+                _logger.LogDebug("The one time code has expired.");
+                return new Response<CheckOneTimeCodeResult, CheckOneTimeCodeStatus>(
+                    new CheckOneTimeCodeResult(otc),
+                    CheckOneTimeCodeStatus.Error("The one time code has expired.", CheckOneTimeCodeStatusCode.Expired));
             }
             return await ExpireTokenAndValidateNonceAsync(otc, clientNonce);
         }
 
-        public async Task<CheckOneTimeCodeResponse> CheckOneTimeCodeAsync(string sentTo, string shortCode, string clientNonce)
+        public async Task<Response<CheckOneTimeCodeResult, CheckOneTimeCodeStatus>> CheckOneTimeCodeAsync(string sentTo, string shortCode, string clientNonce)
         {
             _logger.LogTrace("Checking short code");
 
             var response = await _oneTimeCodeStore.GetOneTimeCodeAsync(sentTo);
             if (response.HasError)
             {
-                return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.NotFound);
+                return new Response<CheckOneTimeCodeResult, CheckOneTimeCodeStatus>(
+                    CheckOneTimeCodeStatus.Error("One time code not found.", CheckOneTimeCodeStatusCode.NotFound));
             }
             var otc = response.Result;
             if (otc.ExpiresUTC < DateTime.UtcNow)
             {
-                _logger.LogDebug("The one time code has expired");
-                return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.Expired);
+                _logger.LogDebug("The one time code has expired.");
+                return new Response<CheckOneTimeCodeResult, CheckOneTimeCodeStatus>(
+                    CheckOneTimeCodeStatus.Error("The one time code has expired.", CheckOneTimeCodeStatusCode.Expired));
             }
 
             if (!string.IsNullOrEmpty(shortCode) && shortCode.Length == PasswordlessLoginConstants.OneTimeCode.ShortCodeLength)
@@ -80,8 +86,9 @@ namespace SimpleIAM.PasswordlessLogin.Services.OTC
                 {
                     // maximum of 3 attempts during code validity period to prevent guessing attacks
                     // long code remains valid, preventing account lockout attacks (and giving a fumbling but valid user another way in)
-                    _logger.LogDebug("The one time code is locked (too many failed attempts to use it)");
-                    return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.ShortCodeLocked); 
+                    _logger.LogDebug("The one time code is locked (too many failed attempts to use it).");
+                    return new Response<CheckOneTimeCodeResult, CheckOneTimeCodeStatus>(
+                        CheckOneTimeCodeStatus.Error("The one time code is locked.", CheckOneTimeCodeStatusCode.ShortCodeLocked));
                 }
                 if (shortCode == otc.ShortCode)
                 {
@@ -96,10 +103,11 @@ namespace SimpleIAM.PasswordlessLogin.Services.OTC
 
             _logger.LogDebug("Updating failure count for one time code");
             await _oneTimeCodeStore.UpdateOneTimeCodeFailureAsync(sentTo, otc.FailedAttemptCount + 1);
-            return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.CodeIncorrect);
+            return new Response<CheckOneTimeCodeResult, CheckOneTimeCodeStatus>(
+                CheckOneTimeCodeStatus.Error("The one time code was not correct.", CheckOneTimeCodeStatusCode.CodeIncorrect));
         }
 
-        private async Task<CheckOneTimeCodeResponse> ExpireTokenAndValidateNonceAsync(OneTimeCode otc, string clientNonce)
+        private async Task<Response<CheckOneTimeCodeResult, CheckOneTimeCodeStatus>> ExpireTokenAndValidateNonceAsync(OneTimeCode otc, string clientNonce)
         {
             _logger.LogTrace("Validating nonce");
 
@@ -109,14 +117,18 @@ namespace SimpleIAM.PasswordlessLogin.Services.OTC
             if (FastHashService.ValidateHash(otc.ClientNonceHash, clientNonce, otc.SentTo))
             {
                 _logger.LogDebug("Client nonce was valid");
-                return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.VerifiedWithNonce, otc.SentTo, otc.RedirectUrl);
+                return new Response<CheckOneTimeCodeResult, CheckOneTimeCodeStatus>(
+                    new CheckOneTimeCodeResult(otc),
+                    CheckOneTimeCodeStatus.Success("The one time code verified.", CheckOneTimeCodeStatusCode.VerifiedWithNonce));
             }
 
             _logger.LogDebug("Client nonce was missing or invalid");
-            return new CheckOneTimeCodeResponse(CheckOneTimeCodeResult.VerifiedWithoutNonce, otc.SentTo, otc.RedirectUrl);
+            return new Response<CheckOneTimeCodeResult, CheckOneTimeCodeStatus>(
+                new CheckOneTimeCodeResult(otc),
+                CheckOneTimeCodeStatus.Success("The one time code verified.", CheckOneTimeCodeStatusCode.VerifiedWithoutNonce));
         }
 
-        public async Task<GetOneTimeCodeResponse> GetOneTimeCodeAsync(string sendTo, TimeSpan validity, string redirectUrl = null)
+        public async Task<Response<GetOneTimeCodeResult, GetOneTimeCodeStatus>> GetOneTimeCodeAsync(string sendTo, TimeSpan validity, string redirectUrl = null)
         {
             var response = await _oneTimeCodeStore.GetOneTimeCodeAsync(sendTo);
             var otc = response.Result;
@@ -131,20 +143,23 @@ namespace SimpleIAM.PasswordlessLogin.Services.OTC
                 // lock the code and not be able to confirm or access the account (terrible UX)
                 if (otc.SentCount >= PasswordlessLoginConstants.OneTimeCode.MaxResendCount)
                 {
-                    _logger.LogDebug("The existing one time code has been sent too many times");
-                    return new GetOneTimeCodeResponse(GetOneTimeCodeResult.TooManyRequests);
+                    _logger.LogDebug("The existing one time code has been sent too many times.");
+                    return new Response<GetOneTimeCodeResult, GetOneTimeCodeStatus>(
+                        GetOneTimeCodeStatus.Error("Too many requests.", GetOneTimeCodeStatusCode.TooManyRequests));
                 }
 
                 _logger.LogDebug("Updating the record of how many times the code has been sent");
                 await _oneTimeCodeStore.UpdateOneTimeCodeSentCountAsync(sendTo, otc.SentCount + 1, redirectUrl);
 
                 _logger.LogDebug("Returning the still valid code without a client nonce, which can only be delivered once.");
-                return new GetOneTimeCodeResponse(GetOneTimeCodeResult.Success)
-                {
-                    ClientNonce = null, // only given out when code is first generated
-                    ShortCode = otc.ShortCode,
-                    LongCode = otc.LongCode
-                };
+                return new Response<GetOneTimeCodeResult, GetOneTimeCodeStatus>(
+                    new GetOneTimeCodeResult
+                    {
+                        ClientNonce = null, // only given out when code is first generated
+                        ShortCode = otc.ShortCode,
+                        LongCode = otc.LongCode
+                    },
+                    GetOneTimeCodeStatus.Success("One time code found."));
             }
 
             _logger.LogDebug("Generating a new one time code, link, and client nonce.");
@@ -175,18 +190,21 @@ namespace SimpleIAM.PasswordlessLogin.Services.OTC
             };
             await _oneTimeCodeStore.RemoveOneTimeCodeAsync(sendTo);
             var codeSavedStatus = await _oneTimeCodeStore.AddOneTimeCodeAsync(otc);
-            if (codeSavedStatus.IsOk)
+            if (codeSavedStatus.HasError)
             {
                 _logger.LogError("Failed to store the code.");
-                return new GetOneTimeCodeResponse(GetOneTimeCodeResult.ServiceFailure);
+                return new Response<GetOneTimeCodeResult, GetOneTimeCodeStatus>(
+                    GetOneTimeCodeStatus.Error("Failed to save the code.", GetOneTimeCodeStatusCode.ServiceFailure));
             }
 
-            return new GetOneTimeCodeResponse(GetOneTimeCodeResult.Success)
-            {
-                ClientNonce = clientNonce,
-                ShortCode = shortCode,
-                LongCode = longCode
-            };
+            return new Response<GetOneTimeCodeResult, GetOneTimeCodeStatus>(
+                new GetOneTimeCodeResult
+                {
+                    ClientNonce = clientNonce,
+                    ShortCode = shortCode,
+                    LongCode = longCode
+                },
+                GetOneTimeCodeStatus.Success("One time code generated."));
         }
 
         public async Task<bool> UnexpiredOneTimeCodeExistsAsync(string sentTo)

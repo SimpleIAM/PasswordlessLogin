@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 using SimpleIAM.PasswordlessLogin.Entities;
+using StandardResponse;
 using System;
 using System.Threading.Tasks;
 
@@ -16,7 +17,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.EventNotification
             _context = context;
         }
 
-        public async Task NotifyEventAsync(string username, EventType eventType, string details = null)
+        public async Task<Status> NotifyEventAsync(string username, EventType eventType, string details = null)
         {
             var entry = new EventLog()
             {
@@ -26,7 +27,12 @@ namespace SimpleIAM.PasswordlessLogin.Services.EventNotification
                 Details = details
             };
             _context.Add(entry);
-            await _context.SaveChangesAsync();
+            var count = await _context.SaveChangesAsync();
+            if(count == 0)
+            {
+                return Status.Error("Failed to save notification.");
+            }
+            return Status.Error("Notification saved.");
         }
     }
 }

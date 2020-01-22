@@ -14,6 +14,7 @@ using SimpleIAM.PasswordlessLogin.Services;
 using SimpleIAM.PasswordlessLogin.Services.EventNotification;
 using SimpleIAM.PasswordlessLogin.Services.Message;
 using SimpleIAM.PasswordlessLogin.Services.Password;
+using StandardResponse;
 
 namespace SimpleIAM.PasswordlessLogin.API
 {
@@ -55,7 +56,8 @@ namespace SimpleIAM.PasswordlessLogin.API
             {
                 return response.ToJsonResult();
             }
-            return PasswordlessLogin.Response.Success(response.Result.ToGetUserViewModel()).ToJsonResult();
+            var vmResponse = StandardResponse.Response.Success<GetUserViewModel, WebStatus>(response.Result.ToGetUserViewModel());
+            return vmResponse.ToJsonResult();
         }
 
         [HttpPatch("")]
@@ -69,15 +71,21 @@ namespace SimpleIAM.PasswordlessLogin.API
             {
                 return response.ToJsonResult();
             }
-            return PasswordlessLogin.Response.Success(response.Result.ToGetUserViewModel()).ToJsonResult();
+            var vmResponse = StandardResponse.Response.Success<GetUserViewModel, WebStatus>(response.Result.ToGetUserViewModel());
+            return vmResponse.ToJsonResult();
         }
 
         [HttpGet("date-password-set")]
         public async Task<IActionResult> DatePasswordSet()
         {
+            // TODO: return status with result from API
             var subjectId = User.GetSubjectId();
-            var date = await _passwordService.PasswordLastChangedAsync(subjectId);
-            return Json(new { date });
+            var response = await _passwordService.PasswordLastChangedAsync(subjectId);
+            if(response.HasError)
+            {
+                return Json(new { date = (DateTime?)null }); 
+            }
+            return Json(new { date = response.Result });
         }
 
         [HttpPost("set-password")]
@@ -100,7 +108,7 @@ namespace SimpleIAM.PasswordlessLogin.API
 
                 if (!string.IsNullOrEmpty(model.OldPassword))
                 {
-                    var scheckStatus = await _passwordService.CheckPasswordAsync(user, model.OldPassword);
+                    var scheckStatus = await _passwordService.CheckPasswordAsync(user.SubjectId, model.OldPassword);
                     if (scheckStatus.HasError)
                     {
                         return Unauthenticated("Old password was incorrect, locked, or missing.");
@@ -150,7 +158,7 @@ namespace SimpleIAM.PasswordlessLogin.API
 
                 if (!string.IsNullOrEmpty(model.OldPassword))
                 {
-                    var status = await _passwordService.CheckPasswordAsync(user, model.OldPassword);
+                    var status = await _passwordService.CheckPasswordAsync(user.SubjectId, model.OldPassword);
                     if (status.HasError)
                     {
                         return Unauthenticated("Old password was incorrect, locked, or missing.");
@@ -193,7 +201,7 @@ namespace SimpleIAM.PasswordlessLogin.API
 
                 if (!string.IsNullOrEmpty(model.Password))
                 {
-                    var checkStatus = await _passwordService.CheckPasswordAsync(user, model.Password);
+                    var checkStatus = await _passwordService.CheckPasswordAsync(user.SubjectId, model.Password);
                     if (checkStatus.HasError)
                     {
                         return Unauthenticated("Password was incorrect, locked, or missing.");

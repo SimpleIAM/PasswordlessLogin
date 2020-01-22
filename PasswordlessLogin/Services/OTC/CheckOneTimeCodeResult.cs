@@ -1,16 +1,19 @@
 ﻿// Copyright (c) Ryan Foster. All rights reserved. 
 // Licensed under the Apache License, Version 2.0.
 
+using SimpleIAM.PasswordlessLogin.Models;
+
 namespace SimpleIAM.PasswordlessLogin.Services.OTC
 {
-    public enum CheckOneTimeCodeResult
+    public class CheckOneTimeCodeResult
     {
-        VerifiedWithNonce,
-        VerifiedWithoutNonce,
-        Expired,
-        CodeIncorrect,
-        ShortCodeLocked,
-        NotFound,
-        ServiceFailure,
+        public CheckOneTimeCodeResult(OneTimeCode otc)
+        {
+            SentTo = otc.SentTo;
+            RedirectUrl = otc.RedirectUrl;
+        }
+
+        public string SentTo { get; set; }
+        public string RedirectUrl { get; set; }
     }
 }

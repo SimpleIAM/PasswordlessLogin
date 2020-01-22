@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc.ModelBinding;
+using StandardResponse;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,11 +8,11 @@ using System.Text;
 
 namespace SimpleIAM.PasswordlessLogin.Extensions
 {
-    public static class MdelStateExtensions
+    public static class ModelStateExtensions
     {
-        public static Status GetStatus(this ModelStateDictionary modelState, HttpStatusCode errorStatusCode = HttpStatusCode.BadRequest)
+        public static WebStatus GetStatus(this ModelStateDictionary modelState, HttpStatusCode errorStatusCode = HttpStatusCode.BadRequest)
         {
-            var status = new Status();
+            var status = new WebStatus();
             foreach (var error in modelState.Values.SelectMany(modelStateEntry => modelStateEntry.Errors))
             {
                 status.AddError(error.ErrorMessage ?? "Internal Server Error"); // if an exception, don't leak the potentially sensitive details

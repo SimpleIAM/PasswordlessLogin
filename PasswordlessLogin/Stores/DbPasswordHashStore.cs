@@ -6,6 +6,7 @@ using System.Net;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using SimpleIAM.PasswordlessLogin.Entities;
+using StandardResponse;
 
 namespace SimpleIAM.PasswordlessLogin.Stores
 {
@@ -41,13 +42,13 @@ namespace SimpleIAM.PasswordlessLogin.Stores
             return Status.Success("Password saved.");
         }
 
-        public async Task<Response<Models.PasswordHash>> GetPasswordHashAsync(string uniqueIdentifier)
+        public async Task<Response<Models.PasswordHash, Status>> GetPasswordHashAsync(string uniqueIdentifier)
         {
             _logger.LogTrace("Fetch password hash");
             var record = await _context.PasswordHashes.FindAsync(uniqueIdentifier);
             if (record == null)
             {
-                return Response.Error<Models.PasswordHash>("Password not found.", HttpStatusCode.NotFound);
+                return Response.Error<Models.PasswordHash>("Password not found.");
             }
             return Response.Success(record.ToModel(), "Password found.");
         }

@@ -20,6 +20,7 @@ using SimpleIAM.PasswordlessLogin.Services.Message;
 using SimpleIAM.PasswordlessLogin.Services.OTC;
 using SimpleIAM.PasswordlessLogin.Services.Password;
 using SimpleIAM.PasswordlessLogin.Stores;
+using StandardResponse;
 
 namespace SimpleIAM.PasswordlessLogin.Orchestrators
 {
@@ -72,11 +73,11 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             _applicationService = applicationService;
         }
 
-        public async Task<Status> CreateAccountAsync(string email, Dictionary<string, string> claims, string password = null, bool sendRegistrationMessage = true)
+        public async Task<WebStatus> CreateAccountAsync(string email, Dictionary<string, string> claims, string password = null, bool sendRegistrationMessage = true)
         {
             if (!await _userStore.UsernameIsAvailable(email))
             {
-                return Status.Error("Account already exists.", HttpStatusCode.Conflict);
+                return WebStatus.Error("Account already exists.", HttpStatusCode.Conflict);
             }
 
             if (await _oneTimeCodeService.UnexpiredOneTimeCodeExistsAsync(email))
@@ -84,12 +85,12 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 // Although the username is available, there is a valid one time code
                 // that can be used to cancel an email address change, so we can't
                 // reuse the address quite yet
-                return Status.Error("Username is not available.", HttpStatusCode.Conflict);
+                return WebStatus.Error("Username is not available.", HttpStatusCode.Conflict);
             }
             _logger.LogDebug("Email address not used by an existing user. Creating a new user.");
             // todo: consider restricting claims to a list predefined by the system administrator
 
-            var status = new Status();
+            var status = new WebStatus();
 
             if (claims == null)
             {
@@ -133,7 +134,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             return status;
         }
 
-        public async Task<Status> RegisterAsync(RegisterInputModel model)
+        public async Task<WebStatus> RegisterAsync(RegisterInputModel model)
         {
             _logger.LogDebug("Begin registration for {0}", model.Email);
 
@@ -174,20 +175,21 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             }
 
             var oneTimeCodeResponse = await _oneTimeCodeService.GetOneTimeCodeAsync(model.Email, linkValidity, nextUrl);
-            switch (oneTimeCodeResponse.Result)
+            switch (oneTimeCodeResponse.Status.StatusCode)
             {
-                case GetOneTimeCodeResult.Success:
-                    var result = await _messageService.SendWelcomeMessageAsync(model.ApplicationId, model.Email, oneTimeCodeResponse.ShortCode, oneTimeCodeResponse.LongCode, model.Claims);
-                    return ReturnAppropriateResponse(result, oneTimeCodeResponse.ClientNonce, "Thanks for registering. Please check your email.");
-                case GetOneTimeCodeResult.TooManyRequests:
+                case GetOneTimeCodeStatusCode.Success:
+                    var result = await _messageService.SendWelcomeMessageAsync(model.ApplicationId, model.Email, 
+                        oneTimeCodeResponse.Result.ShortCode, oneTimeCodeResponse.Result.LongCode, model.Claims);
+                    return ReturnAppropriateResponse(new WebStatus(result), oneTimeCodeResponse.Result.ClientNonce, "Thanks for registering. Please check your email.");
+                case GetOneTimeCodeStatusCode.TooManyRequests:
                     return BadRequest("Please wait a few minutes and try again.");
-                case GetOneTimeCodeResult.ServiceFailure:
+                case GetOneTimeCodeStatusCode.ServiceFailure:
                 default:
                     return ServerError("Hmm, something went wrong. Can you try again?");
             }
         }
 
-        public async Task<Status> SendOneTimeCodeAsync(SendCodeInputModel model)
+        public async Task<WebStatus> SendOneTimeCodeAsync(SendCodeInputModel model)
         {
             _logger.LogDebug("Begin send one time code for {0}", model.Username);
 
@@ -237,21 +239,22 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 TimeSpan.FromMinutes(_config.OneTimeCodeValidityMinutes), 
                 model.NextUrl);
 
-            switch (oneTimeCodeResponse.Result)
+            switch (oneTimeCodeResponse.Status.StatusCode)
             {
-                case GetOneTimeCodeResult.Success:
-                    var result = await _messageService.SendOneTimeCodeAndLinkMessageAsync(model.ApplicationId, model.Username, oneTimeCodeResponse.ShortCode, oneTimeCodeResponse.LongCode);
+                case GetOneTimeCodeStatusCode.Success:
+                    var result = await _messageService.SendOneTimeCodeAndLinkMessageAsync(model.ApplicationId, 
+                        model.Username, oneTimeCodeResponse.Result.ShortCode, oneTimeCodeResponse.Result.LongCode);
                     await _eventNotificationService.NotifyEventAsync(model.Username, EventType.RequestOneTimeCode);
-                    return ReturnAppropriateResponse(result, oneTimeCodeResponse.ClientNonce, defaultMessage);
-                case GetOneTimeCodeResult.TooManyRequests:
+                    return ReturnAppropriateResponse(new WebStatus(result), oneTimeCodeResponse.Result.ClientNonce, defaultMessage);
+                case GetOneTimeCodeStatusCode.TooManyRequests:
                     return BadRequest("Please wait a few minutes before requesting a new code");
-                case GetOneTimeCodeResult.ServiceFailure:
+                case GetOneTimeCodeStatusCode.ServiceFailure:
                 default:
                     return ServerError("Hmm, something went wrong. Can you try again?");
             }            
         }
 
-        public async Task<Status> AuthenticateAsync(AuthenticatePasswordInputModel model)
+        public async Task<WebStatus> AuthenticateAsync(AuthenticatePasswordInputModel model)
         {
             _logger.LogDebug("Begin authentication for {0}", model.Username);
 
@@ -274,35 +277,35 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             }
         }
 
-        public async Task<Status> AuthenticateCodeAsync(AuthenticateInputModel model)
+        public async Task<WebStatus> AuthenticateCodeAsync(AuthenticateInputModel model)
         {
             _logger.LogDebug("Begin one time code authentication for {0}", model.Username);
 
             model.OneTimeCode = model.OneTimeCode.Replace(" ", "");
             var response = await _oneTimeCodeService.CheckOneTimeCodeAsync(model.Username, model.OneTimeCode, _httpContext.Request.GetClientNonce());
-            switch (response.Result)
+            switch (response.Status.StatusCode)
             {
-                case CheckOneTimeCodeResult.VerifiedWithNonce:
-                case CheckOneTimeCodeResult.VerifiedWithoutNonce:
-                    var nonceWasValid = response.Result == CheckOneTimeCodeResult.VerifiedWithNonce;
+                case CheckOneTimeCodeStatusCode.VerifiedWithNonce:
+                case CheckOneTimeCodeStatusCode.VerifiedWithoutNonce:
+                    var nonceWasValid = response.Status.StatusCode == CheckOneTimeCodeStatusCode.VerifiedWithNonce;
                     await _eventNotificationService.NotifyEventAsync(model.Username, EventType.SignInSuccess, SignInType.OneTimeCode.ToString());
-                    return await SignInAndRedirectAsync(SignInMethod.OneTimeCode, model.Username, model.StaySignedIn, response.RedirectUrl, nonceWasValid);
-                case CheckOneTimeCodeResult.Expired:
+                    return await SignInAndRedirectAsync(SignInMethod.OneTimeCode, model.Username, model.StaySignedIn, response.Result.RedirectUrl, nonceWasValid);
+                case CheckOneTimeCodeStatusCode.Expired:
                     await _eventNotificationService.NotifyEventAsync(model.Username, EventType.SignInFail, SignInType.OneTimeCode.ToString());
                     return Unauthenticated("Your one time code has expired. Please request a new one.");
-                case CheckOneTimeCodeResult.CodeIncorrect:
-                case CheckOneTimeCodeResult.NotFound:
+                case CheckOneTimeCodeStatusCode.CodeIncorrect:
+                case CheckOneTimeCodeStatusCode.NotFound:
                     await _eventNotificationService.NotifyEventAsync(model.Username, EventType.SignInFail, SignInType.OneTimeCode.ToString());
-                    return Unauthenticated("Invalid one time code");
-                case CheckOneTimeCodeResult.ShortCodeLocked:
+                    return Unauthenticated("Invalid one time code.");
+                case CheckOneTimeCodeStatusCode.ShortCodeLocked:
                     return Unauthenticated("The one time code is locked. Please request a new one after a few minutes.");
-                case CheckOneTimeCodeResult.ServiceFailure:
+                case CheckOneTimeCodeStatusCode.ServiceFailure:
                 default:
                     return ServerError("Something went wrong.");
             }
         }
 
-        public async Task<Status> AuthenticatePasswordAsync(AuthenticatePasswordInputModel model)
+        public async Task<WebStatus> AuthenticatePasswordAsync(AuthenticatePasswordInputModel model)
         {
             _logger.LogDebug("Begin password authentication for {0}", model.Username);
 
@@ -315,7 +318,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             }
             else
             {
-                var checkPasswordStatus = await _passwordService.CheckPasswordAsync(user, model.Password);
+                var checkPasswordStatus = await _passwordService.CheckPasswordAsync(user.SubjectId, model.Password);
                 _logger.LogDebug(checkPasswordStatus.Text);
                 if(checkPasswordStatus.IsOk)
                 {
@@ -326,7 +329,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 {
                     return Unauthenticated("Your password is temporarily locked. Use a one time code to sign in.");
                 }
-                if(checkPasswordStatus.PasswordIncorrect || checkPasswordStatus.StatusCode == HttpStatusCode.NotFound)
+                if(checkPasswordStatus.PasswordIncorrect || checkPasswordStatus.NotFound)
                 {
                     await _eventNotificationService.NotifyEventAsync(model.Username, EventType.SignInFail, SignInType.Password.ToString());
                     return Unauthenticated(genericErrorMessage);
@@ -335,32 +338,32 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             }
         }
 
-        public async Task<Status> AuthenticateLongCodeAsync(string longCode)
+        public async Task<WebStatus> AuthenticateLongCodeAsync(string longCode)
         {
             _logger.LogDebug("Begin long code (one time link) authentication");
 
             var response = await _oneTimeCodeService.CheckOneTimeCodeAsync(longCode, _httpContext.Request.GetClientNonce());
-            switch (response.Result)
+            switch (response.Status.StatusCode)
             {
-                case CheckOneTimeCodeResult.VerifiedWithoutNonce:
-                case CheckOneTimeCodeResult.VerifiedWithNonce:
-                    await _eventNotificationService.NotifyEventAsync(response.SentTo, EventType.SignInSuccess, SignInType.LongCode.ToString());
-                    var nonceWasValid = response.Result == CheckOneTimeCodeResult.VerifiedWithNonce;
-                    return await SignInAndRedirectAsync(SignInMethod.Link, response.SentTo, null, response.RedirectUrl, nonceWasValid);
-                case CheckOneTimeCodeResult.Expired:
-                    await _eventNotificationService.NotifyEventAsync(response.SentTo, EventType.SignInFail, SignInType.LongCode.ToString());
+                case CheckOneTimeCodeStatusCode.VerifiedWithoutNonce:
+                case CheckOneTimeCodeStatusCode.VerifiedWithNonce:
+                    await _eventNotificationService.NotifyEventAsync(response.Result.SentTo, EventType.SignInSuccess, SignInType.LongCode.ToString());
+                    var nonceWasValid = response.Status.StatusCode == CheckOneTimeCodeStatusCode.VerifiedWithNonce;
+                    return await SignInAndRedirectAsync(SignInMethod.Link, response.Result.SentTo, null, response.Result.RedirectUrl, nonceWasValid);
+                case CheckOneTimeCodeStatusCode.Expired:
+                    await _eventNotificationService.NotifyEventAsync(response.Result.SentTo, EventType.SignInFail, SignInType.LongCode.ToString());
                     return Unauthenticated("The sign in link expired.");
-                case CheckOneTimeCodeResult.CodeIncorrect:
+                case CheckOneTimeCodeStatusCode.CodeIncorrect:
                     return NotFound();
-                case CheckOneTimeCodeResult.NotFound:
+                case CheckOneTimeCodeStatusCode.NotFound:
                     return Unauthenticated("The sign in link is invalid.");
-                case CheckOneTimeCodeResult.ServiceFailure:
+                case CheckOneTimeCodeStatusCode.ServiceFailure:
                 default:
                     return ServerError("Something went wrong.");
             }
         }
 
-        public async Task<Status> SendPasswordResetMessageAsync(SendPasswordResetMessageInputModel model)
+        public async Task<WebStatus> SendPasswordResetMessageAsync(SendPasswordResetMessageInputModel model)
         {
             _logger.LogDebug("Begin send password reset message for {0}", model.Username);
 
@@ -393,24 +396,26 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 model.Username, 
                 TimeSpan.FromMinutes(_config.OneTimeCodeValidityMinutes), 
                 nextUrl);
-            if (oneTimeCodeResponse.Result == GetOneTimeCodeResult.Success)
+            if (oneTimeCodeResponse.IsOk)
             {
-                var result = await _messageService.SendPasswordResetMessageAsync(model.ApplicationId, model.Username, oneTimeCodeResponse.ShortCode, oneTimeCodeResponse.LongCode);
+                var result = await _messageService.SendPasswordResetMessageAsync(model.ApplicationId, model.Username, 
+                    oneTimeCodeResponse.Result.ShortCode, oneTimeCodeResponse.Result.LongCode);
                 await _eventNotificationService.NotifyEventAsync(model.Username, EventType.RequestPasswordReset);
-                return ReturnAppropriateResponse(result, oneTimeCodeResponse.ClientNonce, "Check your email for password reset instructions.");
+                return ReturnAppropriateResponse(new WebStatus(result), oneTimeCodeResponse.Result.ClientNonce, 
+                    "Check your email for password reset instructions.");
             }
             _logger.LogError("Password reset message was not be sent due to error encountered while generating a one time link");
             return ServerError("Hmm. Something went wrong. Please try again.");
         }
 
-        public async Task<Status> SignOutAsync()
+        public async Task<WebStatus> SignOutAsync()
         {
             await _signInService.SignOutAsync();
 
             return Ok();
         }
 
-        private Status ReturnAppropriateResponse(Status status, string clientNonce, string successMessage)
+        private WebStatus ReturnAppropriateResponse(WebStatus status, string clientNonce, string successMessage)
         {
             if (clientNonce != null)
             {
@@ -428,7 +433,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             }
         }
 
-        private async Task<Status> SignInAndRedirectAsync(SignInMethod method, string username, bool? staySignedIn, string nextUrl, bool? nonceWasValid)
+        private async Task<WebStatus> SignInAndRedirectAsync(SignInMethod method, string username, bool? staySignedIn, string nextUrl, bool? nonceWasValid)
         {
             _logger.LogTrace("Begining sign in and redirect logic for {0}", username);
             /*
@@ -520,9 +525,12 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             if (_config.AutoTrustBrowsers && addTrustForThisBrowser)
             {
                 var description = _httpContext.Request.Headers["User-Agent"];
-                var deviceId = await AuthorizeDeviceAsync(user.SubjectId, description);
-                deviceIsAuthorized = true;
-                anyAuthorizedDevices = true;
+                var trustBrowserResponse = await AuthorizeDeviceAsync(user.SubjectId, description);
+                if (trustBrowserResponse.IsOk)
+                {
+                    deviceIsAuthorized = true;
+                    anyAuthorizedDevices = true;
+                }
             }
 
             var authProps = new AuthenticationProperties {
@@ -559,9 +567,9 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             return Redirect(nextUrl);
         }
 
-        public async Task<string> AuthorizeDeviceAsync(string subjectId, string deviceDescription = null)
+        public async Task<Response<string, WebStatus>> AuthorizeDeviceAsync(string subjectId, string deviceDescription = null)
         {
-            _logger.LogDebug("Registering current device as a trusted device");
+            _logger.LogDebug("Registering current device as a trusted device.");
             var deviceId = _httpContext.Request.GetDeviceId();
             // todo: Review. Accepting an existing device id opens an attack vector for pre-installing
             // cookies on a device or via a malicious browser extension. May want to have a per-user
@@ -577,10 +585,14 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             }
 
             var result = await _authorizedDeviceStore.AddAuthorizedDeviceAsync(subjectId, deviceId, deviceDescription);
+            if(result.Description == "todo")
+            {
+                // TODO: return error if save failed
+            }
 
             _httpContext.Response.SetDeviceId(deviceId);
 
-            return deviceId;
+            return Response.Success<string, WebStatus>(deviceId, "Trusted device added.");
         }
 
 

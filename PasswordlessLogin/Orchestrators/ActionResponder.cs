@@ -1,43 +1,51 @@
 ﻿// Copyright (c) Ryan Foster. All rights reserved. 
 // Licensed under the Apache License, Version 2.0.
 
+using StandardResponse;
 using System.Net;
 
 namespace SimpleIAM.PasswordlessLogin.Orchestrators
 {
     public abstract class ActionResponder
     {
-        protected Status Ok(string message = null)
+        protected WebStatus Ok(string message = null)
         {
-            return Status.Success(message);
+            return WebStatus.Success(message);
         }
-        protected Status Redirect(string url)
+
+        protected WebStatus Redirect(string url)
         {
-            return Status.Redirect(url);
+            return WebStatus.Redirect(url);
         }
-        protected Status BadRequest(string message = null)
+
+        protected WebStatus BadRequest(string message = null)
         {
-            return Status.Error(message, HttpStatusCode.BadRequest);
+            return WebStatus.Error(message, HttpStatusCode.BadRequest);
         }
-        protected Status Unauthenticated(string message = null)
+        
+        protected WebStatus Unauthenticated(string message = null)
         {
-            return Status.Error(message, HttpStatusCode.Unauthorized);
+            return WebStatus.Error(message, HttpStatusCode.Unauthorized);
         }
+        
         protected Status PermissionDenied(string message = null)
         {
-            return Status.Error(message, HttpStatusCode.Forbidden);
+            return WebStatus.Error(message, HttpStatusCode.Forbidden);
         }
-        protected Status NotFound(string message = null)
+        
+        protected WebStatus NotFound(string message = null)
         {
-            return Status.Error(message, HttpStatusCode.NotFound);
+            return WebStatus.Error(message, HttpStatusCode.NotFound);
         }
-        protected Status Conflict(string message = null)
+        
+        protected WebStatus Conflict(string message = null)
         {
-            return Status.Error(message, HttpStatusCode.Conflict);
+            return WebStatus.Error(message, HttpStatusCode.Conflict);
         }
-        protected Status ServerError(string message = null)
+        
+        protected WebStatus ServerError(string message = null)
         {
-            return Status.Error(message, HttpStatusCode.InternalServerError);
+            return WebStatus.Error(message, HttpStatusCode.InternalServerError);
         }
     }
 }
