@@ -17,19 +17,16 @@ namespace SimpleIAM.PasswordlessLogin.Services.OTC
     {
         private readonly ILogger _logger;
         private readonly IOneTimeCodeStore _oneTimeCodeStore;
-        private readonly IMessageService _messageService;
         private readonly IdProviderConfig _config;
 
         public OneTimeCodeService(
             ILogger<OneTimeCodeService> logger,
             IOneTimeCodeStore oneTimeCodeStore,
-            IMessageService messageService,
             IdProviderConfig config
             )
         {
             _logger = logger;
             _oneTimeCodeStore = oneTimeCodeStore;
-            _messageService = messageService;
             _config = config;
         }
 

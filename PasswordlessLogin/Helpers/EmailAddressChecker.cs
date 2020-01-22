@@ -9,6 +9,7 @@ namespace SimpleIAM.PasswordlessLogin.Helpers
     {
         public static bool EmailIsValid(string email)
         {
+            // basic checks first to mitigate regex DOS attacks
             if (email == null || email.Length > 254 || email.IndexOf("@") < 1)
             {
                 return false;

@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 
-namespace SimpleIAM.PasswordlessLogin.Orchestrators
+namespace SimpleIAM.PasswordlessLogin.API
 {
     public class ActionResponse
     {

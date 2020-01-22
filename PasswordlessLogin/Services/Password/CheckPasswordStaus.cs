@@ -7,8 +7,13 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
 {
     public class CheckPasswordStatus : Status
     {
-        public bool NotFound { get; set; }
-        public bool PasswordIncorrect { get; set; }
-        public bool TemporarilyLocked { get; set; }
+        public CheckPasswordStatusCode StatusCode { get; set; } = CheckPasswordStatusCode.Success;
+
+        public static CheckPasswordStatus Error(string message, CheckPasswordStatusCode statusCode)
+        {
+            var status = Error<CheckPasswordStatus>(message);
+            status.StatusCode = statusCode;
+            return status;
+        }
     }
 }

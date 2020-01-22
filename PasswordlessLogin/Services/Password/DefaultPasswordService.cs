@@ -68,27 +68,24 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
         public async Task<CheckPasswordStatus> CheckPasswordAsync(string uniqueIdentifier, string password)
         {
             _logger.LogDebug("Checking password for {0}", uniqueIdentifier);
-            var status = new CheckPasswordStatus();
             var response = await _passwordHashStore.GetPasswordHashAsync(uniqueIdentifier);
             if(response.HasError)
             {
+                var status = new CheckPasswordStatus();
                 status.Add(response.Status);
-                status.NotFound = true;
+                status.StatusCode = CheckPasswordStatusCode.NotFound;
                 return status;
             }
             var hashInfo = response.Result;
             if(hashInfo.TempLockUntilUTC > DateTime.UtcNow)
             {
-                status.AddError("Password is temporarily locked.");
-                status.TemporarilyLocked = true;
-                return status;
+                return CheckPasswordStatus.Error("Password is temporarily locked.", CheckPasswordStatusCode.TemporarilyLocked);
             }
             var checkHashResult = _passwordHashService.CheckPasswordHash(hashInfo.Hash, password);
             switch(checkHashResult)
             {
                 case CheckPaswordHashResult.DoesNotMatch:
                     _logger.LogDebug("Password does not match");
-                    status.PasswordIncorrect = true;
 
                     var currentFailedAttemptCount = hashInfo.FailedAttemptCount + 1;
                     if (currentFailedAttemptCount >= _idProviderConfig.MaxPasswordFailedAttempts)
@@ -102,31 +99,25 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
                         }
                         await _passwordHashStore.TempLockPasswordHashAsync(uniqueIdentifier, lockUntil, currentFailedAttemptCount);
 
-                        status.TemporarilyLocked = true;
-                        status.AddError("Password is temporarily locked.");
-                        return status;
+                        return CheckPasswordStatus.Error("Password is temporarily locked.", CheckPasswordStatusCode.TemporarilyLocked);
                     }
                     else
                     {
                         _logger.LogDebug("Updating failed attempt count");
                         await _passwordHashStore.UpdatePasswordHashFailureCountAsync(uniqueIdentifier, hashInfo.FailedAttemptCount + 1);
-                        status.AddError("Password was incorrect.");
-                        return status;
+                        return CheckPasswordStatus.Error("Password was incorrect.", CheckPasswordStatusCode.PasswordIncorrect);
                     }
                 case CheckPaswordHashResult.MatchesNeedsRehash:
                     _logger.LogDebug("Rehashing password");
                     var newHash = _passwordHashService.HashPassword(password);
                     await _passwordHashStore.UpdatePasswordHashAsync(uniqueIdentifier, newHash);
-                    status.AddSuccess("Password was correct.");
-                    return status;
+                    return Status.Success<CheckPasswordStatus>("Password was correct.");
                 case CheckPaswordHashResult.Matches:
                     _logger.LogDebug("Password matches");
-                    status.AddSuccess("Password was correct.");
-                    return status;
+                    return Status.Success<CheckPasswordStatus>("Password was correct.");
                 default:
                     // this should never happen
-                    status.AddError("An unexpected error occurred.");
-                    return status;
+                    return CheckPasswordStatus.Error("An unexpected error occurred.", CheckPasswordStatusCode.ServiceFailure);
             }
         }
 

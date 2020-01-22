@@ -20,7 +20,7 @@ using StandardResponse;
 
 namespace SimpleIAM.PasswordlessLogin.Orchestrators
 {
-    public class UserOrchestrator : ActionResponder
+    public class UserOrchestrator
     {
         private readonly ILogger _logger;
         private readonly IEventNotificationService _eventNotificationService;
@@ -60,12 +60,12 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 _logger.LogWarning("Permission denied trying to get user {0}", subjectId);
                 return Response.Web.Error<User>("Permission denied.", HttpStatusCode.Forbidden);
             }
-            var user = await _userStore.GetUserAsync(subjectId, true);
-            if(user != null)
+            var userResponse = await _userStore.GetUserAsync(subjectId, true);
+            if(userResponse.HasError)
             {
-                return Response.Web.Success(user);
+                return Response.Web.Error<User>("Not found.", HttpStatusCode.NotFound);
             }
-            return Response.Web.Error<User>("Not found.", HttpStatusCode.NotFound);
+            return Response.Web.Success(userResponse.Result);
         }
 
         public async Task<Response<User, WebStatus>> PatchUserAsync(PatchUserModel model)
@@ -82,7 +82,14 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             {
                 return Response.Web.Error<User>("User does not exist", HttpStatusCode.BadRequest);
             }
-            var updatedUser = await _userStore.PatchUserAsync(model.SubjectId, model.Properties);
+            var updateUserResponse = await _userStore.PatchUserAsync(model.SubjectId, model.Properties);
+            if(updateUserResponse.HasError)
+            {
+                var status = new WebStatus(updateUserResponse.Status);
+                status.StatusCode = HttpStatusCode.BadRequest;
+                return new Response<User, WebStatus>(status);
+            }
+            var updatedUser = updateUserResponse.Result;
             await _eventNotificationService.NotifyEventAsync(updatedUser.Email, EventType.UpdateAccount);
             return Response.Web.Success(updatedUser);
         }
@@ -97,11 +104,13 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 _logger.LogWarning("Permission denied trying to change email address user {0}", subjectId);
                 return Response.Web.Error<ChangeEmailViewModel>("Permission denied.", HttpStatusCode.Forbidden);
             }
-            var user = await _userStore.GetUserAsync(subjectId, true);
-            if (user == null)
+            var userResponse = await _userStore.GetUserAsync(subjectId, true);
+            if (userResponse.HasError)
             {
-                return Response.Web.Error<ChangeEmailViewModel>("User does not exist", HttpStatusCode.BadRequest);
+                return Response.Web.Error<ChangeEmailViewModel>("User does not exist.", HttpStatusCode.BadRequest);
             }
+            var user = userResponse.Result;
+
             // check if a cancel email change code link is still valid
             var previouslyChangedEmail = user.Claims.FirstOrDefault(x => x.Type == PasswordlessLoginConstants.Security.PreviousEmailClaimType)?.Value;
             if(previouslyChangedEmail != null && (await _oneTimeCodeService.UnexpiredOneTimeCodeExistsAsync(previouslyChangedEmail)))
@@ -123,26 +132,31 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             
             var otcResponse = await _oneTimeCodeService.GetOneTimeCodeAsync(oldEmail, TimeSpan.FromHours(_idProviderConfig.CancelEmailChangeTimeWindowHours));
             var status = await _messageService.SendEmailChangedNoticeAsync(applicationId, oldEmail, otcResponse.Result.LongCode);
-            if(status.IsOk)
-            {
-                var changes = new Dictionary<string, string>
-                {
-                    ["email"] = newEmail,
-                    [PasswordlessLoginConstants.Security.PreviousEmailClaimType] = oldEmail
-                };
-                var updatedUser = await _userStore.PatchUserAsync(subjectId, changes.ToLookup(x => x.Key, x => x.Value), true);
-                var viewModel = new ChangeEmailViewModel()
-                {
-                    OldEmail = user.Email,
-                    NewEmail = updatedUser.Email,
-                };
-                await _eventNotificationService.NotifyEventAsync(viewModel.OldEmail, EventType.EmailChange, $"Changed to {viewModel.NewEmail}");
-                return Response.Web.Success(viewModel);
-            }
-            else
+            if (status.HasError)
             {
                 return Response.Web.Error<ChangeEmailViewModel>($"Change cancelled because of failure to send email notice: {status.Text}");
             }
+
+            var changes = new Dictionary<string, string>
+            {
+                ["email"] = newEmail,
+                [PasswordlessLoginConstants.Security.PreviousEmailClaimType] = oldEmail
+            };
+            var updateUserResponse = await _userStore.PatchUserAsync(subjectId, changes.ToLookup(x => x.Key, x => x.Value), true);
+            if(updateUserResponse.HasError)
+            {
+                var patchStatus = new WebStatus(updateUserResponse.Status);
+                patchStatus.StatusCode = HttpStatusCode.BadRequest;
+                return new Response<ChangeEmailViewModel, WebStatus>(patchStatus);
+            }
+            var updatedUser = updateUserResponse.Result;
+            var viewModel = new ChangeEmailViewModel()
+            {
+                OldEmail = user.Email,
+                NewEmail = updatedUser.Email,
+            };
+            await _eventNotificationService.NotifyEventAsync(viewModel.OldEmail, EventType.EmailChange, $"Changed to {viewModel.NewEmail}");
+            return Response.Web.Success(viewModel);
         }
 
         public async Task<Response<ChangeEmailViewModel, WebStatus>> CancelEmailAddressChangeAsync(string longCode)
@@ -154,17 +168,26 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             {
                 return Response.Web.Error<ChangeEmailViewModel>("Invalid code.", HttpStatusCode.BadRequest);
             }
-            var user = await _userStore.GetUserByPreviousEmailAsync(response.Result.SentTo);
-            if (user == null)
+            var userResponse = await _userStore.GetUserByPreviousEmailAsync(response.Result.SentTo);
+            if (userResponse.HasError)
             {
                 return Response.Web.Error<ChangeEmailViewModel>("User not found.", HttpStatusCode.BadRequest);
             }
+            var user = userResponse.Result;
+
             var changes = new Dictionary<string, string>
             {
                 ["email"] = response.Result.SentTo,
                 [PasswordlessLoginConstants.Security.PreviousEmailClaimType] = null
             };
-            var updatedUser = await _userStore.PatchUserAsync(user.SubjectId, changes.ToLookup(x => x.Key, x => x.Value), true);
+            var updateUserResponse = await _userStore.PatchUserAsync(user.SubjectId, changes.ToLookup(x => x.Key, x => x.Value), true);
+            if(updateUserResponse.HasError)
+            {
+                var patchStatus = new WebStatus(updateUserResponse.Status);
+                patchStatus.StatusCode = HttpStatusCode.BadRequest;
+                return new Response<ChangeEmailViewModel, WebStatus>(patchStatus);
+            }
+            var updatedUser = updateUserResponse.Result;
             var viewModel = new ChangeEmailViewModel()
             {
                 OldEmail = user.Email,

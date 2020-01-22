@@ -7,7 +7,9 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SimpleIAM.PasswordlessLogin.Entities;
+using SimpleIAM.PasswordlessLogin.Helpers;
 using SimpleIAM.PasswordlessLogin.Models;
+using StandardResponse;
 
 namespace SimpleIAM.PasswordlessLogin.Stores
 {
@@ -22,7 +24,7 @@ namespace SimpleIAM.PasswordlessLogin.Stores
             _context = context;
         }
 
-        public async Task<Models.User> AddUserAsync(Models.User user)
+        public async Task<Response<Models.User, Status>> AddUserAsync(Models.User user)
         {
             _logger.LogTrace("Add user {0}", user.Email);
 
@@ -41,75 +43,98 @@ namespace SimpleIAM.PasswordlessLogin.Stores
             dbUser.Claims = user.Claims?.Select(x => new Entities.UserClaim() { SubjectId = dbUser.SubjectId, Type = x.Type, Value = x.Value }).ToList();
             await _context.AddAsync(dbUser);
             var count = await _context.SaveChangesAsync();
-
-            var success = count > 0;
-            _logger.LogDebug("{0}uccessfully added user", success ? "S" : "Uns");
+            if (count == 0)
+            {
+                return Response.Error<Models.User>("Failed to add user.");
+            }
 
             user.SubjectId = dbUser.SubjectId;
-            return user;
+            return Response.Success(user, "User saved.");
         }
 
-        public async Task<Models.User> GetUserAsync(string subjectId, bool fetchClaims = false)
+        public async Task<Response<Models.User, Status>> GetUserAsync(string subjectId, bool fetchClaims = false)
         {
             _logger.LogTrace("Fetch user {0}", fetchClaims ? "and claims" : "without claims");
+            Models.User user;
             if (fetchClaims)
             {
-                return (await _context.Users.Include(x => x.Claims).SingleOrDefaultAsync(x => x.SubjectId == subjectId))?.ToModel();
+                user = (await _context.Users.Include(x => x.Claims).SingleOrDefaultAsync(x => x.SubjectId == subjectId))?.ToModel();
             }
-            var model = (await _context.Users.FindAsync(subjectId))?.ToModel();
-            _logger.LogDebug("{0}uccessfully fetched user", model != null ? "S" : "Uns");
-            return model;
+            user = (await _context.Users.FindAsync(subjectId))?.ToModel();
+            if (user == null)
+            {
+                return Response.Error<Models.User>("User not found.");
+            }
+
+            return Response.Success(user, "User found.");
         }
 
-        public async Task<Models.User> GetUserByEmailAsync(string email, bool fetchClaims = false)
+        public async Task<Response<Models.User, Status>> GetUserByEmailAsync(string email, bool fetchClaims = false)
         {
             _logger.LogTrace("Fetch user (by email) {0}", fetchClaims ? "and claims" : "without claims");
+            Models.User user;
             if (fetchClaims)
             {
-                return (await _context.Users.Include(x => x.Claims).SingleOrDefaultAsync(x => x.Email == email))?.ToModel();
+                user = (await _context.Users.Include(x => x.Claims).SingleOrDefaultAsync(x => x.Email == email))?.ToModel();
             }
-            var model = (await _context.Users.SingleOrDefaultAsync(x => x.Email == email))?.ToModel();
-            _logger.LogDebug("{0}uccessfully fetched user by email", model != null ? "S" : "Uns");
-            return model;
+            user = (await _context.Users.SingleOrDefaultAsync(x => x.Email == email))?.ToModel();
+            if (user == null)
+            {
+                return Response.Error<Models.User>("User not found.");
+            }
+
+            return Response.Success(user, "User found.");
         }
 
-        public async Task<Models.User> GetUserByUsernameAsync(string username, bool fetchClaims = false)
+        public async Task<Response<Models.User, Status>> GetUserByUsernameAsync(string username, bool fetchClaims = false)
         {
             // NOTE: For this user store username = email. However, other user stores may implement this differently.
             return await GetUserByEmailAsync(username, fetchClaims);
         }
 
-        public async Task<Models.User> GetUserByPreviousEmailAsync(string previousEmail)
+        public async Task<Response<Models.User, Status>> GetUserByPreviousEmailAsync(string previousEmail)
         {
             _logger.LogTrace("Fetch user (by previous email) {0}");
-            var model = (await _context.Users.SingleOrDefaultAsync(x => x.Claims.Any(c => 
+            var user = (await _context.Users.SingleOrDefaultAsync(x => x.Claims.Any(c => 
                 c.Type == PasswordlessLoginConstants.Security.PreviousEmailClaimType &&
                 c.Value == previousEmail
                 )))?.ToModel();
-            _logger.LogDebug("{0}uccessfully fetched user by previous email", model != null ? "S" : "Uns");
-            return model;
+
+            if (user == null)
+            {
+                return Response.Error<Models.User>("User not found.");
+            }
+
+            return Response.Success(user, "User found.");
         }
 
-        public async Task<Models.User> PatchUserAsync(string subjectId, ILookup<string, string> Properties, bool changeProtectedClaims = false)
+        public async Task<Response<Models.User, Status>> PatchUserAsync(string subjectId, ILookup<string, string> Properties, bool changeProtectedClaims = false)
         {
+            var status = new Status();
             _logger.LogTrace("Patch user");
             Entities.User user;
             foreach (var values in Properties)
             {
                 if (changeProtectedClaims && values.Key == "email")
                 {
-                    var newEmail = values.SingleOrDefault(x => x != null); // will throw if multiple email addresses provided
-                    if (newEmail != null)
+                    var emails = values.Where(email => email != null).ToList();
+                    if(emails.Count > 1)
                     {
+                        return Response.Error<Models.User>("Only one email address is allowed.");
+                    }
+                    if (emails.Count == 1)
+                    {
+                        var newEmail = emails.First();
                         user = await _context.Users.FirstOrDefaultAsync(x => x.SubjectId == subjectId);
                         user.Email = newEmail;
-                    }                    
+                    }
                 }
                 else if (PasswordlessLoginConstants.Security.ForbiddenClaims.Contains(values.Key) ||
                     (!changeProtectedClaims && PasswordlessLoginConstants.Security.ProtectedClaims.Contains(values.Key)))
                 {
                     // ignore
                     _logger.LogWarning("Attempt to change {0} claim for user {1} was blocked", values.Key, subjectId);
+                    status.AddWarning($"Changing '{values.Key}' is not allowed.");
                 }
                 else
                 {
@@ -127,8 +152,8 @@ namespace SimpleIAM.PasswordlessLogin.Stores
         {
             _logger.LogTrace("Check if user with username {0} exists", username);
 
-            var user = await GetUserByUsernameAsync(username);
-            if (user != null)
+            var response = await GetUserByUsernameAsync(username);
+            if (response.Result != null)
             {
                 return true;
             }
@@ -136,8 +161,9 @@ namespace SimpleIAM.PasswordlessLogin.Stores
         }
 
         public async Task<bool> UsernameIsAvailable(string username)
-        {            
-            return !(await UserExists(username));
+        {
+            // In this user store, usernames are restricted to email address until we implement cell phone usernames
+            return !(await UserExists(username)) && EmailAddressChecker.EmailIsValid(username); 
         }
     }
 }
