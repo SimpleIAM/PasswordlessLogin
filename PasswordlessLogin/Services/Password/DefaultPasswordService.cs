@@ -14,10 +14,10 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
 {
     public class DefaultPasswordService : IPasswordService
     {
-        private readonly ILogger _logger;
-        private readonly IPasswordHashService _passwordHashService;
-        private readonly IPasswordHashStore _passwordHashStore;
-        private readonly IdProviderConfig _idProviderConfig;
+        protected readonly ILogger _logger;
+        protected readonly IPasswordHashService _passwordHashService;
+        protected readonly IPasswordHashStore _passwordHashStore;
+        protected readonly IdProviderConfig _idProviderConfig;
 
         public DefaultPasswordService(
             ILogger<DefaultPasswordService> logger,
@@ -55,7 +55,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
             }
             var hash = _passwordHashService.HashPassword(password);
             var removeStatus = await RemovePasswordAsync(uniqueIdentifier);
-            if(status.HasError)
+            if(removeStatus.HasError)
             {
                 status.AddError("Failed to update old password.");
                 return status;

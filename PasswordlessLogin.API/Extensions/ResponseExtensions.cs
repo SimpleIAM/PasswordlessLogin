@@ -1,11 +1,10 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using StandardResponse;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿// Copyright (c) Ryan Foster. All rights reserved. 
+// Licensed under the Apache License, Version 2.0.
 
-namespace SimpleIAM.PasswordlessLogin.Extensions
+using Microsoft.AspNetCore.Mvc;
+using StandardResponse;
+
+namespace SimpleIAM.PasswordlessLogin.API
 {
     public static class ResponseExtensions
     {

@@ -1,4 +1,7 @@
-﻿using StandardResponse;
+﻿// Copyright (c) Ryan Foster. All rights reserved. 
+// Licensed under the Apache License, Version 2.0.
+
+using StandardResponse;
 using System;
 using System.Collections.Generic;
 using System.Text;
