@@ -17,19 +17,19 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
         protected readonly ILogger _logger;
         protected readonly IPasswordHashService _passwordHashService;
         protected readonly IPasswordHashStore _passwordHashStore;
-        protected readonly IdProviderConfig _idProviderConfig;
+        protected readonly PasswordlessLoginOptions _passwordlessLoginOptions;
 
         public DefaultPasswordService(
             ILogger<DefaultPasswordService> logger,
             IPasswordHashService passwordHashService,
             IPasswordHashStore passwordHashStore,
-            IdProviderConfig idProviderConfig
+            PasswordlessLoginOptions passwordlessLoginOptions
             )
         {
             _logger = logger;
             _passwordHashService = passwordHashService;
             _passwordHashStore = passwordHashStore;
-            _idProviderConfig = idProviderConfig;
+            _passwordlessLoginOptions = passwordlessLoginOptions;
         }
 
         public async Task<Status> RemovePasswordAsync(string uniqueIdentifier)
@@ -88,11 +88,11 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
                     _logger.LogDebug("Password does not match");
 
                     var currentFailedAttemptCount = hashInfo.FailedAttemptCount + 1;
-                    if (currentFailedAttemptCount >= _idProviderConfig.MaxPasswordFailedAttempts)
+                    if (currentFailedAttemptCount >= _passwordlessLoginOptions.MaxPasswordFailedAttempts)
                     {                        
-                        var lockUntil = DateTime.UtcNow.AddMinutes(_idProviderConfig.TempLockPasswordMinutes);
+                        var lockUntil = DateTime.UtcNow.AddMinutes(_passwordlessLoginOptions.TempLockPasswordMinutes);
                         _logger.LogDebug("Locking password until {0} (UTC)", lockUntil);
-                        if(_idProviderConfig.ResetFailedAttemptCountOnTempLock)
+                        if(_passwordlessLoginOptions.ResetFailedAttemptCountOnTempLock)
                         {
                             // if not reset, the next failure after a lockout initiates another lockout period
                             currentFailedAttemptCount = 0;
@@ -123,7 +123,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
 
         private bool PasswordIsStrongEnough(string password)
         {
-            return password?.Length >= _idProviderConfig.MinimumPasswordLength;
+            return password?.Length >= _passwordlessLoginOptions.MinimumPasswordLength;
         }
 
         public async Task<Response<DateTime, Status>> PasswordLastChangedAsync(string uniqueIdentifier)

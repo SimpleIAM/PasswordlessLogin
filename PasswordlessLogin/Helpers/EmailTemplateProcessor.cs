@@ -10,8 +10,9 @@ namespace SimpleIAM.PasswordlessLogin.Helpers
 {
     public static class EmailTemplateProcessor
     {
-        public static EmailTemplates GetTemplatesFromMailConfig(string defaultFrom, IFileProvider fileProvider)
+        public static EmailTemplates GetTemplatesFromMailConfig(IFileProvider fileProvider)
         {
+            // TODO: Refactor so that defaultFrom is not necessary. Inject From address later.
             var templates = new EmailTemplates()
             {
                 { PasswordlessLoginConstants.EmailTemplates.OneTimeCode, new EmailTemplate() },
@@ -25,8 +26,6 @@ namespace SimpleIAM.PasswordlessLogin.Helpers
             };
             foreach(var template in templates)
             {
-                template.Value.From = defaultFrom;
-
                 var fileInfo = fileProvider.GetFileInfo($"{template.Key}.html");
                 if(fileInfo.Exists)
                 {

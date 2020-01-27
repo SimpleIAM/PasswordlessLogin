@@ -29,7 +29,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
         private readonly IPasswordService _passwordService;
         private readonly IOneTimeCodeService _oneTimeCodeService;
         private readonly IMessageService _messageService;
-        private readonly IdProviderConfig _idProviderConfig;
+        private readonly PasswordlessLoginOptions _passwordlessLoginOptions;
 
         public UserOrchestrator(
             ILogger<UserOrchestrator> logger,
@@ -39,7 +39,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             IPasswordService passwordService,
             IOneTimeCodeService oneTimeCodeService,
             IMessageService messageService,
-            IdProviderConfig idProviderConfig)
+            PasswordlessLoginOptions passwordlessLoginOptions)
         {
             _logger = logger;
             _eventNotificationService = eventNotificationService;
@@ -48,7 +48,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             _passwordService = passwordService;
             _oneTimeCodeService = oneTimeCodeService;
             _messageService = messageService;
-            _idProviderConfig = idProviderConfig;
+            _passwordlessLoginOptions = passwordlessLoginOptions;
         }
 
         public async Task<Response<User, WebStatus>> GetUserAsync(string subjectId)
@@ -130,7 +130,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             }
             var oldEmail = user.Email;
             
-            var otcResponse = await _oneTimeCodeService.GetOneTimeCodeAsync(oldEmail, TimeSpan.FromHours(_idProviderConfig.CancelEmailChangeTimeWindowHours));
+            var otcResponse = await _oneTimeCodeService.GetOneTimeCodeAsync(oldEmail, TimeSpan.FromHours(_passwordlessLoginOptions.CancelEmailChangeTimeWindowHours));
             var status = await _messageService.SendEmailChangedNoticeAsync(applicationId, oldEmail, otcResponse.Result.LongCode);
             if (status.HasError)
             {

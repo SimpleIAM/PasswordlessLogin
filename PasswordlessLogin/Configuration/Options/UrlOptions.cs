@@ -3,7 +3,7 @@
 
 namespace SimpleIAM.PasswordlessLogin.Configuration
 {
-    public class UrlConfig
+    public class UrlOptions
     {
         public string DefaultRedirect { get; set; } = "/";
         public string MyAccount { get; set; } = "/account";

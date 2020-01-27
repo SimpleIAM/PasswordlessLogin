@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SimpleIAM.PasswordlessLogin.Entities;
 
-namespace SimpleIAM.PasswordlessLogin.Migrations.Migrations
+namespace SimpleIAM.PasswordlessLogin.SqlServer.Migrations
 {
     [DbContext(typeof(PasswordlessLoginDbContext))]
     [Migration("20190424185144_v0.5.0")]

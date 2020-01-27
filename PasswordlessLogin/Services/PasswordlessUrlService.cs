@@ -11,17 +11,17 @@ namespace SimpleIAM.PasswordlessLogin.Services
     {
         private readonly IUrlHelper _urlHelper;
         private readonly HttpContext _httpContext;
-        private readonly UrlConfig _urls;
+        private readonly UrlOptions _urls;
 
         public PasswordlessUrlService(
             IUrlHelper urlHelper,
             IHttpContextAccessor httpContextAccessor,
-            IdProviderConfig idProviderConfig
+            PasswordlessLoginOptions passwordlessLoginOptions
             )
         {
             _urlHelper = urlHelper;
             _httpContext = httpContextAccessor.HttpContext;
-            _urls = idProviderConfig.Urls;
+            _urls = passwordlessLoginOptions.Urls;
         }
 
         public string GetCancelChangeLinkUrl(string longCode, bool absolute = false)

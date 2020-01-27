@@ -2,22 +2,23 @@
 // Licensed under the Apache License, Version 2.0.
 
 using SimpleIAM.PasswordlessLogin;
+using SimpleIAM.PasswordlessLogin.Configuration;
 using System;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
-    public static class PasswordlessLoginServiceCollectionExtensions
+    public static class PasswordlessLoginBuilderExtensionsAPI
     {
-        public static IServiceCollection AddPasswordlessLoginAPI(this IServiceCollection services, string[] apiAllowedOrigins = null)
+        public static PasswordlessLoginBuilder AddPasswordlessLoginAPI(this PasswordlessLoginBuilder builder, string[] apiAllowedOrigins = null)
         {
-            if (services == null)
+            if (builder == null)
             {
-                throw new ArgumentNullException(nameof(services));
+                throw new ArgumentNullException(nameof(builder));
             }
      
-            services.AddPasswordlessCorsPolicy(apiAllowedOrigins);
+            builder.Services.AddPasswordlessCorsPolicy(apiAllowedOrigins);
 
-            return services;
+            return builder;
         }
 
         private static IServiceCollection AddPasswordlessCorsPolicy(this IServiceCollection services, string[] allowedOrigins = null)

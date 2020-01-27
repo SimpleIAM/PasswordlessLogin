@@ -16,21 +16,21 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
         private readonly ILogger _logger;
         private readonly IEmailTemplateService _emailTemplateService;
         private readonly IUrlService _urlService;
-        private readonly IdProviderConfig _idProviderConfig;
+        private readonly PasswordlessLoginOptions _passwordlessLoginOptions;
         private readonly IApplicationService _applicationService;
 
         public MessageService(
             ILogger<MessageService> logger,
             IEmailTemplateService emailTemplateService,
             IUrlService urlService,
-            IdProviderConfig idProviderConfig,
+            PasswordlessLoginOptions passwordlessLoginOptions,
             IApplicationService applicationService
             )
         {
             _logger = logger;
             _emailTemplateService = emailTemplateService;
             _urlService = urlService;
-            _idProviderConfig = idProviderConfig;
+            _passwordlessLoginOptions = passwordlessLoginOptions;
             _applicationService = applicationService;
         }
 
@@ -81,7 +81,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
             var link = _urlService.GetCancelChangeLinkUrl(longCode, true);
             var fields = GetCustomFields(applicationId);
             fields["old_email_address"] = sendTo;
-            fields["link_validity_hours"] = _idProviderConfig.CancelEmailChangeTimeWindowHours.ToString();
+            fields["link_validity_hours"] = _passwordlessLoginOptions.CancelEmailChangeTimeWindowHours.ToString();
             fields["cancel_email_change_link"] = link;
             return await _emailTemplateService.SendEmailAsync(PasswordlessLoginConstants.EmailTemplates.EmailChangedNotice, sendTo, fields);
         }
@@ -172,7 +172,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
 
         protected IDictionary<string, string> GetCustomFields(string applicationId)
         {
-            var fields = new Dictionary<string, string>(_idProviderConfig.CustomProperties ?? new Dictionary<string, string>() { });
+            var fields = new Dictionary<string, string>(_passwordlessLoginOptions.CustomProperties ?? new Dictionary<string, string>() { });
             if (applicationId != null)
             {
                 var clientProperties = _applicationService.GetApplicationProperties(applicationId);

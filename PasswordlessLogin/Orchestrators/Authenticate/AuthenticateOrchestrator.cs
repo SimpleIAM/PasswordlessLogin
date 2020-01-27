@@ -38,7 +38,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
         private readonly IMessageService _messageService;
         private readonly IUserStore _userStore;
         private readonly IPasswordService _passwordService;
-        private readonly IdProviderConfig _config;
+        private readonly PasswordlessLoginOptions _options;
         private readonly IUrlService _urlService;
         private readonly HttpContext _httpContext;
         private readonly IAuthorizedDeviceStore _authorizedDeviceStore;
@@ -51,7 +51,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             IOneTimeCodeService oneTimeCodeService,
             IMessageService messageService,
             IUserStore userStore,
-            IdProviderConfig config,
+            PasswordlessLoginOptions passwordlessLoginOptions,
             IPasswordService passwordService,
             IUrlService urlService,
             IHttpContextAccessor httpContextAccessor,
@@ -65,7 +65,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             _userStore = userStore;
             _messageService = messageService;
             _passwordService = passwordService;
-            _config = config;
+            _options = passwordlessLoginOptions;
             _urlService = urlService;
             _httpContext = httpContextAccessor.HttpContext;
             _authorizedDeviceStore = authorizedDeviceStore;
@@ -152,7 +152,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             var createStatus = await CreateAccountAsync(model.Email, model.Claims, model.Password);
             if (createStatus.IsOk)
             {
-                linkValidity = TimeSpan.FromMinutes(_config.ConfirmAccountLinkValidityMinutes);
+                linkValidity = TimeSpan.FromMinutes(_options.ConfirmAccountLinkValidityMinutes);
             }
             else
             {
@@ -164,13 +164,13 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                     return WebStatus.Error("Email address is temporarily reserved.", HttpStatusCode.BadRequest);
                 }
                 _logger.LogDebug("Existing user found.");
-                if (!_config.ResendWelcomeEmailOnReRegister)
+                if (!_options.ResendWelcomeEmailOnReRegister)
                 {
                     return WebStatus.Error("Already registered! Please go to sign in and request a one time code if you don't have a password.", 
                         HttpStatusCode.Conflict);
                 }
                 // If re-sending the welcome email, only make the link valid for a short time
-                linkValidity = TimeSpan.FromMinutes(_config.OneTimeCodeValidityMinutes);
+                linkValidity = TimeSpan.FromMinutes(_options.OneTimeCodeValidityMinutes);
             }
 
             var nextUrl = !string.IsNullOrEmpty(model.NextUrl) ? model.NextUrl : _urlService.GetDefaultRedirectUrl();
@@ -243,7 +243,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
 
             var oneTimeCodeResponse = await _oneTimeCodeService.GetOneTimeCodeAsync(
                 user.Email, 
-                TimeSpan.FromMinutes(_config.OneTimeCodeValidityMinutes), 
+                TimeSpan.FromMinutes(_options.OneTimeCodeValidityMinutes), 
                 model.NextUrl);
 
             switch (oneTimeCodeResponse.Status.StatusCode)
@@ -403,7 +403,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             var nextUrl = SendToSetPasswordFirst(!string.IsNullOrEmpty(model.NextUrl) ? model.NextUrl : _urlService.GetDefaultRedirectUrl());
             var oneTimeCodeResponse = await _oneTimeCodeService.GetOneTimeCodeAsync(
                 model.Username, 
-                TimeSpan.FromMinutes(_config.OneTimeCodeValidityMinutes), 
+                TimeSpan.FromMinutes(_options.OneTimeCodeValidityMinutes), 
                 nextUrl);
             if (oneTimeCodeResponse.IsOk)
             {
@@ -429,7 +429,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             if (clientNonce != null)
             {
                 _logger.LogDebug("Saving client nonce in a browser cookie");
-                _httpContext.Response.SetClientNonce(clientNonce, _config.OneTimeCodeValidityMinutes);
+                _httpContext.Response.SetClientNonce(clientNonce, _options.OneTimeCodeValidityMinutes);
             }
             if (status.IsOk)
             {
@@ -515,7 +515,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                     _logger.LogDebug("User does have other devices that are authorized");
                     // todo: if SecurityLevel == High OR first thing was a password, do a partial sign in and prompt for second thing
 
-                    if ((method == SignInMethod.OneTimeCode || method == SignInMethod.Link) && _config.NonceRequiredOnUntrustedBrowser && nonceWasValid == false)
+                    if ((method == SignInMethod.OneTimeCode || method == SignInMethod.Link) && _options.NonceRequiredOnUntrustedBrowser && nonceWasValid == false)
                     {
                         _logger.LogWarning("Client nonce was missing or invalid. Perhaps the one time code has " +
                             "been intercepted and an unathorized party is trying to user it. Authentication blocked.");
@@ -533,7 +533,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 }
             }
 
-            if (_config.AutoTrustBrowsers && addTrustForThisBrowser)
+            if (_options.AutoTrustBrowsers && addTrustForThisBrowser)
             {
                 var description = _httpContext.Request.Headers["User-Agent"];
                 var trustBrowserResponse = await AuthorizeDeviceAsync(user.SubjectId, description);
@@ -550,13 +550,13 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             };
             if (staySignedIn == true || (method == SignInMethod.Link && deviceIsAuthorized))
             {
-                _logger.LogTrace("Using maximum session length of {0} minutes", _config.MaxSessionLengthMinutes);
+                _logger.LogTrace("Using maximum session length of {0} minutes", _options.MaxSessionLengthMinutes);
                 authProps.IsPersistent = true;
-                authProps.ExpiresUtc = DateTimeOffset.UtcNow.Add(TimeSpan.FromMinutes(_config.MaxSessionLengthMinutes));
+                authProps.ExpiresUtc = DateTimeOffset.UtcNow.Add(TimeSpan.FromMinutes(_options.MaxSessionLengthMinutes));
             }
             else
             {
-                _logger.LogTrace("Using default session length of {0} minutes", _config.DefaultSessionLengthMinutes);
+                _logger.LogTrace("Using default session length of {0} minutes", _options.DefaultSessionLengthMinutes);
             }
 
             if(method == SignInMethod.Link || method == SignInMethod.OneTimeCode)

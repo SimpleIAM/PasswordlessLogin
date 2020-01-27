@@ -3,31 +3,26 @@
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
-using SimpleIAM.PasswordlessLogin.Configuration;
 using SimpleIAM.PasswordlessLogin.Entities;
 
-namespace SimpleIAM.PasswordlessLogin.Migrations
+namespace SimpleIAM.PasswordlessLogin.SqlServer
 {
     public class PasswordlessLoginDbContextFactory : IDesignTimeDbContextFactory<PasswordlessLoginDbContext>
     {
         public PasswordlessLoginDbContext CreateDbContext(string[] args)
         {
             var optionsBuilder = new DbContextOptionsBuilder<PasswordlessLoginDbContext>();
+            var config = new SqlServerPasswordlessDatabaseConfig();
 
-            var connection = "(none)";
-            var schema = "auth";
+            var connection = "(none)";            
 
             optionsBuilder.UseSqlServer(connection, b =>
             {
-                b.MigrationsAssembly("SimpleIAM.PasswordlessLogin.Migrations");
-                b.MigrationsHistoryTable("__PasswordlessMigrationsHistory", schema);
+                b.MigrationsAssembly("SimpleIAM.PasswordlessLogin.SqlServer");
+                b.MigrationsHistoryTable("__PasswordlessMigrationsHistory", config.Schema);
             });
-
-            var config = new PasswordlessDatabaseConfig()
-            { 
-                Schema = schema
-            };
-            return new PasswordlessLoginDbContext(optionsBuilder.Options, config);
+            
+            return new SqlServerPasswordlessLoginDbContext(optionsBuilder.Options, config);
         }
     }
 }

@@ -111,7 +111,7 @@ GO
 IF NOT EXISTS(SELECT * FROM [auth].[__PasswordlessMigrationsHistory] WHERE [MigrationId] = N'20180815171813_v0.3.0')
 BEGIN
     INSERT INTO [auth].[__PasswordlessMigrationsHistory] ([MigrationId], [ProductVersion])
-    VALUES (N'20180815171813_v0.3.0', N'2.1.4-rtm-31024');
+    VALUES (N'20180815171813_v0.3.0', N'3.1.1');
 END;
 
 GO
@@ -133,7 +133,7 @@ GO
 IF NOT EXISTS(SELECT * FROM [auth].[__PasswordlessMigrationsHistory] WHERE [MigrationId] = N'20181214010145_v0.4.0')
 BEGIN
     INSERT INTO [auth].[__PasswordlessMigrationsHistory] ([MigrationId], [ProductVersion])
-    VALUES (N'20181214010145_v0.4.0', N'2.1.4-rtm-31024');
+    VALUES (N'20181214010145_v0.4.0', N'3.1.1');
 END;
 
 GO
@@ -161,7 +161,7 @@ GO
 IF NOT EXISTS(SELECT * FROM [auth].[__PasswordlessMigrationsHistory] WHERE [MigrationId] = N'20190424185144_v0.5.0')
 BEGIN
     INSERT INTO [auth].[__PasswordlessMigrationsHistory] ([MigrationId], [ProductVersion])
-    VALUES (N'20190424185144_v0.5.0', N'2.1.4-rtm-31024');
+    VALUES (N'20190424185144_v0.5.0', N'3.1.1');
 END;
 
 GO

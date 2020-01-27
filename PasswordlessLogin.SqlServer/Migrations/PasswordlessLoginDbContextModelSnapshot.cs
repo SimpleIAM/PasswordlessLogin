@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SimpleIAM.PasswordlessLogin.Entities;
 
-namespace SimpleIAM.PasswordlessLogin.Migrations.Migrations
+namespace SimpleIAM.PasswordlessLogin.SqlServer.Migrations
 {
     [DbContext(typeof(PasswordlessLoginDbContext))]
     partial class PasswordlessLoginDbContextModelSnapshot : ModelSnapshot

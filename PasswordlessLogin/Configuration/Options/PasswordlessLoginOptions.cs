@@ -5,13 +5,14 @@ using System.Collections.Generic;
 
 namespace SimpleIAM.PasswordlessLogin.Configuration
 {
-    public class IdProviderConfig
+    public class PasswordlessLoginOptions
     {
-        public IdProviderConfig()
+        public PasswordlessLoginOptions()
         {
-            Urls = new UrlConfig();
+            Urls = new UrlOptions();
         }
 
+        public string EmailFrom { get; set; } = "from.address@not.configured";
         public string DisplayName { get; set; } = PasswordlessLoginConstants.DefaultDisplayName;
         public int DefaultSessionLengthMinutes { get; set; } = PasswordlessLoginConstants.Security.DefaultDefaultSessionLengthMinutes;
         public int MaxSessionLengthMinutes { get; set; } = PasswordlessLoginConstants.Security.DefaultMaxSessionLengthMinutes;
@@ -28,7 +29,7 @@ namespace SimpleIAM.PasswordlessLogin.Configuration
         public bool ResendWelcomeEmailOnReRegister { get; set; } = true;
         public bool AutoTrustBrowsers { get; set; } = true;
         public bool NonceRequiredOnUntrustedBrowser { get; set; } = true;
-        public UrlConfig Urls { get; set; }
+        public UrlOptions Urls { get; set; }
         public IDictionary<string, string> CustomProperties { get; set; }
     }
 }

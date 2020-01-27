@@ -17,17 +17,17 @@ namespace SimpleIAM.PasswordlessLogin.Services.OTC
     {
         private readonly ILogger _logger;
         private readonly IOneTimeCodeStore _oneTimeCodeStore;
-        private readonly IdProviderConfig _config;
+        private readonly PasswordlessLoginOptions _options;
 
         public OneTimeCodeService(
             ILogger<OneTimeCodeService> logger,
             IOneTimeCodeStore oneTimeCodeStore,
-            IdProviderConfig config
+            PasswordlessLoginOptions passwordlessLoginOptions
             )
         {
             _logger = logger;
             _oneTimeCodeStore = oneTimeCodeStore;
-            _config = config;
+            _options = passwordlessLoginOptions;
         }
 
         public async Task<Response<CheckOneTimeCodeResult, CheckOneTimeCodeStatus>> CheckOneTimeCodeAsync(string longCode, string clientNonce)
@@ -132,7 +132,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.OTC
 
             if (otc != null && 
                 otc.ExpiresUTC > DateTime.UtcNow.AddMinutes(PasswordlessLoginConstants.OneTimeCode.IssueNewCodeIfValidityLessThanXMinutes) && 
-                otc.ExpiresUTC < DateTime.UtcNow.AddMinutes(_config.OneTimeCodeValidityMinutes))
+                otc.ExpiresUTC < DateTime.UtcNow.AddMinutes(_options.OneTimeCodeValidityMinutes))
             {
                 _logger.LogDebug("A once time code exists that has enough time left to use");
                 // existing code has at least X minutes of validity remaining, so resend it

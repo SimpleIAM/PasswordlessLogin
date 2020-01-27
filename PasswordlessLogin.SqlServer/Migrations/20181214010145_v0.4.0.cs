@@ -2,7 +2,7 @@
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 
-namespace SimpleIAM.PasswordlessLogin.Migrations.Migrations
+namespace SimpleIAM.PasswordlessLogin.SqlServer.Migrations
 {
     public partial class v040 : Migration
     {

@@ -27,7 +27,7 @@ namespace SimpleIAM.PasswordlessLogin.API
         private readonly UserOrchestrator _userOrchestrator;
         private readonly IPasswordService _passwordService;
         private readonly IMessageService _messageService;
-        private readonly IdProviderConfig _idProviderConfig;
+        private readonly PasswordlessLoginOptions _passwordlessLoginOptions;
         private readonly IApplicationService _applicationService;
 
         public AccountApiController(
@@ -35,7 +35,7 @@ namespace SimpleIAM.PasswordlessLogin.API
             UserOrchestrator userOrchestrator,
             IPasswordService passwordService,
             IMessageService messageService,
-            IdProviderConfig idProviderConfig,
+            PasswordlessLoginOptions passwordlessLoginOptions,
             IApplicationService applicationService
             )
         {
@@ -43,7 +43,7 @@ namespace SimpleIAM.PasswordlessLogin.API
             _userOrchestrator = userOrchestrator;
             _passwordService = passwordService;
             _messageService = messageService;
-            _idProviderConfig = idProviderConfig;
+            _passwordlessLoginOptions = passwordlessLoginOptions;
             _applicationService = applicationService;
         }
 
@@ -221,7 +221,7 @@ namespace SimpleIAM.PasswordlessLogin.API
         private bool UserSignedInRecentlyEnoughToChangeSecuritySettings()
         {
             // Must be less than X minutes since the user signed in
-            return User.GetAuthTimeUTC().AddMinutes(_idProviderConfig.ChangeSecuritySettingsTimeWindowMinutes) > DateTime.UtcNow;
+            return User.GetAuthTimeUTC().AddMinutes(_passwordlessLoginOptions.ChangeSecuritySettingsTimeWindowMinutes) > DateTime.UtcNow;
         }
 
         private JsonResult Ok(string message = null)

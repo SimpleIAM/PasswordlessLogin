@@ -15,12 +15,12 @@ namespace SimpleIAM.PasswordlessLogin.Services.Email
     public class SmtpEmailService : IEmailService
     {
         private readonly ILogger _logger;
-        private readonly SmtpConfig _smtpConfig;
+        private readonly SmtpOptions _smtpOptions;
 
-        public SmtpEmailService(ILogger<SmtpEmailService> logger, SmtpConfig smtpConfig)
+        public SmtpEmailService(ILogger<SmtpEmailService> logger, SmtpOptions smtpOptions)
         {
             _logger = logger;
-            _smtpConfig = smtpConfig;
+            _smtpOptions = smtpOptions;
         }
 
         public async Task<Status> SendEmailAsync(string from, string to, string subject, string body)
@@ -54,10 +54,10 @@ namespace SimpleIAM.PasswordlessLogin.Services.Email
             {
                 try
                 {
-                    _logger.LogDebug("Connecting to {0}:{1} ({2})", _smtpConfig.Server, _smtpConfig.Port, _smtpConfig.UseSsl ? "ssl" : "not ssl");
-                    await client.ConnectAsync(_smtpConfig.Server, _smtpConfig.Port, _smtpConfig.UseSsl);
+                    _logger.LogDebug("Connecting to {0}:{1} ({2})", _smtpOptions.Server, _smtpOptions.Port, _smtpOptions.UseSsl ? "ssl" : "not ssl");
+                    await client.ConnectAsync(_smtpOptions.Server, _smtpOptions.Port, _smtpOptions.UseSsl);
                     _logger.LogDebug("Authenticating with SMTP server");
-                    await client.AuthenticateAsync(_smtpConfig.Username, _smtpConfig.Password);
+                    await client.AuthenticateAsync(_smtpOptions.Username, _smtpOptions.Password);
                     _logger.LogDebug("Sending message");
                     await client.SendAsync(message);
                 }

@@ -34,136 +34,21 @@ namespace Microsoft.Extensions.DependencyInjection
 {
     public static class PasswordlessLoginServiceCollectionExtensions
     {
-        public static IServiceCollection AddPasswordlessLogin(this IServiceCollection services, IConfiguration configuration, IWebHostEnvironment env)
+        public static PasswordlessLoginBuilder AddPasswordlessLogin(this IServiceCollection services, Action<PasswordlessLoginOptions> optionsAction = null)
         {
-            services.AddPasswordlessLoginWithoutAuthentication(configuration, env);
+            var passwordlessLoginOptions = new PasswordlessLoginOptions();
+            optionsAction?.Invoke(passwordlessLoginOptions);
 
-            var idProviderConfig = new IdProviderConfig();
-            configuration.Bind(PasswordlessLoginConstants.ConfigurationSections.IdProvider, idProviderConfig);
-
-            services
-                .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-                .AddCookie(options => {
-                    options.ExpireTimeSpan = TimeSpan.FromMinutes(idProviderConfig.DefaultSessionLengthMinutes);
-                    options.ConfigurePasswordlessAuthenticationOptions(idProviderConfig.Urls);
-                });
-
-            return services;
+            var builder = new PasswordlessLoginBuilder(services, passwordlessLoginOptions);
+            return builder.AddPasswordlessLogin();
         }
 
-        public static void ConfigurePasswordlessAuthenticationOptions(this CookieAuthenticationOptions options, UrlConfig urls)
+        public static PasswordlessLoginBuilder AddPasswordlessLogin(this IServiceCollection services, IConfiguration configuration)
         {
-            options.LoginPath = urls.SignIn;
-            options.LogoutPath = urls.SignOut;
-            options.SlidingExpiration = true;
-            options.ReturnUrlParameter = "returnUrl";
-
-            options.Cookie.IsEssential = true;
-            options.Cookie.HttpOnly = true;
-            options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-            options.Events.OnRedirectToAccessDenied = context =>
-            {
-                // Don't redirect to another page
-                context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
-                return Task.FromResult(0);
-            };
-            if (urls.ApiBase != null)
-            {
-                options.Events.OnRedirectToLogin = options.Events.OnRedirectToLogin.ReturnStatusCode(HttpStatusCode.Unauthorized, urls.ApiBase);
-            }
-            if (urls.CustomApiBase != null)
-            {
-                options.Events.OnRedirectToLogin = options.Events.OnRedirectToLogin.ReturnStatusCode(HttpStatusCode.Unauthorized, urls.CustomApiBase);
-            }
+            var passwordlessLoginOptions = new PasswordlessLoginOptions();
+            configuration.Bind(passwordlessLoginOptions);
+            var builder = new PasswordlessLoginBuilder(services, passwordlessLoginOptions);
+            return builder.AddPasswordlessLogin();
         }
-
-        public static Func<RedirectContext<CookieAuthenticationOptions>, Task> ReturnStatusCode(this Func<RedirectContext<CookieAuthenticationOptions>, Task> existingRedirector, HttpStatusCode returnStatusCode, string forPath = null) => context =>
-        {
-            if (forPath == null || context.Request.Path.StartsWithSegments(forPath))
-            {
-                context.Response.StatusCode = (int)returnStatusCode;
-                return Task.CompletedTask;
-            }
-            return existingRedirector(context);
-        };
-
-        public static IServiceCollection AddPasswordlessLoginWithoutAuthentication(this IServiceCollection services, IConfiguration configuration, IWebHostEnvironment env)
-        {
-            if (services == null)
-            {
-                throw new ArgumentNullException(nameof(services));
-            }
-            if (configuration == null)
-            {
-                throw new ArgumentNullException(nameof(configuration));
-            }
-            if (env == null)
-            {
-                throw new ArgumentNullException(nameof(env));
-            }
-
-            var idProviderConfig = new IdProviderConfig();
-            configuration.Bind(PasswordlessLoginConstants.ConfigurationSections.IdProvider, idProviderConfig);
-            services.AddSingleton(idProviderConfig);
-
-            var databaseConfig = new PasswordlessDatabaseConfig();
-            configuration.Bind(PasswordlessLoginConstants.ConfigurationSections.PasswordlessDatabase, databaseConfig);
-            services.AddSingleton(databaseConfig);
-
-            var connection = configuration.GetConnectionString(PasswordlessLoginConstants.ConfigurationSections.ConnectionStringName);
-
-            services.AddDbContext<PasswordlessLoginDbContext>(options => options.UseSqlServer(connection));
-            services.TryAddTransient<IEventNotificationService, DefaultEventNotificationService>();
-            services.TryAddTransient<IOneTimeCodeStore, DbOneTimeCodeStore>();
-            services.TryAddTransient<IOneTimeCodeService, OneTimeCodeService>();
-            services.TryAddTransient<IUserStore, DbUserStore>();
-            services.TryAddTransient<IAuthorizedDeviceStore, DbAuthorizedDeviceStore>();
-            services.TryAddTransient<IMessageService, MessageService>();
-            services.TryAddTransient<ISignInService, PasswordlessSignInService>();
-            services.TryAddTransient<IApplicationService, NonexistantApplicationService>();
-
-            var smtpConfig = new SmtpConfig();
-            configuration.Bind(PasswordlessLoginConstants.ConfigurationSections.Smtp, smtpConfig);
-            services.TryAddSingleton(smtpConfig);
-            services.TryAddTransient<IEmailService, SmtpEmailService>();
-
-            IFileProvider templateFileProvider = new EmbeddedFileProvider(
-                typeof(PasswordlessLoginServiceCollectionExtensions).GetTypeInfo().Assembly,
-                $"SimpleIAM.PasswordlessLogin.{PasswordlessLoginConstants.EmailTemplateFolder}");
-            var emailTemplateOverrideFolder = Path.Combine(env.ContentRootPath, PasswordlessLoginConstants.EmailTemplateFolder);
-            if (Directory.Exists(emailTemplateOverrideFolder))
-            {
-                templateFileProvider = new CompositeFileProvider(
-                    new PhysicalFileProvider(emailTemplateOverrideFolder),
-                    templateFileProvider
-                );
-            }
-            var defaultFromAddress = configuration.GetValue<string>(PasswordlessLoginConstants.ConfigurationSections.MailFrom) ?? "from.address@notconfigured.yet";
-            var emailTemplates = EmailTemplateProcessor.GetTemplatesFromMailConfig(defaultFromAddress, templateFileProvider);
-            services.TryAddSingleton(emailTemplates);
-            services.TryAddTransient<IEmailTemplateService, EmailTemplateService>();
-
-            services.TryAddSingleton<IPasswordHashService>(
-                new AspNetIdentityPasswordHashService(PasswordlessLoginConstants.Security.DefaultPbkdf2Iterations));
-            services.TryAddTransient<IPasswordHashStore, DbPasswordHashStore>();
-            services.TryAddTransient<IPasswordService, DefaultPasswordService>();
-
-            services.TryAddTransient<AuthenticateOrchestrator>();
-            services.TryAddTransient<UserOrchestrator>();
-
-            services.TryAddSingleton<IHttpContextAccessor, HttpContextAccessor>();
-
-            // IUrlHelper
-            services.TryAddSingleton<IActionContextAccessor, ActionContextAccessor>();
-            services.TryAddScoped<IUrlHelper>(x => {
-                var actionContext = x.GetRequiredService<IActionContextAccessor>().ActionContext;
-                var factory = x.GetRequiredService<IUrlHelperFactory>();
-                return factory.GetUrlHelper(actionContext);
-            });
-
-            services.TryAddScoped<IUrlService, PasswordlessUrlService>();
-
-            return services;
-        }        
     }
 }

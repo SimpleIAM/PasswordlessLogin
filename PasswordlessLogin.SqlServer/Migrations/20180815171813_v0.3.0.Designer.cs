@@ -7,18 +7,18 @@ using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SimpleIAM.PasswordlessLogin.Entities;
 
-namespace SimpleIAM.PasswordlessLogin.Migrations.Migrations
+namespace SimpleIAM.PasswordlessLogin.SqlServer.Migrations
 {
     [DbContext(typeof(PasswordlessLoginDbContext))]
-    [Migration("20181214010145_v0.4.0")]
-    partial class v040
+    [Migration("20180815171813_v0.3.0")]
+    partial class v030
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("auth")
-                .HasAnnotation("ProductVersion", "2.1.4-rtm-31024")
+                .HasAnnotation("ProductVersion", "2.1.1-rtm-30846")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128)
                 .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
 
@@ -42,30 +42,6 @@ namespace SimpleIAM.PasswordlessLogin.Migrations.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("AuthorizedDevices");
-                });
-
-            modelBuilder.Entity("SimpleIAM.PasswordlessLogin.Entities.EventLog", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
-
-                    b.Property<string>("Details")
-                        .HasMaxLength(255);
-
-                    b.Property<string>("EventType")
-                        .IsRequired()
-                        .HasMaxLength(30);
-
-                    b.Property<DateTime>("Time");
-
-                    b.Property<string>("Username")
-                        .IsRequired()
-                        .HasMaxLength(254);
-
-                    b.HasKey("Id");
-
-                    b.ToTable("EventLog");
                 });
 
             modelBuilder.Entity("SimpleIAM.PasswordlessLogin.Entities.OneTimeCode", b =>

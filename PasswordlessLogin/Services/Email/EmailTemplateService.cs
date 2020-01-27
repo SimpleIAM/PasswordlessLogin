@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 using Microsoft.Extensions.Logging;
+using SimpleIAM.PasswordlessLogin.Configuration;
 using StandardResponse;
 using System;
 using System.Collections.Generic;
@@ -15,12 +16,18 @@ namespace SimpleIAM.PasswordlessLogin.Services.Email
         private readonly ILogger _logger;
         private readonly IEmailService _emailService;
         private readonly EmailTemplates _templates;
+        private readonly PasswordlessLoginOptions _options;
 
-        public EmailTemplateService(ILogger<EmailTemplateService> logger, IEmailService emailService, EmailTemplates templates)
+        public EmailTemplateService(
+            ILogger<EmailTemplateService> logger, 
+            IEmailService emailService, 
+            EmailTemplates templates,
+            PasswordlessLoginOptions options)
         {
             _logger = logger;
             _templates = templates;
             _emailService = emailService;
+            _options = options;
         }
 
         public async Task<Status> SendEmailAsync(string templateName, string to, IDictionary<string, string> fields)
@@ -28,7 +35,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Email
             if (_templates.TryGetValue(templateName, out EmailTemplate template))
             {
                 _logger.LogDebug("Merging data into email template: ", template);
-                var from = new StringBuilder(template.From);
+                var from = new StringBuilder(_options.EmailFrom);
                 var subject = new StringBuilder(template.Subject);
                 var body = new StringBuilder(template.Body);
                 if(fields != null)

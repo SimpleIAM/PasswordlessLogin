@@ -8,12 +8,9 @@ namespace SimpleIAM.PasswordlessLogin.Entities
 {
     public class PasswordlessLoginDbContext : DbContext
     {
-        private readonly string _schema;
-
-        public PasswordlessLoginDbContext(DbContextOptions<PasswordlessLoginDbContext> options, PasswordlessDatabaseConfig config)
+        public PasswordlessLoginDbContext(DbContextOptions<PasswordlessLoginDbContext> options)
             : base(options)
         {
-            _schema = config?.Schema ?? "auth";
         }
 
         public DbSet<User> Users { get; set; }
@@ -25,8 +22,6 @@ namespace SimpleIAM.PasswordlessLogin.Entities
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.HasDefaultSchema(_schema);
-
             modelBuilder.Entity<User>(user =>
             {
                 user.HasKey(x => x.SubjectId);
