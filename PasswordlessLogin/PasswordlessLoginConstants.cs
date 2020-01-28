@@ -44,11 +44,11 @@ namespace SimpleIAM.PasswordlessLogin
             public const int LongCodeMaxLength = 36;
         }
 
-        public static class RecognizedDevices
+        public static class TrustedBrowser
         {
             public const string ClientNonceCookieName = "ClientNonce";
-            public const string DeviceIdCookieName = "DeviceId";
-            public const int DeviceIdCookieValidityDays = 3650;
+            public const string BrowserIdCookieName = "BrowserId";
+            public const int BrowserIdCookieValidityDays = 7300;
         }
 
         public static class Security

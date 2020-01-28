@@ -17,7 +17,7 @@ namespace SimpleIAM.PasswordlessLogin.Entities
         public DbSet<UserClaim> Claims { get; set; }
         public DbSet<OneTimeCode> OneTimeCodes { get; set; }
         public DbSet<PasswordHash> PasswordHashes { get; set; }
-        public DbSet<AuthorizedDevice> AuthorizedDevices { get; set; }
+        public DbSet<TrustedBrowser> TrustedBrowsers { get; set; }
         public DbSet<EventLog> EventLog { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -68,14 +68,14 @@ namespace SimpleIAM.PasswordlessLogin.Entities
                 ph.Property(x => x.FailedAttemptCount).IsRequired();
             });
 
-            modelBuilder.Entity<AuthorizedDevice>(ad =>
+            modelBuilder.Entity<TrustedBrowser>(tb =>
             {
-                ad.HasKey(x => x.Id);
+                tb.HasKey(x => x.Id);
 
-                ad.Property(x => x.SubjectId).HasMaxLength(36).IsRequired();
-                ad.Property(x => x.DeviceIdHash).IsRequired();
-                ad.Property(x => x.Description);
-                ad.Property(x => x.AddedOn).IsRequired();
+                tb.Property(x => x.SubjectId).HasMaxLength(36).IsRequired();
+                tb.Property(x => x.BrowserIdHash).IsRequired();
+                tb.Property(x => x.Description);
+                tb.Property(x => x.AddedOn).IsRequired();
             });
 
             modelBuilder.Entity<EventLog>(el =>

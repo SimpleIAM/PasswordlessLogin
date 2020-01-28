@@ -5,11 +5,11 @@ using System;
 
 namespace SimpleIAM.PasswordlessLogin.Entities
 {
-    public class AuthorizedDevice
+    public class TrustedBrowser
     {
         public int Id { get; set; }
         public string SubjectId { get; set; }
-        public string DeviceIdHash { get; set; }
+        public string BrowserIdHash { get; set; }
         public string Description { get; set; }
         public DateTime AddedOn { get; set; }
     }

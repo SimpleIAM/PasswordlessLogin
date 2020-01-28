@@ -41,7 +41,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
         private readonly PasswordlessLoginOptions _options;
         private readonly IUrlService _urlService;
         private readonly HttpContext _httpContext;
-        private readonly IAuthorizedDeviceStore _authorizedDeviceStore;
+        private readonly ITrustedBrowserStore _trustedBrowserStore;
         private readonly ISignInService _signInService;
         private readonly IApplicationService _applicationService;
 
@@ -55,7 +55,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             IPasswordService passwordService,
             IUrlService urlService,
             IHttpContextAccessor httpContextAccessor,
-            IAuthorizedDeviceStore authorizedDeviceStore,
+            ITrustedBrowserStore trustedBrowserStore,
             ISignInService signInService,
             IApplicationService applicationService)
         {
@@ -68,7 +68,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             _options = passwordlessLoginOptions;
             _urlService = urlService;
             _httpContext = httpContextAccessor.HttpContext;
-            _authorizedDeviceStore = authorizedDeviceStore;
+            _trustedBrowserStore = trustedBrowserStore;
             _signInService = signInService;
             _applicationService = applicationService;
         }
@@ -448,19 +448,19 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             /*
             Do they have a partial sign in, and this was the second credential (code + password) or (password + code) [= 2 of 3]
                 Yes, skip to SIGN IN
-            Is this an authorized device? [= 2 of 3]
+            Is this an trusted browser? [= 2 of 3]
                 Yes, skip to SIGN IN
-            Do they have NO authorized devices? [= new account or someone who deleted all authorized devices, 1 of 1|2]
+            Do they have NO trusted browsers? [= new account or someone who deleted all trusted browsers, 1 of 1|2]
                 Yes, skip to SIGN IN
-            Is 2FA enabled? (they have a password set and have chosen to require it when authorizing a new device)
+            Is 2FA enabled? (they have a password set and have chosen to require it when trusting a new browser)
                 Yes. Do partial sign in and prompt for the relevant second factor (automatically mailed code or password)
             Used password to sign in? [= 1 of 2]
                 Yes, skip to SIGN IN
             NonceWasValid [= 1 of 1|2]
                 No, back to  sign in screen [prevents someone who passively observing code in transit/storage from using it undetected]
             (local) SIGN IN
-            Is this a new device?
-                Yes, redirect to AUTHORIZE NEW DEVICE
+            Is this a new browser?
+                Yes, redirect to TRUST NEW BROWSER
             Is their account set to prompt them to choose a password
                 Yes, redirect to SET PASSWORD
             Is their account set to prompt them to enable 2FA?
@@ -472,7 +472,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             FULL SIGN IN AND REDIRECT back to app (or to default post login page, apps page if none)
 
             */
-            //do 2FA and figure out new device, etc here
+            //do 2FA and figure out new browser, etc here
 
             var userResponse = await _userStore.GetUserByUsernameAsync(username);
             if (userResponse.HasError)
@@ -484,8 +484,8 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
 
             var user = userResponse.Result;
             var addTrustForThisBrowser = false;
-            var deviceIsAuthorized = await _authorizedDeviceStore
-                .GetAuthorizedDeviceAsync(user.SubjectId, _httpContext.Request.GetDeviceId()) != null;
+            var browserIsTrusted = await _trustedBrowserStore
+                .GetTrustedBrowserAsync(user.SubjectId, _httpContext.Request.GetBrowserId()) != null;
 
             var authMethodReference = (method == SignInMethod.Password) ? "pwd" : "otp";
             if (_httpContext.User.Identity.IsAuthenticated && _httpContext.User.GetSubjectId() == user.SubjectId)
@@ -496,7 +496,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                     // If already signed in and now the user has authenticated with another 
                     // type of credential, this is now a multi-factor session
                     authMethodReference = "mfa";
-                    if (!deviceIsAuthorized)
+                    if (!browserIsTrusted)
                     {
                         _logger.LogInformation("Trusting browser because {0} performed multi-factor authentication", username);
                         addTrustForThisBrowser = true;
@@ -504,15 +504,15 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 }
             }
 
-            var anyAuthorizedDevices = true;
-            if (!deviceIsAuthorized && !addTrustForThisBrowser)
+            var anyTrustedBrowsers = true;
+            if (!browserIsTrusted && !addTrustForThisBrowser)
             {
-                _logger.LogDebug("Device user is signing in from is not authorized");
-                var trustedDevicesResponse = await _authorizedDeviceStore.GetAuthorizedDevicesAsync(user.SubjectId);
-                anyAuthorizedDevices = trustedDevicesResponse.Result?.Any() ?? false;
-                if (anyAuthorizedDevices)
+                _logger.LogDebug("Browser user is signing in from is not trusted.");
+                var trustedBrowsersResponse = await _trustedBrowserStore.GetTrustedBrowserAsync(user.SubjectId);
+                anyTrustedBrowsers = trustedBrowsersResponse.Result?.Any() ?? false;
+                if (anyTrustedBrowsers)
                 {
-                    _logger.LogDebug("User does have other devices that are authorized");
+                    _logger.LogDebug("User has other browsers that are trusted.");
                     // todo: if SecurityLevel == High OR first thing was a password, do a partial sign in and prompt for second thing
 
                     if ((method == SignInMethod.OneTimeCode || method == SignInMethod.Link) && _options.NonceRequiredOnUntrustedBrowser && nonceWasValid == false)
@@ -529,18 +529,18 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                     addTrustForThisBrowser = true;
                 }
                 else { 
-                    _logger.LogDebug("User does not have any devices that are authorized");
+                    _logger.LogDebug("User does not have any browsers that are trusted.");
                 }
             }
 
             if (_options.AutoTrustBrowsers && addTrustForThisBrowser)
             {
                 var description = _httpContext.Request.Headers["User-Agent"];
-                var trustBrowserResponse = await AuthorizeDeviceAsync(user.SubjectId, description);
+                var trustBrowserResponse = await TrustBrowserAsync(user.SubjectId, description);
                 if (trustBrowserResponse.IsOk)
                 {
-                    deviceIsAuthorized = true;
-                    anyAuthorizedDevices = true;
+                    browserIsTrusted = true;
+                    anyTrustedBrowsers = true;
                 }
             }
 
@@ -548,7 +548,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 AllowRefresh = true,
                 IsPersistent = false,
             };
-            if (staySignedIn == true || (method == SignInMethod.Link && deviceIsAuthorized))
+            if (staySignedIn == true || (method == SignInMethod.Link && browserIsTrusted))
             {
                 _logger.LogTrace("Using maximum session length of {0} minutes", _options.MaxSessionLengthMinutes);
                 authProps.IsPersistent = true;
@@ -571,39 +571,39 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
 
             _logger.LogDebug("Signing user in: {0}", user.Email);
             _logger.LogTrace("SubjectId: {0}", user.SubjectId);            
-            await _signInService.SignInAsync(user.SubjectId, user.Email, authProps, authMethodReference, deviceIsAuthorized);
+            await _signInService.SignInAsync(user.SubjectId, user.Email, authProps, authMethodReference, browserIsTrusted);
 
             nextUrl = ValidatedNextUrl(nextUrl);
             _logger.LogDebug("Redirecting user to: {0}", nextUrl);
             return WebStatus.Redirect(nextUrl);
         }
 
-        public async Task<Response<string, WebStatus>> AuthorizeDeviceAsync(string subjectId, string deviceDescription = null)
+        public async Task<Response<string, WebStatus>> TrustBrowserAsync(string subjectId, string browserDescription = null)
         {
-            _logger.LogDebug("Registering current device as a trusted device.");
-            var deviceId = _httpContext.Request.GetDeviceId();
-            // todo: Review. Accepting an existing device id opens an attack vector for pre-installing
-            // cookies on a device or via a malicious browser extension. May want to have a per-user
-            // device id that is stored in a DeviceId_[UniqueUserSuffix] cookie
-            if (deviceId == null || !(new Regex(@"^[0-9]{10,30}$").IsMatch(deviceId)))
+            _logger.LogDebug("Registering current browser as a trusted browser.");
+            var browserId = _httpContext.Request.GetBrowserId();
+            // todo: Review. Accepting an existing browser id opens an attack vector for pre-installing
+            // cookies in a browser or via a malicious browser extension. May want to have a per-user
+            // browser id that is stored in a BrowserId_[UniqueUserSuffix] cookie
+            if (browserId == null || !(new Regex(@"^[0-9]{10,30}$").IsMatch(browserId)))
             {
                 var rngProvider = new RNGCryptoServiceProvider();
                 var byteArray = new byte[8];
 
                 rngProvider.GetBytes(byteArray);
-                var deviceIdUInt = BitConverter.ToUInt64(byteArray, 0);
-                deviceId = deviceIdUInt.ToString();
+                var browserIdUInt = BitConverter.ToUInt64(byteArray, 0);
+                browserId = browserIdUInt.ToString();
             }
 
-            var response = await _authorizedDeviceStore.AddAuthorizedDeviceAsync(subjectId, deviceId, deviceDescription);
+            var response = await _trustedBrowserStore.AddTrustedBrowserAsync(subjectId, browserId, browserDescription);
             if(response.HasError)
             {
                 return new Response<string, WebStatus>(new WebStatus(response.Status));
             }
 
-            _httpContext.Response.SetDeviceId(deviceId);
+            _httpContext.Response.SetBrowserId(browserId);
 
-            return Response.Success<string, WebStatus>(deviceId, "Trusted device added.");
+            return Response.Success<string, WebStatus>(browserId, "Trusted browser added.");
         }
 
 

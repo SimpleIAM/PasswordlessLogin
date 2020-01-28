@@ -2,35 +2,30 @@
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 
-namespace SimpleIAM.PasswordlessLogin.SqlServer.Migrations
+namespace SimpleIAM.PasswordlessLogin.MySql.Migrations
 {
-    public partial class v030 : Migration
+    public partial class v060 : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.EnsureSchema(
-                name: "auth");
-
             migrationBuilder.CreateTable(
-                name: "AuthorizedDevices",
-                schema: "auth",
+                name: "EventLog",
                 columns: table => new
                 {
-                    Id = table.Column<int>(nullable: false)
-                        .Annotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn),
-                    SubjectId = table.Column<string>(maxLength: 36, nullable: false),
-                    DeviceIdHash = table.Column<string>(nullable: false),
-                    Description = table.Column<string>(nullable: true),
-                    AddedOn = table.Column<DateTime>(nullable: false)
+                    Id = table.Column<long>(nullable: false)
+                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
+                    Time = table.Column<DateTime>(nullable: false),
+                    Username = table.Column<string>(maxLength: 254, nullable: true),
+                    EventType = table.Column<string>(maxLength: 30, nullable: false),
+                    Details = table.Column<string>(maxLength: 255, nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_AuthorizedDevices", x => x.Id);
+                    table.PrimaryKey("PK_EventLog", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
                 name: "OneTimeCodes",
-                schema: "auth",
                 columns: table => new
                 {
                     SentTo = table.Column<string>(maxLength: 254, nullable: false),
@@ -49,7 +44,6 @@ namespace SimpleIAM.PasswordlessLogin.SqlServer.Migrations
 
             migrationBuilder.CreateTable(
                 name: "PasswordHashes",
-                schema: "auth",
                 columns: table => new
                 {
                     SubjectId = table.Column<string>(maxLength: 36, nullable: false),
@@ -64,12 +58,28 @@ namespace SimpleIAM.PasswordlessLogin.SqlServer.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "TrustedBrowsers",
+                columns: table => new
+                {
+                    Id = table.Column<int>(nullable: false)
+                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
+                    SubjectId = table.Column<string>(maxLength: 36, nullable: false),
+                    BrowserIdHash = table.Column<string>(nullable: false),
+                    Description = table.Column<string>(nullable: true),
+                    AddedOn = table.Column<DateTime>(nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TrustedBrowsers", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Users",
-                schema: "auth",
                 columns: table => new
                 {
                     SubjectId = table.Column<string>(maxLength: 36, nullable: false),
-                    Email = table.Column<string>(maxLength: 254, nullable: false)
+                    Email = table.Column<string>(maxLength: 254, nullable: false),
+                    CreatedUTC = table.Column<DateTime>(nullable: false)
                 },
                 constraints: table =>
                 {
@@ -78,11 +88,10 @@ namespace SimpleIAM.PasswordlessLogin.SqlServer.Migrations
 
             migrationBuilder.CreateTable(
                 name: "Claims",
-                schema: "auth",
                 columns: table => new
                 {
                     Id = table.Column<int>(nullable: false)
-                        .Annotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn),
+                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
                     SubjectId = table.Column<string>(maxLength: 36, nullable: false),
                     Type = table.Column<string>(maxLength: 255, nullable: false),
                     Value = table.Column<string>(maxLength: 4000, nullable: false)
@@ -93,7 +102,6 @@ namespace SimpleIAM.PasswordlessLogin.SqlServer.Migrations
                     table.ForeignKey(
                         name: "FK_Claims_Users_SubjectId",
                         column: x => x.SubjectId,
-                        principalSchema: "auth",
                         principalTable: "Users",
                         principalColumn: "SubjectId",
                         onDelete: ReferentialAction.Cascade);
@@ -101,19 +109,16 @@ namespace SimpleIAM.PasswordlessLogin.SqlServer.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "IX_Claims_SubjectId",
-                schema: "auth",
                 table: "Claims",
                 column: "SubjectId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Claims_Type",
-                schema: "auth",
                 table: "Claims",
                 column: "Type");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Users_Email",
-                schema: "auth",
                 table: "Users",
                 column: "Email",
                 unique: true);
@@ -122,24 +127,22 @@ namespace SimpleIAM.PasswordlessLogin.SqlServer.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "AuthorizedDevices",
-                schema: "auth");
+                name: "Claims");
 
             migrationBuilder.DropTable(
-                name: "Claims",
-                schema: "auth");
+                name: "EventLog");
 
             migrationBuilder.DropTable(
-                name: "OneTimeCodes",
-                schema: "auth");
+                name: "OneTimeCodes");
 
             migrationBuilder.DropTable(
-                name: "PasswordHashes",
-                schema: "auth");
+                name: "PasswordHashes");
 
             migrationBuilder.DropTable(
-                name: "Users",
-                schema: "auth");
+                name: "TrustedBrowsers");
+
+            migrationBuilder.DropTable(
+                name: "Users");
         }
     }
 }

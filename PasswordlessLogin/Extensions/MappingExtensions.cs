@@ -69,9 +69,9 @@ namespace SimpleIAM.PasswordlessLogin
             };
         }
 
-        public static Models.AuthorizedDevice ToModel(this Entities.AuthorizedDevice source)
+        public static Models.TrustedBrowser ToModel(this Entities.TrustedBrowser source)
         {
-            return new Models.AuthorizedDevice
+            return new Models.TrustedBrowser
             {
                 RecordId = source.Id,
                 Description = source.Description,

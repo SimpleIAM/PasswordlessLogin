@@ -43,7 +43,7 @@ namespace Microsoft.Extensions.DependencyInjection
             services.TryAddTransient<IOneTimeCodeStore, DbOneTimeCodeStore>();
             services.TryAddTransient<IOneTimeCodeService, OneTimeCodeService>();
             services.TryAddTransient<IUserStore, DbUserStore>();
-            services.TryAddTransient<IAuthorizedDeviceStore, DbAuthorizedDeviceStore>();
+            services.TryAddTransient<ITrustedBrowserStore, DbTrustedBrowserStore>();
             services.TryAddTransient<IMessageService, MessageService>();
             services.TryAddTransient<ISignInService, PasswordlessSignInService>();
             services.TryAddTransient<IApplicationService, NonexistantApplicationService>();

@@ -8,17 +8,17 @@ namespace SimpleIAM.PasswordlessLogin
 {
     public static class CookieExtensions
     {
-        public const string ClientNonceCookieName = PasswordlessLoginConstants.RecognizedDevices.ClientNonceCookieName;
-        public const string DeviceIdCookieName = PasswordlessLoginConstants.RecognizedDevices.DeviceIdCookieName;
+        public const string ClientNonceCookieName = PasswordlessLoginConstants.TrustedBrowser.ClientNonceCookieName;
+        public const string BrowserIdCookieName = PasswordlessLoginConstants.TrustedBrowser.BrowserIdCookieName;
 
         public static string GetClientNonce(this HttpRequest request)
         {
             return request.Cookies[ClientNonceCookieName];
         }
 
-        public static string GetDeviceId(this HttpRequest request)
+        public static string GetBrowserId(this HttpRequest request)
         {
-            return request.Cookies[DeviceIdCookieName];
+            return request.Cookies[BrowserIdCookieName];
         }
 
         public static void SetClientNonce(this HttpResponse response, string value, int validityInMinutes)
@@ -26,9 +26,9 @@ namespace SimpleIAM.PasswordlessLogin
             response.SetSecureCookie(ClientNonceCookieName, value, TimeSpan.FromMinutes(validityInMinutes));
         }
 
-        public static void SetDeviceId(this HttpResponse response, string value)
+        public static void SetBrowserId(this HttpResponse response, string value)
         {
-            response.SetSecureCookie(DeviceIdCookieName, value, TimeSpan.FromDays(PasswordlessLoginConstants.RecognizedDevices.DeviceIdCookieValidityDays));
+            response.SetSecureCookie(BrowserIdCookieName, value, TimeSpan.FromDays(PasswordlessLoginConstants.TrustedBrowser.BrowserIdCookieValidityDays));
         }
 
         public static void SetSecureCookie(this HttpResponse response, string key, string value, TimeSpan maxAge)

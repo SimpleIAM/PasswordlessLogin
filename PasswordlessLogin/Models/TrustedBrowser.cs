@@ -5,7 +5,7 @@ using System;
 
 namespace SimpleIAM.PasswordlessLogin.Models
 {
-    public class AuthorizedDevice
+    public class TrustedBrowser
     {
         public int RecordId { get; set; }
         public string Description { get; set; }

@@ -3,64 +3,44 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using SimpleIAM.PasswordlessLogin.Entities;
+using SimpleIAM.PasswordlessLogin.SqlServer;
 
 namespace SimpleIAM.PasswordlessLogin.SqlServer.Migrations
 {
-    [DbContext(typeof(PasswordlessLoginDbContext))]
-    [Migration("20181214010145_v0.4.0")]
-    partial class v040
+    [DbContext(typeof(SqlServerPasswordlessLoginDbContext))]
+    partial class SqlServerPasswordlessLoginDbContextModelSnapshot : ModelSnapshot
     {
-        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("auth")
-                .HasAnnotation("ProductVersion", "2.1.4-rtm-31024")
+                .HasAnnotation("ProductVersion", "3.1.1")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128)
                 .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
-
-            modelBuilder.Entity("SimpleIAM.PasswordlessLogin.Entities.AuthorizedDevice", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
-
-                    b.Property<DateTime>("AddedOn");
-
-                    b.Property<string>("Description");
-
-                    b.Property<string>("DeviceIdHash")
-                        .IsRequired();
-
-                    b.Property<string>("SubjectId")
-                        .IsRequired()
-                        .HasMaxLength(36);
-
-                    b.HasKey("Id");
-
-                    b.ToTable("AuthorizedDevices");
-                });
 
             modelBuilder.Entity("SimpleIAM.PasswordlessLogin.Entities.EventLog", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
                         .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
 
                     b.Property<string>("Details")
+                        .HasColumnType("nvarchar(255)")
                         .HasMaxLength(255);
 
                     b.Property<string>("EventType")
                         .IsRequired()
+                        .HasColumnType("nvarchar(30)")
                         .HasMaxLength(30);
 
-                    b.Property<DateTime>("Time");
+                    b.Property<DateTime>("Time")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("Username")
-                        .IsRequired()
+                        .HasColumnType("nvarchar(254)")
                         .HasMaxLength(254);
 
                     b.HasKey("Id");
@@ -71,23 +51,30 @@ namespace SimpleIAM.PasswordlessLogin.SqlServer.Migrations
             modelBuilder.Entity("SimpleIAM.PasswordlessLogin.Entities.OneTimeCode", b =>
                 {
                     b.Property<string>("SentTo")
-                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(254)")
                         .HasMaxLength(254);
 
-                    b.Property<string>("ClientNonceHash");
+                    b.Property<string>("ClientNonceHash")
+                        .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime>("ExpiresUTC");
+                    b.Property<DateTime>("ExpiresUTC")
+                        .HasColumnType("datetime2");
 
-                    b.Property<int>("FailedAttemptCount");
+                    b.Property<int>("FailedAttemptCount")
+                        .HasColumnType("int");
 
-                    b.Property<string>("LongCode");
+                    b.Property<string>("LongCode")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("RedirectUrl")
+                        .HasColumnType("nvarchar(2048)")
                         .HasMaxLength(2048);
 
-                    b.Property<int>("SentCount");
+                    b.Property<int>("SentCount")
+                        .HasColumnType("int");
 
-                    b.Property<string>("ShortCode");
+                    b.Property<string>("ShortCode")
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("SentTo");
 
@@ -97,31 +84,66 @@ namespace SimpleIAM.PasswordlessLogin.SqlServer.Migrations
             modelBuilder.Entity("SimpleIAM.PasswordlessLogin.Entities.PasswordHash", b =>
                 {
                     b.Property<string>("SubjectId")
-                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(36)")
                         .HasMaxLength(36);
 
-                    b.Property<int>("FailedAttemptCount");
+                    b.Property<int>("FailedAttemptCount")
+                        .HasColumnType("int");
 
                     b.Property<string>("Hash")
-                        .IsRequired();
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime>("LastChangedUTC");
+                    b.Property<DateTime>("LastChangedUTC")
+                        .HasColumnType("datetime2");
 
-                    b.Property<DateTime?>("TempLockUntilUTC");
+                    b.Property<DateTime?>("TempLockUntilUTC")
+                        .HasColumnType("datetime2");
 
                     b.HasKey("SubjectId");
 
                     b.ToTable("PasswordHashes");
                 });
 
+            modelBuilder.Entity("SimpleIAM.PasswordlessLogin.Entities.TrustedBrowser", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
+
+                    b.Property<DateTime>("AddedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("BrowserIdHash")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SubjectId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(36)")
+                        .HasMaxLength(36);
+
+                    b.HasKey("Id");
+
+                    b.ToTable("TrustedBrowsers");
+                });
+
             modelBuilder.Entity("SimpleIAM.PasswordlessLogin.Entities.User", b =>
                 {
                     b.Property<string>("SubjectId")
-                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(36)")
                         .HasMaxLength(36);
+
+                    b.Property<DateTime>("CreatedUTC")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("Email")
                         .IsRequired()
+                        .HasColumnType("nvarchar(254)")
                         .HasMaxLength(254);
 
                     b.HasKey("SubjectId");
@@ -136,18 +158,22 @@ namespace SimpleIAM.PasswordlessLogin.SqlServer.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
                         .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
 
                     b.Property<string>("SubjectId")
                         .IsRequired()
+                        .HasColumnType("nvarchar(36)")
                         .HasMaxLength(36);
 
                     b.Property<string>("Type")
                         .IsRequired()
+                        .HasColumnType("nvarchar(255)")
                         .HasMaxLength(255);
 
                     b.Property<string>("Value")
                         .IsRequired()
+                        .HasColumnType("nvarchar(4000)")
                         .HasMaxLength(4000);
 
                     b.HasKey("Id");
@@ -161,10 +187,11 @@ namespace SimpleIAM.PasswordlessLogin.SqlServer.Migrations
 
             modelBuilder.Entity("SimpleIAM.PasswordlessLogin.Entities.UserClaim", b =>
                 {
-                    b.HasOne("SimpleIAM.PasswordlessLogin.Entities.User")
+                    b.HasOne("SimpleIAM.PasswordlessLogin.Entities.User", null)
                         .WithMany("Claims")
                         .HasForeignKey("SubjectId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

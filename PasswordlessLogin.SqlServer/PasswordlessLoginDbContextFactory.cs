@@ -7,9 +7,9 @@ using SimpleIAM.PasswordlessLogin.Entities;
 
 namespace SimpleIAM.PasswordlessLogin.SqlServer
 {
-    public class PasswordlessLoginDbContextFactory : IDesignTimeDbContextFactory<PasswordlessLoginDbContext>
+    public class PasswordlessLoginDbContextFactory : IDesignTimeDbContextFactory<SqlServerPasswordlessLoginDbContext>
     {
-        public PasswordlessLoginDbContext CreateDbContext(string[] args)
+        public SqlServerPasswordlessLoginDbContext CreateDbContext(string[] args)
         {
             var optionsBuilder = new DbContextOptionsBuilder<PasswordlessLoginDbContext>();
             var config = new SqlServerPasswordlessDatabaseConfig();
