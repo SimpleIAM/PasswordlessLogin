@@ -26,6 +26,8 @@ namespace SimpleIAM.PasswordlessLogin.Stores
 
         public async Task<Response<Models.User, Status>> AddUserAsync(Models.User user)
         {
+            user.Email = user.Email?.ToLowerInvariant();
+
             _logger.LogTrace("Add user {0}", user.Email);
 
             // First, if anyone previously used this email, clear the claim that could
@@ -71,6 +73,8 @@ namespace SimpleIAM.PasswordlessLogin.Stores
 
         public async Task<Response<Models.User, Status>> GetUserByEmailAsync(string email, bool fetchClaims = false)
         {
+            email = email?.ToLowerInvariant();
+
             _logger.LogTrace("Fetch user (by email) {0}", fetchClaims ? "and claims" : "without claims");
             Models.User user;
             if (fetchClaims)
@@ -94,7 +98,9 @@ namespace SimpleIAM.PasswordlessLogin.Stores
 
         public async Task<Response<Models.User, Status>> GetUserByPreviousEmailAsync(string previousEmail)
         {
-            _logger.LogTrace("Fetch user (by previous email) {0}");
+            previousEmail = previousEmail?.ToLowerInvariant();
+
+            _logger.LogTrace("Fetch user (by previous email) {0}", previousEmail);
             var user = (await _context.Users.SingleOrDefaultAsync(x => x.Claims.Any(c => 
                 c.Type == PasswordlessLoginConstants.Security.PreviousEmailClaimType &&
                 c.Value == previousEmail
@@ -124,7 +130,7 @@ namespace SimpleIAM.PasswordlessLogin.Stores
                     }
                     if (emails.Count == 1)
                     {
-                        var newEmail = emails.First();
+                        var newEmail = emails.First()?.ToLowerInvariant();
                         user = await _context.Users.FirstOrDefaultAsync(x => x.SubjectId == subjectId);
                         user.Email = newEmail;
                     }
