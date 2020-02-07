@@ -125,8 +125,8 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             var usernameIsAvailable = usernameAvailableResponse.Result;
             if (!usernameIsAvailable)
             {
-                // todo: review potential leak of who has existing accounts
-                return Response.Web.Error<ChangeEmailViewModel>("Username is not available", HttpStatusCode.Forbidden);
+                // This unavoidably reveals the presence of an existing account, but can't be easily exploited
+                return Response.Web.Error<ChangeEmailViewModel>("Username is not available", HttpStatusCode.Conflict);
             }
             var oldEmail = user.Email;
             
@@ -134,6 +134,8 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             var status = await _messageService.SendEmailChangedNoticeAsync(applicationId, oldEmail, otcResponse.Result.LongCode);
             if (status.HasError)
             {
+                // TODO: review to ensure that this will not prevent changing one's email address if the
+                // old address is undeliverable
                 return Response.Web.Error<ChangeEmailViewModel>($"Change cancelled because of failure to send email notice: {status.Text}");
             }
 

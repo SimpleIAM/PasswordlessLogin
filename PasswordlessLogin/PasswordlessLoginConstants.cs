@@ -31,6 +31,7 @@ namespace SimpleIAM.PasswordlessLogin
             public const string PasswordRemovedNotice = "PasswordRemovedNotice";
             public const string EmailChangedNotice = "EmailChangedNotice";
             public const string AccountNotFound = "AccountNotFound";
+            public const string AccountAlreadyExists = "AccountAlreadyExists";
         }
 
         public static class OneTimeCode

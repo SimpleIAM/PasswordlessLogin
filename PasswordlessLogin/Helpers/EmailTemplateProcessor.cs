@@ -12,7 +12,6 @@ namespace SimpleIAM.PasswordlessLogin.Helpers
     {
         public static EmailTemplates GetTemplatesFromMailConfig(IFileProvider fileProvider)
         {
-            // TODO: Refactor so that defaultFrom is not necessary. Inject From address later.
             var templates = new EmailTemplates()
             {
                 { PasswordlessLoginConstants.EmailTemplates.OneTimeCode, new EmailTemplate() },
@@ -23,6 +22,7 @@ namespace SimpleIAM.PasswordlessLogin.Helpers
                 { PasswordlessLoginConstants.EmailTemplates.PasswordRemovedNotice, new EmailTemplate() },
                 { PasswordlessLoginConstants.EmailTemplates.EmailChangedNotice, new EmailTemplate() },
                 { PasswordlessLoginConstants.EmailTemplates.AccountNotFound, new EmailTemplate() },
+                { PasswordlessLoginConstants.EmailTemplates.AccountAlreadyExists, new EmailTemplate() },
             };
             foreach(var template in templates)
             {

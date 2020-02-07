@@ -73,28 +73,44 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             _applicationService = applicationService;
         }
 
-        public async Task<WebStatus> CreateAccountAsync(string email, Dictionary<string, string> claims, string password = null, bool sendRegistrationMessage = true)
+        public async Task<WebStatus> RegisterAsync(RegisterInputModel model)
         {
-            if (!await _userStore.UsernameIsAvailable(email))
+            var genericSuccessMessage = "Please check your email to complete the sign up process.";
+
+            _logger.LogDebug("Begin registration for {0}", model.Email);
+
+            if (!ApplicationIdIsNullOrValid(model.ApplicationId))
             {
-                return WebStatus.Error("Account already exists.", HttpStatusCode.Conflict);
+                return WebStatus.Error("Invalid application id.", HttpStatusCode.BadRequest);
             }
 
-            if (await _oneTimeCodeService.UnexpiredOneTimeCodeExistsAsync(email))
+            if (!await _userStore.UsernameIsAvailable(model.Email))
+            {
+                _logger.LogDebug("Existing user found.");
+
+                var sendStatus = await _messageService.SendAccountAlreadyExistsMessageAsync(model.ApplicationId, model.Email);
+
+                // Return a generic success message to prevent account discovery. Only the owner of 
+                // the email address will get a customized message.
+                return sendStatus.IsOk ? WebStatus.Success(genericSuccessMessage) : new WebStatus(sendStatus);
+            }
+
+            if (await _oneTimeCodeService.UnexpiredOneTimeCodeExistsAsync(model.Email))
             {
                 // Although the username is available, there is a valid one time code
                 // that can be used to cancel an email address change, so we can't
                 // reuse the address quite yet
-                return WebStatus.Error("Username is not available.", HttpStatusCode.Conflict);
+                return WebStatus.Error("Email address is temporarily reserved.", HttpStatusCode.Conflict);
             }
+
             _logger.LogDebug("Email address not used by an existing user. Creating a new user.");
-            // todo: consider restricting claims to a list predefined by the system administrator
+            // consider: in some cases may want to restricting claims to a list predefined by the system administrator
 
             var status = new WebStatus();
 
-            if (claims == null)
+            if (model.Claims == null)
             {
-                claims = new Dictionary<string, string>();
+                model.Claims = new Dictionary<string, string>();
             }
             var internalClaims = new KeyValuePair<string, string>[]
             {
@@ -103,8 +119,8 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             };
             var newUser = new User()
             {
-                Email = email,
-                Claims = claims
+                Email = model.Email,
+                Claims = model.Claims
                     .Where(x =>
                         !PasswordlessLoginConstants.Security.ForbiddenClaims.Contains(x.Key) &&
                         !PasswordlessLoginConstants.Security.ProtectedClaims.Contains(x.Key))
@@ -112,19 +128,16 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                     .Select(x => new UserClaim() { Type = x.Key, Value = x.Value })
             };
             var newUserResponse = await _userStore.AddUserAsync(newUser);
-            if(newUserResponse.HasError)
+            if (newUserResponse.HasError)
             {
                 return new WebStatus(newUserResponse.Status);
             }
             newUser = newUserResponse.Result;
-            if (sendRegistrationMessage)
-            {
-                await _eventNotificationService.NotifyEventAsync(newUser.Email, EventType.Register);
-            }
+            await _eventNotificationService.NotifyEventAsync(newUser.Email, EventType.Register);
 
-            if (!string.IsNullOrEmpty(password))
+            if (!string.IsNullOrEmpty(model.Password))
             {
-                var setPasswordStatus = await _passwordService.SetPasswordAsync(newUser.SubjectId, password);
+                var setPasswordStatus = await _passwordService.SetPasswordAsync(newUser.SubjectId, model.Password);
                 if (setPasswordStatus.IsOk)
                 {
                     await _eventNotificationService.NotifyEventAsync(newUser.Email, EventType.SetPassword);
@@ -135,44 +148,8 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 }
             }
 
-            status.AddSuccess("Account created.");
-            return status;
-        }
-
-        public async Task<WebStatus> RegisterAsync(RegisterInputModel model)
-        {
-            _logger.LogDebug("Begin registration for {0}", model.Email);
-
-            if (!ApplicationIdIsNullOrValid(model.ApplicationId))
-            {
-                return WebStatus.Error("Invalid application id.", HttpStatusCode.BadRequest);
-            }
-
-            TimeSpan linkValidity;
-            var createStatus = await CreateAccountAsync(model.Email, model.Claims, model.Password);
-            if (createStatus.IsOk)
-            {
-                linkValidity = TimeSpan.FromMinutes(_options.ConfirmAccountLinkValidityMinutes);
-            }
-            else
-            {
-                if (await _oneTimeCodeService.UnexpiredOneTimeCodeExistsAsync(model.Email))
-                {
-                    // alternatively, we could send an email message explaining that the recently freed up email
-                    // address can't be linked to a new account yet (must wait until the link that can cancel
-                    // the username change expires)
-                    return WebStatus.Error("Email address is temporarily reserved.", HttpStatusCode.BadRequest);
-                }
-                _logger.LogDebug("Existing user found.");
-                if (!_options.ResendWelcomeEmailOnReRegister)
-                {
-                    return WebStatus.Error("Already registered! Please go to sign in and request a one time code if you don't have a password.", 
-                        HttpStatusCode.Conflict);
-                }
-                // If re-sending the welcome email, only make the link valid for a short time
-                linkValidity = TimeSpan.FromMinutes(_options.OneTimeCodeValidityMinutes);
-            }
-
+            status.AddSuccess(genericSuccessMessage);
+            
             var nextUrl = !string.IsNullOrEmpty(model.NextUrl) ? model.NextUrl : _urlService.GetDefaultRedirectUrl();
             if (model.SetPassword)
             {
@@ -180,15 +157,16 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 nextUrl = SendToSetPasswordFirst(nextUrl);
             }
 
-            var oneTimeCodeResponse = await _oneTimeCodeService.GetOneTimeCodeAsync(model.Email, linkValidity, nextUrl);
+            var oneTimeCodeResponse = await _oneTimeCodeService.GetOneTimeCodeAsync(model.Email, TimeSpan.FromMinutes(_options.ConfirmAccountLinkValidityMinutes), nextUrl);
             switch (oneTimeCodeResponse.Status.StatusCode)
             {
                 case GetOneTimeCodeStatusCode.Success:
                     var result = await _messageService.SendWelcomeMessageAsync(model.ApplicationId, model.Email, 
                         oneTimeCodeResponse.Result.ShortCode, oneTimeCodeResponse.Result.LongCode, model.Claims);
-                    return ReturnAppropriateResponse(new WebStatus(result), oneTimeCodeResponse.Result.ClientNonce, "Thanks for registering. Please check your email.");
+                    SetNonce(oneTimeCodeResponse.Result.ClientNonce);
+                    return new WebStatus(status);
                 case GetOneTimeCodeStatusCode.TooManyRequests:
-                    return WebStatus.Error("Please wait a few minutes and try again.", HttpStatusCode.BadRequest);
+                    return WebStatus.Error("Please wait a few minutes and try again.", HttpStatusCode.TooManyRequests);
                 case GetOneTimeCodeStatusCode.ServiceFailure:
                 default:
                     return ServerError("Hmm, something went wrong. Can you try again?");
@@ -249,12 +227,17 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             switch (oneTimeCodeResponse.Status.StatusCode)
             {
                 case GetOneTimeCodeStatusCode.Success:
-                    var result = await _messageService.SendOneTimeCodeAndLinkMessageAsync(model.ApplicationId, 
+                    var status = await _messageService.SendOneTimeCodeAndLinkMessageAsync(model.ApplicationId, 
                         model.Username, oneTimeCodeResponse.Result.ShortCode, oneTimeCodeResponse.Result.LongCode);
                     await _eventNotificationService.NotifyEventAsync(model.Username, EventType.RequestOneTimeCode);
-                    return ReturnAppropriateResponse(new WebStatus(result), oneTimeCodeResponse.Result.ClientNonce, defaultMessage);
+                    if (status.IsOk)
+                    {
+                        status = Status.Success(defaultMessage);
+                    }
+                    SetNonce(oneTimeCodeResponse.Result.ClientNonce);
+                    return new WebStatus(status);
                 case GetOneTimeCodeStatusCode.TooManyRequests:
-                    return WebStatus.Error("Please wait a few minutes before requesting a new code.", HttpStatusCode.BadRequest);
+                    return WebStatus.Error("Please wait a few minutes before requesting a new code.", HttpStatusCode.TooManyRequests);
                 case GetOneTimeCodeStatusCode.ServiceFailure:
                 default:
                     return ServerError("Hmm, something went wrong. Can you try again?");
@@ -407,11 +390,15 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 nextUrl);
             if (oneTimeCodeResponse.IsOk)
             {
-                var result = await _messageService.SendPasswordResetMessageAsync(model.ApplicationId, model.Username, 
+                var status = await _messageService.SendPasswordResetMessageAsync(model.ApplicationId, model.Username, 
                     oneTimeCodeResponse.Result.ShortCode, oneTimeCodeResponse.Result.LongCode);
                 await _eventNotificationService.NotifyEventAsync(model.Username, EventType.RequestPasswordReset);
-                return ReturnAppropriateResponse(new WebStatus(result), oneTimeCodeResponse.Result.ClientNonce, 
-                    "Check your email for password reset instructions.");
+                if(status.IsOk) 
+                {
+                    status = Status.Success("Check your email for password reset instructions.");
+                }
+                SetNonce(oneTimeCodeResponse.Result.ClientNonce);
+                return new WebStatus(status);
             }
             _logger.LogError("Password reset message was not be sent due to error encountered while generating a one time link");
             return ServerError("Hmm. Something went wrong. Please try again.");
@@ -424,21 +411,12 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             return WebStatus.Success();
         }
 
-        private WebStatus ReturnAppropriateResponse(WebStatus status, string clientNonce, string successMessage)
+        private void SetNonce(string clientNonce)
         {
             if (clientNonce != null)
             {
                 _logger.LogDebug("Saving client nonce in a browser cookie");
                 _httpContext.Response.SetClientNonce(clientNonce, _options.OneTimeCodeValidityMinutes);
-            }
-            if (status.IsOk)
-            {
-                return WebStatus.Success(successMessage);
-            }
-            else
-            {
-                _logger.LogDebug("Returning error message to user: {0}", status.Text);
-                return ServerError(status.Text);
             }
         }
 

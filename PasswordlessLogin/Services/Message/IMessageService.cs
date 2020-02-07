@@ -9,6 +9,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
 {
     public interface IMessageService
     {
+        Task<Status> SendAccountAlreadyExistsMessageAsync(string applicationId, string sendTo);
         Task<Status> SendAccountNotFoundMessageAsync(string applicationId, string sendTo);
         Task<Status> SendOneTimeCodeMessageAsync(string applicationId, string sendTo, string oneTimeCode);
         Task<Status> SendOneTimeCodeAndLinkMessageAsync(string applicationId, string sendTo, string oneTimeCode, string longCode);

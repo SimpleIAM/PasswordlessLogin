@@ -159,11 +159,7 @@ namespace SimpleIAM.PasswordlessLogin.Stores
             _logger.LogTrace("Check if user with username {0} exists", username);
 
             var response = await GetUserByUsernameAsync(username);
-            if (response.Result != null)
-            {
-                return true;
-            }
-            return false;
+            return response.IsOk;
         }
 
         public async Task<bool> UsernameIsAvailable(string username)

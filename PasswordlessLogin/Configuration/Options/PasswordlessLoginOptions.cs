@@ -26,7 +26,6 @@ namespace SimpleIAM.PasswordlessLogin.Configuration
         public bool ResetFailedAttemptCountOnTempLock { get; set; } = false;
         public int OneTimeCodeValidityMinutes { get; set; } = PasswordlessLoginConstants.OneTimeCode.DefaultValidityMinutes;
         public int ConfirmAccountLinkValidityMinutes { get; set; } = PasswordlessLoginConstants.OneTimeCode.ConfirmAccountDefaultValidityMinutes;
-        public bool ResendWelcomeEmailOnReRegister { get; set; } = true;
         public bool AutoTrustBrowsers { get; set; } = true;
         public bool NonceRequiredOnUntrustedBrowser { get; set; } = true;
         public UrlOptions Urls { get; set; }

@@ -34,6 +34,20 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
             _applicationService = applicationService;
         }
 
+        public async Task<Status> SendAccountAlreadyExistsMessageAsync(string applicationId, string sendTo)
+        {
+            _logger.LogDebug("Sending account already exists message");
+            if (!IsValidEmailAddress(sendTo))
+            {
+                return NotAnEmailAddress();
+            }
+
+            var link = _urlService.GetForgotPasswordUrl(true);
+            var fields = GetCustomFields(applicationId);
+            fields["forgot_password_link"] = link;
+            return await _emailTemplateService.SendEmailAsync(PasswordlessLoginConstants.EmailTemplates.AccountAlreadyExists, sendTo, fields);
+        }
+
         public async Task<Status> SendAccountNotFoundMessageAsync(string applicationId, string sendTo)
         {
             _logger.LogDebug("Sending account not found message");
