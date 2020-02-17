@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 using System;
+using System.Linq;
 using System.Security.Claims;
 using System.Security.Principal;
 
@@ -9,12 +10,23 @@ namespace SimpleIAM.PasswordlessLogin
 {
     public static class PrincipalExtensions
     {
-        public static string GetClaim(this IPrincipal principal, string claimType)
+        public static string[] GetClaimValues(this IPrincipal principal, string claimType)
         {
-            return GetClaim(principal?.Identity, claimType);
+            return GetClaimValues(principal?.Identity, claimType);
         }
 
-        public static string GetClaim(this IIdentity identity, string claimType)
+        public static string[] GetClaimValues(this IIdentity identity, string claimType)
+        {
+            var claimsIdentity = identity as ClaimsIdentity;
+            return claimsIdentity?.FindAll(claimType)?.Select(c =>c.Value).ToArray();
+        }
+
+        public static string GetClaimValue(this IPrincipal principal, string claimType)
+        {
+            return GetClaimValue(principal?.Identity, claimType);
+        }
+
+        public static string GetClaimValue(this IIdentity identity, string claimType)
         {
             var claimsIdentity = identity as ClaimsIdentity;
             return claimsIdentity?.FindFirst(claimType)?.Value;
@@ -22,7 +34,7 @@ namespace SimpleIAM.PasswordlessLogin
 
         public static string GetSubjectId(this IPrincipal principal)
         {
-            return GetClaim(principal, "sub");
+            return GetClaimValue(principal, "sub");
         }
         public static string GetDisplayName(this ClaimsPrincipal principal)
         {
@@ -31,7 +43,7 @@ namespace SimpleIAM.PasswordlessLogin
 
         public static DateTime GetAuthTimeUTC(this ClaimsPrincipal principal)
         {
-            var authTimeString = principal.GetClaim("auth_time");
+            var authTimeString = principal.GetClaimValue("auth_time");
             int.TryParse(authTimeString, out int authTimeInt);
             var authTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
             authTime = authTime.AddSeconds(authTimeInt);

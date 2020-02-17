@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -452,7 +453,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             */
             //do 2FA and figure out new browser, etc here
 
-            var userResponse = await _userStore.GetUserByUsernameAsync(username);
+            var userResponse = await _userStore.GetUserByUsernameAsync(username, true);
             if (userResponse.HasError)
             {
                 // this could only happen if an account was removed, but a method of signing in remained
@@ -465,15 +466,21 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             var browserIsTrusted = await _trustedBrowserStore
                 .GetTrustedBrowserAsync(user.SubjectId, _httpContext.Request.GetBrowserId()) != null;
 
-            var authMethodReference = (method == SignInMethod.Password) ? "pwd" : "otp";
+            var authMethod = (method == SignInMethod.Password) ? "pwd" : "otp";
+            var authMethods = new string[] { authMethod };
+            if(browserIsTrusted)
+            {
+                authMethods.Append("cookie");
+            }
             if (_httpContext.User.Identity.IsAuthenticated && _httpContext.User.GetSubjectId() == user.SubjectId)
             {
-                var previousAuthMethod = _httpContext.User.GetClaim("amr");
-                if (previousAuthMethod != null && previousAuthMethod != authMethodReference)
+                var previousAuthMethods = _httpContext.User.GetClaimValues("amr");
+                if (previousAuthMethods.Any() && !previousAuthMethods.Contains(authMethod))
                 {
                     // If already signed in and now the user has authenticated with another 
                     // type of credential, this is now a multi-factor session
-                    authMethodReference = "mfa";
+                    authMethods = authMethods.Append("mfa").ToArray();
+                    authMethods = previousAuthMethods.Union(authMethods).ToArray();
                     if (!browserIsTrusted)
                     {
                         _logger.LogInformation("Trusting browser because {0} performed multi-factor authentication", username);
@@ -548,8 +555,25 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             }
 
             _logger.LogDebug("Signing user in: {0}", user.Email);
-            _logger.LogTrace("SubjectId: {0}", user.SubjectId);            
-            await _signInService.SignInAsync(user.SubjectId, user.Email, authProps, authMethodReference, browserIsTrusted);
+            _logger.LogTrace("SubjectId: {0}", user.SubjectId);
+
+            var userName = _options.IdpUserNameClaim == "email"
+                ? user.Email
+                : user.Claims.FirstOrDefault(x => x.Type == _options.IdpUserNameClaim)?.Value;
+
+            userName = userName ?? user.Email;
+
+            var userClaims = user.Claims
+                .Where(c => _options.IdpUserClaims.Contains(c.Type))
+                .Select(c => new Claim(c.Type, c.Value))
+                .ToArray();
+
+            if(_options.IdpUserClaims.Contains("email") && !userClaims.Any(c => c.Type == "email"))
+            {
+                userClaims = userClaims.Append(new Claim("email", user.Email)).ToArray();
+            }
+
+            await _signInService.SignInAsync(user.SubjectId, userName, authMethods, authProps, userClaims);
 
             nextUrl = ValidatedNextUrl(nextUrl);
             _logger.LogDebug("Redirecting user to: {0}", nextUrl);

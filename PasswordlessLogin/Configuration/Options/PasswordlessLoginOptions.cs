@@ -14,6 +14,8 @@ namespace SimpleIAM.PasswordlessLogin.Configuration
 
         public string EmailFrom { get; set; } = "from.address@not.configured";
         public string DisplayName { get; set; } = PasswordlessLoginConstants.DefaultDisplayName;
+        public string[] IdpUserClaims { get; set; } = new string[] { };
+        public string IdpUserNameClaim { get; set; } = "email";
         public int DefaultSessionLengthMinutes { get; set; } = PasswordlessLoginConstants.Security.DefaultDefaultSessionLengthMinutes;
         public int MaxSessionLengthMinutes { get; set; } = PasswordlessLoginConstants.Security.DefaultMaxSessionLengthMinutes;
         public int ChangeSecuritySettingsTimeWindowMinutes { get; set; } = PasswordlessLoginConstants.Security.DefaultChangeSecuritySettingsTimeWindowMinutes;
