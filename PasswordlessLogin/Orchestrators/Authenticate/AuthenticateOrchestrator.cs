@@ -608,6 +608,11 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             return Response.Success<string, WebStatus>(browserId, "Trusted browser added.");
         }
 
+        public string SendToSetPasswordFirst(string nextUrl)
+        {
+            var setPasswordUrl = _urlService.GetSetPasswordUrl();
+            return $"{setPasswordUrl}?nextUrl={nextUrl}";
+        }
 
         private string ValidatedNextUrl(string nextUrl)
         {
@@ -617,12 +622,6 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             }
             _logger.LogWarning("Next url was not valid: '{0}'. Using default redirect url instead.", nextUrl);
             return _urlService.GetDefaultRedirectUrl();
-        }
-
-        private string SendToSetPasswordFirst(string nextUrl)
-        {
-            var setPasswordUrl = _urlService.GetSetPasswordUrl();
-            return $"{setPasswordUrl}?nextUrl={nextUrl}";
         }
 
         private bool ApplicationIdIsNullOrValid(string applicationId)
