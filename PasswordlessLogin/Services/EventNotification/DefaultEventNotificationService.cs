@@ -17,13 +17,13 @@ namespace SimpleIAM.PasswordlessLogin.Services.EventNotification
             _context = context;
         }
 
-        public async Task<Status> NotifyEventAsync(string username, EventType eventType, string details = null)
+        public async Task<Status> NotifyEventAsync(string username, string eventType, string details = null)
         {
             var entry = new EventLog()
             {
                 Time = DateTime.UtcNow,
                 Username = username,
-                EventType = eventType.ToString(),
+                EventType = eventType,
                 Details = details
             };
             _context.Add(entry);
