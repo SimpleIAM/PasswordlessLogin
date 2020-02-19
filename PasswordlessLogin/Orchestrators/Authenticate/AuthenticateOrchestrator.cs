@@ -252,7 +252,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             var oneTimeCode = model.Password.Replace(" ", "");
             if (oneTimeCode.Length == PasswordlessLoginConstants.OneTimeCode.ShortCodeLength && oneTimeCode.All(Char.IsDigit))
             {
-                _logger.LogDebug("Password was a six-digit number");
+                _logger.LogDebug("Password was a one time code.");
                 var input = new AuthenticateInputModel()
                 {
                     Username = model.Username,
@@ -272,8 +272,17 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
         {
             _logger.LogDebug("Begin one time code authentication for {0}", model.Username);
 
+            var genericErrorMessage = "The username or one time code wasn't right.";
+            var userResponse = await _userStore.GetUserByUsernameAsync(model.Username);
+            if (userResponse.HasError)
+            {
+                _logger.LogDebug("User not found: {0}", model.Username);
+                return Unauthenticated(genericErrorMessage);
+            }
+
+            var user = userResponse.Result;
             model.OneTimeCode = model.OneTimeCode.Replace(" ", "");
-            var response = await _oneTimeCodeService.CheckOneTimeCodeAsync(model.Username, model.OneTimeCode, _httpContext.Request.GetClientNonce());
+            var response = await _oneTimeCodeService.CheckOneTimeCodeAsync(user.Email, model.OneTimeCode, _httpContext.Request.GetClientNonce());
             switch (response.Status.StatusCode)
             {
                 case CheckOneTimeCodeStatusCode.VerifiedWithNonce:
@@ -287,7 +296,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 case CheckOneTimeCodeStatusCode.CodeIncorrect:
                 case CheckOneTimeCodeStatusCode.NotFound:
                     await _eventNotificationService.NotifyEventAsync(model.Username, EventType.SignInFail, SignInType.OneTimeCode.ToString());
-                    return Unauthenticated("Invalid one time code.");
+                    return Unauthenticated(genericErrorMessage);
                 case CheckOneTimeCodeStatusCode.ShortCodeLocked:
                     return Unauthenticated("The one time code is locked. Please request a new one after a few minutes.");
                 case CheckOneTimeCodeStatusCode.ServiceFailure:
@@ -307,27 +316,25 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 _logger.LogDebug("User not found: {0}", model.Username);
                 return Unauthenticated(genericErrorMessage);
             }
-            else
+
+            var user = userResponse.Result;
+            var checkPasswordStatus = await _passwordService.CheckPasswordAsync(user.SubjectId, model.Password);
+            _logger.LogDebug(checkPasswordStatus.Text);
+            if(checkPasswordStatus.IsOk)
             {
-                var user = userResponse.Result;
-                var checkPasswordStatus = await _passwordService.CheckPasswordAsync(user.SubjectId, model.Password);
-                _logger.LogDebug(checkPasswordStatus.Text);
-                if(checkPasswordStatus.IsOk)
-                {
-                    await _eventNotificationService.NotifyEventAsync(model.Username, EventType.SignInSuccess, SignInType.Password.ToString());
-                    return await SignInAndRedirectAsync(SignInMethod.Password, model.Username, model.StaySignedIn, model.NextUrl, null);
-                }
-                switch(checkPasswordStatus.StatusCode)
-                {
-                    case CheckPasswordStatusCode.TemporarilyLocked:
-                        return Unauthenticated("Your password is temporarily locked. Use a one time code to sign in.");
-                    case CheckPasswordStatusCode.PasswordIncorrect:
-                    case CheckPasswordStatusCode.NotFound:
-                        await _eventNotificationService.NotifyEventAsync(model.Username, EventType.SignInFail, SignInType.Password.ToString());
-                        return Unauthenticated(genericErrorMessage);
-                    default:
-                        return ServerError("Hmm. Something went wrong. Please try again.");
-                }
+                await _eventNotificationService.NotifyEventAsync(user.Email, EventType.SignInSuccess, SignInType.Password.ToString());
+                return await SignInAndRedirectAsync(SignInMethod.Password, model.Username, model.StaySignedIn, model.NextUrl, null);
+            }
+            switch(checkPasswordStatus.StatusCode)
+            {
+                case CheckPasswordStatusCode.TemporarilyLocked:
+                    return Unauthenticated("Your password is temporarily locked. Use a one time code to sign in.");
+                case CheckPasswordStatusCode.PasswordIncorrect:
+                case CheckPasswordStatusCode.NotFound:
+                    await _eventNotificationService.NotifyEventAsync(model.Username, EventType.SignInFail, SignInType.Password.ToString());
+                    return Unauthenticated(genericErrorMessage);
+                default:
+                    return ServerError("Hmm. Something went wrong. Please try again.");
             }
         }
 
