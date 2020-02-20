@@ -276,6 +276,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             var userResponse = await _userStore.GetUserByUsernameAsync(model.Username);
             if (userResponse.HasError)
             {
+                await _eventNotificationService.NotifyEventAsync(model.Username, EventType.AccountNotFound, nameof(AuthenticateCodeAsync));
                 _logger.LogDebug("User not found: {0}", model.Username);
                 return Unauthenticated(genericErrorMessage);
             }
@@ -313,6 +314,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             var userResponse = await _userStore.GetUserByUsernameAsync(model.Username);
             if (userResponse.HasError)
             {
+                await _eventNotificationService.NotifyEventAsync(model.Username, EventType.AccountNotFound, nameof(AuthenticatePasswordAsync));
                 _logger.LogDebug("User not found: {0}", model.Username);
                 return Unauthenticated(genericErrorMessage);
             }
@@ -331,7 +333,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                     return Unauthenticated("Your password is temporarily locked. Use a one time code to sign in.");
                 case CheckPasswordStatusCode.PasswordIncorrect:
                 case CheckPasswordStatusCode.NotFound:
-                    await _eventNotificationService.NotifyEventAsync(model.Username, EventType.SignInFail, SignInType.Password.ToString());
+                    await _eventNotificationService.NotifyEventAsync(user.Email, EventType.SignInFail, $"{SignInType.Password} {checkPasswordStatus.StatusCode}");
                     return Unauthenticated(genericErrorMessage);
                 default:
                     return ServerError("Hmm. Something went wrong. Please try again.");
@@ -372,43 +374,45 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 return WebStatus.Error("Invalid application id.", HttpStatusCode.BadRequest);
             }
 
-            if (!await _userStore.UserExists(model.Username))
+            var genericMessage = "Check your email for password reset instructions.";
+            var userResponse = await _userStore.GetUserByUsernameAsync(model.Username);
+            if (userResponse.HasError)
             {
                 _logger.LogInformation("User not found: {0}", model.Username);
                 // if valid email or phone number, send a message inviting them to register
                 if (model.Username.Contains("@"))
                 {
-                    var result = await _messageService.SendAccountNotFoundMessageAsync(model.ApplicationId, model.Username);
-                    if (result.HasError)
-                    {
-                        return ServerError(result.Text);
-                    }
-                    await _eventNotificationService.NotifyEventAsync(model.Username, EventType.AccountNotFound);
+                    var status = await _messageService.SendAccountNotFoundMessageAsync(model.ApplicationId, model.Username);
+                    // NOTE: ignoring status, since it doesn't matter whether it succeeded or failed
+
+                    await _eventNotificationService.NotifyEventAsync(model.Username, EventType.AccountNotFound, nameof(SendPasswordResetMessageAsync));
                 }
                 else
                 {
                     _logger.LogInformation("Account not found message was not sent because provided username is not an email address: {0}", model.Username);
                 }
-                return WebStatus.Success("Check your email for password reset instructions.");
+                return WebStatus.Success(genericMessage);
             }
+            var user = userResponse.Result;
+
             var nextUrl = SendToSetPasswordFirst(!string.IsNullOrEmpty(model.NextUrl) ? model.NextUrl : _urlService.GetDefaultRedirectUrl());
             var oneTimeCodeResponse = await _oneTimeCodeService.GetOneTimeCodeAsync(
-                model.Username, 
+                user.Email, 
                 TimeSpan.FromMinutes(_options.OneTimeCodeValidityMinutes), 
                 nextUrl);
             if (oneTimeCodeResponse.IsOk)
             {
-                var status = await _messageService.SendPasswordResetMessageAsync(model.ApplicationId, model.Username, 
+                var status = await _messageService.SendPasswordResetMessageAsync(model.ApplicationId, user.Email, 
                     oneTimeCodeResponse.Result.ShortCode, oneTimeCodeResponse.Result.LongCode);
-                await _eventNotificationService.NotifyEventAsync(model.Username, EventType.RequestPasswordReset);
+                await _eventNotificationService.NotifyEventAsync(user.Email, EventType.RequestPasswordReset);
                 if(status.IsOk) 
                 {
-                    status = Status.Success("Check your email for password reset instructions.");
+                    status = Status.Success(genericMessage);
                 }
                 SetNonce(oneTimeCodeResponse.Result.ClientNonce);
                 return new WebStatus(status);
             }
-            _logger.LogError("Password reset message was not be sent due to error encountered while generating a one time link");
+            _logger.LogError("Password reset message was not sent due to error encountered while generating a one time link.");
             return ServerError("Hmm. Something went wrong. Please try again.");
         }
 

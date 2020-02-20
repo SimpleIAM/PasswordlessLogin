@@ -24,7 +24,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.EventNotification
                 Time = DateTime.UtcNow,
                 Username = username,
                 EventType = eventType,
-                Details = details
+                Details = details?.Substring(0, Math.Min(details.Length, 255)) // max 255 characters in this implementation
             };
             _context.Add(entry);
             var count = await _context.SaveChangesAsync();
