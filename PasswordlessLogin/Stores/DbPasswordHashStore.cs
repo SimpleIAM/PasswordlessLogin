@@ -92,7 +92,7 @@ namespace SimpleIAM.PasswordlessLogin.Stores
             return Status.Success("Password removed.");
         }
 
-        public async Task<Status> TempLockPasswordHashAsync(string uniqueIdentifier, DateTime lockUntil, int failureCount)
+        public async Task<Status> TempLockPasswordHashAsync(string uniqueIdentifier, DateTime? lockUntil, int failureCount)
         {
             _logger.LogTrace("Temp lock password hash");
             var count = 0;

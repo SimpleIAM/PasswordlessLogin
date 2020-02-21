@@ -108,7 +108,7 @@ namespace SimpleIAM.PasswordlessLogin.API
 
                 if (!string.IsNullOrEmpty(model.OldPassword))
                 {
-                    var scheckStatus = await _passwordService.CheckPasswordAsync(user.SubjectId, model.OldPassword);
+                    var scheckStatus = await _passwordService.CheckPasswordAsync(user.SubjectId, model.OldPassword, PasswordLockMode.TrustedClient);
                     if (scheckStatus.HasError)
                     {
                         return Unauthenticated("Old password was incorrect, locked, or missing.");
@@ -158,7 +158,7 @@ namespace SimpleIAM.PasswordlessLogin.API
 
                 if (!string.IsNullOrEmpty(model.OldPassword))
                 {
-                    var status = await _passwordService.CheckPasswordAsync(user.SubjectId, model.OldPassword);
+                    var status = await _passwordService.CheckPasswordAsync(user.SubjectId, model.OldPassword, PasswordLockMode.TrustedClient);
                     if (status.HasError)
                     {
                         return Unauthenticated("Old password was incorrect, locked, or missing.");
@@ -201,7 +201,7 @@ namespace SimpleIAM.PasswordlessLogin.API
 
                 if (!string.IsNullOrEmpty(model.Password))
                 {
-                    var checkStatus = await _passwordService.CheckPasswordAsync(user.SubjectId, model.Password);
+                    var checkStatus = await _passwordService.CheckPasswordAsync(user.SubjectId, model.Password, PasswordLockMode.TrustedClient);
                     if (checkStatus.HasError)
                     {
                         return Unauthenticated("Password was incorrect, locked, or missing.");

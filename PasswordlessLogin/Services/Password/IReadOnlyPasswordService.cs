@@ -8,6 +8,6 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
 {
     public interface IReadOnlyPasswordService
     {
-        Task<CheckPasswordStatus> CheckPasswordAsync(string uniqueIdentifier, string password);
+        Task<CheckPasswordStatus> CheckPasswordAsync(string uniqueIdentifier, string password, PasswordLockMode lockMode);
     }
 }

@@ -320,7 +320,11 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             }
 
             var user = userResponse.Result;
-            var checkPasswordStatus = await _passwordService.CheckPasswordAsync(user.SubjectId, model.Password);
+
+            var trustedBrowserResponse = await _trustedBrowserStore.GetTrustedBrowserAsync(user.SubjectId, _httpContext.Request.GetBrowserId());
+            var passwordLockMode = trustedBrowserResponse.IsOk ? PasswordLockMode.TrustedClient : PasswordLockMode.UntrustedClient;
+
+            var checkPasswordStatus = await _passwordService.CheckPasswordAsync(user.SubjectId, model.Password, passwordLockMode);
             _logger.LogDebug(checkPasswordStatus.Text);
             if(checkPasswordStatus.IsOk)
             {
@@ -474,8 +478,8 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
 
             var user = userResponse.Result;
             var addTrustForThisBrowser = false;
-            var browserIsTrusted = await _trustedBrowserStore
-                .GetTrustedBrowserAsync(user.SubjectId, _httpContext.Request.GetBrowserId()) != null;
+            var trustedBrowserResponse = await _trustedBrowserStore.GetTrustedBrowserAsync(user.SubjectId, _httpContext.Request.GetBrowserId());
+            var browserIsTrusted = trustedBrowserResponse.IsOk;
 
             var authMethod = (method == SignInMethod.Password) ? "pwd" : "otp";
             var authMethods = new string[] { authMethod };
