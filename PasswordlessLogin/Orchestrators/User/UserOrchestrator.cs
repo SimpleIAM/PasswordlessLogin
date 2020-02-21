@@ -129,14 +129,17 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 return Response.Web.Error<ChangeEmailViewModel>("Username is not available", HttpStatusCode.Conflict);
             }
             var oldEmail = user.Email;
-            
-            var otcResponse = await _oneTimeCodeService.GetOneTimeCodeAsync(oldEmail, TimeSpan.FromHours(_passwordlessLoginOptions.CancelEmailChangeTimeWindowHours));
-            var status = await _messageService.SendEmailChangedNoticeAsync(applicationId, oldEmail, otcResponse.Result.LongCode);
-            if (status.HasError)
+
+            if (_passwordlessLoginOptions.SendCancelEmailChangeMessage)
             {
-                // TODO: review to ensure that this will not prevent changing one's email address if the
-                // old address is undeliverable
-                return Response.Web.Error<ChangeEmailViewModel>($"Change cancelled because of failure to send email notice: {status.Text}");
+                var otcResponse = await _oneTimeCodeService.GetOneTimeCodeAsync(oldEmail, TimeSpan.FromHours(_passwordlessLoginOptions.CancelEmailChangeTimeWindowHours));
+                var status = await _messageService.SendEmailChangedNoticeAsync(applicationId, oldEmail, otcResponse.Result.LongCode);
+                if (status.HasError)
+                {
+                    // TODO: review to ensure that this will not prevent changing one's email address if the
+                    // old address is undeliverable
+                    return Response.Web.Error<ChangeEmailViewModel>($"Change cancelled because of failure to send email notice: {status.Text}");
+                }
             }
 
             var changes = new Dictionary<string, string>
