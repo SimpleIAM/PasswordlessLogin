@@ -90,10 +90,9 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
                 case CheckPaswordHashResult.DoesNotMatch:
                     return await ProcessDoesNotMatchAndReturnAsync(uniqueIdentifier, lockMode, hashInfo.FailedAttemptCount);
                 case CheckPaswordHashResult.MatchesNeedsRehash:
-                    return await ProcessNeedsRehashAndReturnAsync(uniqueIdentifier, password);
+                    return await ProcessMatchesNeedsRehashAndReturnAsync(uniqueIdentifier, password);
                 case CheckPaswordHashResult.Matches:
-                    _logger.LogDebug("Password matches");
-                    return Status.Success<CheckPasswordStatus>("Password was correct.");
+                    return await ProcessMatchesAndReturnAsync(uniqueIdentifier);
                 default:
                     // this should never happen
                     return CheckPasswordStatus.Error("An unexpected error occurred.", CheckPasswordStatusCode.ServiceFailure);
@@ -130,7 +129,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
                     // lock so that the next failure after a lockout will not initiate another lockout period
                     currentFailedAttemptCount = 0;
                 }
-                await _passwordHashStore.TempLockPasswordHashAsync(uniqueIdentifier, lockUntil, currentFailedAttemptCount);
+                await _passwordHashStore.UpdatePasswordHashTempLockAsync(uniqueIdentifier, lockUntil, currentFailedAttemptCount);
 
                 return CheckPasswordStatus.Error("Password is temporarily locked.", CheckPasswordStatusCode.TemporarilyLocked);
             }
@@ -142,7 +141,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
             }
         }
 
-        protected async Task<CheckPasswordStatus> ProcessNeedsRehashAndReturnAsync(string uniqueIdentifier, string password)
+        protected async Task<CheckPasswordStatus> ProcessMatchesNeedsRehashAndReturnAsync(string uniqueIdentifier, string password)
         {
             _logger.LogDebug("Rehashing password");
             var newHash = _passwordHashService.HashPassword(password);
@@ -150,6 +149,17 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
             if (updateStatus.HasError)
             {
                 _logger.LogWarning("Password should be rehashed, but unable to update the password hash for user {0}.", uniqueIdentifier);
+            }
+            return Status.Success<CheckPasswordStatus>("Password was correct.");
+        }
+
+        protected async Task<CheckPasswordStatus> ProcessMatchesAndReturnAsync(string uniqueIdentifier)
+        {
+            _logger.LogDebug("Password matches");
+            var updateStatus = await _passwordHashStore.UpdatePasswordHashTempLockAsync(uniqueIdentifier, null, 0);
+            if (updateStatus.HasError)
+            {
+                _logger.LogWarning("Could not clear failure count for user {0}.", uniqueIdentifier);
             }
             return Status.Success<CheckPasswordStatus>("Password was correct.");
         }

@@ -14,7 +14,7 @@ namespace SimpleIAM.PasswordlessLogin.Stores
         Task<Status> AddPasswordHashAsync(string uniqueIdentifier, string hash);
         Task<Status> UpdatePasswordHashAsync(string uniqueIdentifier, string newHash);
         Task<Status> UpdatePasswordHashFailureCountAsync(string uniqueIdentifier, int failureCount);
-        Task<Status> TempLockPasswordHashAsync(string uniqueIdentifier, DateTime? lockUntil, int failureCount);
+        Task<Status> UpdatePasswordHashTempLockAsync(string uniqueIdentifier, DateTime? lockUntil, int failureCount);
         Task<Status> RemovePasswordHashAsync(string uniqueIdentifier);
     }
 }
