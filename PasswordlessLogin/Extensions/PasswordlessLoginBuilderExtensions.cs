@@ -20,11 +20,13 @@ using SimpleIAM.PasswordlessLogin.Orchestrators;
 using SimpleIAM.PasswordlessLogin.Services;
 using SimpleIAM.PasswordlessLogin.Services.Email;
 using SimpleIAM.PasswordlessLogin.Services.EventNotification;
+using SimpleIAM.PasswordlessLogin.Services.Localization;
 using SimpleIAM.PasswordlessLogin.Services.Message;
 using SimpleIAM.PasswordlessLogin.Services.OTC;
 using SimpleIAM.PasswordlessLogin.Services.Password;
 using SimpleIAM.PasswordlessLogin.Stores;
 using System;
+using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Reflection;
@@ -52,6 +54,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 new AspNetIdentityPasswordHashService(PasswordlessLoginConstants.Security.DefaultPbkdf2Iterations));
             services.TryAddTransient<IPasswordHashStore, DbPasswordHashStore>();
             services.TryAddTransient<IPasswordService, DefaultPasswordService>();
+            services.TryAddTransient<IApplicationLocalizer, DefaultLocalizer>();
 
             services.TryAddTransient<AuthenticateOrchestrator>();
             services.TryAddTransient<UserOrchestrator>();
@@ -80,7 +83,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 typeof(PasswordlessLoginServiceCollectionExtensions).GetTypeInfo().Assembly,
                 $"SimpleIAM.PasswordlessLogin.{PasswordlessLoginConstants.EmailTemplateFolder}");
 
-        public static PasswordlessLoginBuilder AddCustomEmailTemplates(this PasswordlessLoginBuilder builder, string templateOverrideFolder)
+        public static PasswordlessLoginBuilder AddCustomEmailTemplates(this PasswordlessLoginBuilder builder, string templateOverrideFolder, CultureInfo[] supportedCultures = null)
         {
             if (!Directory.Exists(templateOverrideFolder ?? throw new ArgumentNullException(nameof(templateOverrideFolder))))
             {
@@ -93,7 +96,7 @@ namespace Microsoft.Extensions.DependencyInjection
             );
 
 
-            return builder.AddEmailTemplates(templateFileProvider, true);
+            return builder.AddEmailTemplates(templateFileProvider, supportedCultures, true);
         }
 
         public static PasswordlessLoginBuilder AddSmtpEmail(this PasswordlessLoginBuilder builder, Action<SmtpOptions> smtpOptionsBuilder)
@@ -161,9 +164,9 @@ namespace Microsoft.Extensions.DependencyInjection
             return existingRedirector(context);
         };
 
-        private static PasswordlessLoginBuilder AddEmailTemplates(this PasswordlessLoginBuilder builder, IFileProvider templateFileProvider, bool force = false)
+        private static PasswordlessLoginBuilder AddEmailTemplates(this PasswordlessLoginBuilder builder, IFileProvider templateFileProvider, CultureInfo[] supportedCultures = null, bool force = false)
         {
-            var emailTemplates = EmailTemplateProcessor.GetTemplatesFromMailConfig(templateFileProvider);
+            var emailTemplates = EmailTemplateProcessor.GetTemplates(templateFileProvider, supportedCultures);
             if (force)
             {
                 builder.Services.AddSingleton(emailTemplates);

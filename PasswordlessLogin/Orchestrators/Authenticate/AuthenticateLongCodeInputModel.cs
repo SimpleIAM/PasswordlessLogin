@@ -7,7 +7,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
 {
     public class AuthenticateLongCodeInputModel
     {
-        [Required]
+        [Required(ErrorMessage = "{0} is required.")]
         public string LongCode { get; set; }
     }
 }

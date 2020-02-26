@@ -10,6 +10,8 @@ namespace SimpleIAM.PasswordlessLogin.Services.EventNotification
 {
     public class DefaultEventNotificationService : IEventNotificationService
     {
+        // Note: status messages from this service are not localized because they are not intended for end users
+
         private readonly PasswordlessLoginDbContext _context;
 
         public DefaultEventNotificationService(PasswordlessLoginDbContext context)
@@ -32,7 +34,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.EventNotification
             {
                 return Status.Error("Failed to save notification.");
             }
-            return Status.Error("Notification saved.");
+            return Status.Success("Notification saved.");
         }
     }
 }

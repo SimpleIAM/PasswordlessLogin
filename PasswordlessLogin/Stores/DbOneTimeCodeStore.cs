@@ -7,17 +7,20 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SimpleIAM.PasswordlessLogin.Entities;
+using SimpleIAM.PasswordlessLogin.Services.Localization;
 using StandardResponse;
 
 namespace SimpleIAM.PasswordlessLogin.Stores
 {
     public class DbOneTimeCodeStore : IOneTimeCodeStore
     {
+        private readonly IApplicationLocalizer _localizer;
         private readonly ILogger _logger;
         private readonly PasswordlessLoginDbContext _context;
 
-        public DbOneTimeCodeStore(ILogger<DbOneTimeCodeStore> logger, PasswordlessLoginDbContext context)
+        public DbOneTimeCodeStore(IApplicationLocalizer localizer, ILogger<DbOneTimeCodeStore> logger, PasswordlessLoginDbContext context)
         {
+            _localizer = localizer;
             _logger = logger;
             _context = context;
         }
@@ -28,10 +31,10 @@ namespace SimpleIAM.PasswordlessLogin.Stores
             var record = await _context.OneTimeCodes.FindAsync(sentTo);
             if (record == null)
             {
-                return Response.Error<Models.OneTimeCode>("One time code not found.");
+                return Response.Error<Models.OneTimeCode>(_localizer["One time code not found."]);
             }
 
-            return Response.Success(record?.ToModel(), "One time code found.");
+            return Response.Success(record?.ToModel(), _localizer["One time code found."]);
         }
 
         public async Task<Response<Models.OneTimeCode, Status>> GetOneTimeCodeByLongCodeAsync(string longCodeHash)
@@ -40,10 +43,10 @@ namespace SimpleIAM.PasswordlessLogin.Stores
             var record = await _context.OneTimeCodes.SingleOrDefaultAsync(x => x.LongCode == longCodeHash);
             if (record == null)
             {
-                return Response.Error<Models.OneTimeCode, Status>("One time code not found.");
+                return Response.Error<Models.OneTimeCode, Status>(_localizer["One time code not found."]);
             }
 
-            return Response.Success(record?.ToModel(), "One time code found.");
+            return Response.Success(record?.ToModel(), _localizer["One time code found."]);
         }
 
         public async Task<Status> AddOneTimeCodeAsync(Models.OneTimeCode oneTimeCode)
@@ -54,10 +57,10 @@ namespace SimpleIAM.PasswordlessLogin.Stores
             var count = await _context.SaveChangesAsync();
             if (count == 0)
             {
-                return Status.Error("One time code was not saved.");
+                return Status.Error(_localizer["One time code was not saved."]);
             }
 
-            return Status.Success("One time code saved.");
+            return Status.Success(_localizer["One time code saved."]);
         }
 
         public async Task<Status> UpdateOneTimeCodeSentCountAsync(string sentTo, int sentCount, string newRedirectUrl = null)
@@ -85,10 +88,10 @@ namespace SimpleIAM.PasswordlessLogin.Stores
             }
             if (count == 0)
             {
-                return Status.Error("One time code sent count was not updated.");
+                return Status.Error(_localizer["One time code sent count was not updated."]);
             }
 
-            return Status.Success("One time code sent count was updated.");
+            return Status.Success(_localizer["One time code sent count was updated."]);
         }
 
         public async Task<Status> UpdateOneTimeCodeFailureAsync(string sentTo, int failureCount)
@@ -108,10 +111,10 @@ namespace SimpleIAM.PasswordlessLogin.Stores
             }
             if (count == 0)
             {
-                return Status.Error("One time code failure count was not updated.");
+                return Status.Error(_localizer["One time code failure count was not updated."]);
             }
 
-            return Status.Success("One time code failure count was updated.");
+            return Status.Success(_localizer["One time code failure count was updated."]);
         }
 
         public async Task<Status> ExpireOneTimeCodeAsync(string sentTo)
@@ -126,10 +129,10 @@ namespace SimpleIAM.PasswordlessLogin.Stores
             }
             if (count == 0)
             {
-                return Status.Error("One time code was not cancelled.");
+                return Status.Error(_localizer["One time code was not cancelled."]);
             }
 
-            return Status.Success("One time code was cancelled.");
+            return Status.Success(_localizer["One time code was cancelled."]);
         }
 
         public async Task<Status> RemoveOneTimeCodeAsync(string sentTo)
@@ -144,10 +147,10 @@ namespace SimpleIAM.PasswordlessLogin.Stores
             }
             if (count == 0)
             {
-                return Status.Error("One time code was not removed.");
+                return Status.Error(_localizer["One time code was not removed."]);
             }
 
-            return Status.Success("One time code was removed.");
+            return Status.Success(_localizer["One time code was removed."]);
         }
     }
 }

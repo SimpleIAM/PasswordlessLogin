@@ -23,15 +23,27 @@ namespace SimpleIAM.PasswordlessLogin
 
         public static class EmailTemplates
         {
+            public const string AccountAlreadyExists = "AccountAlreadyExists";
+            public const string AccountNotFound = "AccountNotFound";
+            public const string EmailChangedNotice = "EmailChangedNotice";
             public const string OneTimeCode = "OneTimeCode";
-            public const string SignInWithEmail = "SignInWithEmail";
-            public const string Welcome = "Welcome";
-            public const string PasswordReset = "PasswordReset";
             public const string PasswordChangedNotice = "PasswordChangedNotice";
             public const string PasswordRemovedNotice = "PasswordRemovedNotice";
-            public const string EmailChangedNotice = "EmailChangedNotice";
-            public const string AccountNotFound = "AccountNotFound";
-            public const string AccountAlreadyExists = "AccountAlreadyExists";
+            public const string PasswordReset = "PasswordReset";
+            public const string SignInWithEmail = "SignInWithEmail";
+            public const string Welcome = "Welcome";
+            
+            public static string[] All = {
+                AccountAlreadyExists, 
+                AccountNotFound, 
+                EmailChangedNotice, 
+                OneTimeCode,
+                PasswordChangedNotice,
+                PasswordRemovedNotice,
+                PasswordReset,
+                SignInWithEmail,
+                Welcome
+            };
         }
 
         public static class OneTimeCode

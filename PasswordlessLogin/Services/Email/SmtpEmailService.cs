@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using MimeKit;
 using MimeKit.Text;
 using SimpleIAM.PasswordlessLogin.Configuration;
+using SimpleIAM.PasswordlessLogin.Services.Localization;
 using StandardResponse;
 using System;
 using System.Threading.Tasks;
@@ -14,11 +15,13 @@ namespace SimpleIAM.PasswordlessLogin.Services.Email
 {
     public class SmtpEmailService : IEmailService
     {
+        private readonly IApplicationLocalizer _localizer;
         private readonly ILogger _logger;
         private readonly SmtpOptions _smtpOptions;
 
-        public SmtpEmailService(ILogger<SmtpEmailService> logger, SmtpOptions smtpOptions)
+        public SmtpEmailService(IApplicationLocalizer localizer, ILogger<SmtpEmailService> logger, SmtpOptions smtpOptions)
         {
+            _localizer = localizer;
             _logger = logger;
             _smtpOptions = smtpOptions;
         }
@@ -64,19 +67,19 @@ namespace SimpleIAM.PasswordlessLogin.Services.Email
                 catch (Exception ex) when (ItIsANetworkError(ex))
                 {
                     _logger.LogError("Network error. Failed to send message. Exception: {0}", ex.ToString());
-                    return Status.Error("Failed to send email. Please try again.");
+                    return Status.Error(_localizer["Failed to send email. Please try again."]);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError("Failed to send message. Exception: {0}", ex.ToString());
-                    return Status.Error("Failed to send email");
+                    return Status.Error(_localizer["Failed to send email."]);
                 }
                 finally
                 {
                     await client.DisconnectAsync(true);
                 }
             }
-            return Status.Success();
+            return Status.Success(_localizer["Email sent."]);
         }
 
         private bool ItIsANetworkError(Exception ex)

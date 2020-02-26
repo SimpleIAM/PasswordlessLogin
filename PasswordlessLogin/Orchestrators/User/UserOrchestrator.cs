@@ -12,6 +12,7 @@ using SimpleIAM.PasswordlessLogin.Configuration;
 using SimpleIAM.PasswordlessLogin.Models;
 using SimpleIAM.PasswordlessLogin.Services;
 using SimpleIAM.PasswordlessLogin.Services.EventNotification;
+using SimpleIAM.PasswordlessLogin.Services.Localization;
 using SimpleIAM.PasswordlessLogin.Services.Message;
 using SimpleIAM.PasswordlessLogin.Services.OTC;
 using SimpleIAM.PasswordlessLogin.Services.Password;
@@ -30,6 +31,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
         private readonly IOneTimeCodeService _oneTimeCodeService;
         private readonly IMessageService _messageService;
         private readonly PasswordlessLoginOptions _passwordlessLoginOptions;
+        private readonly IApplicationLocalizer _localizer;
 
         public UserOrchestrator(
             ILogger<UserOrchestrator> logger,
@@ -39,7 +41,8 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             IPasswordService passwordService,
             IOneTimeCodeService oneTimeCodeService,
             IMessageService messageService,
-            PasswordlessLoginOptions passwordlessLoginOptions)
+            PasswordlessLoginOptions passwordlessLoginOptions,
+            IApplicationLocalizer localizer)
         {
             _logger = logger;
             _eventNotificationService = eventNotificationService;
@@ -49,6 +52,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             _oneTimeCodeService = oneTimeCodeService;
             _messageService = messageService;
             _passwordlessLoginOptions = passwordlessLoginOptions;
+            _localizer = localizer;
         }
 
         public async Task<Response<User, WebStatus>> GetUserAsync(string subjectId)
@@ -58,12 +62,12 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             if (!OperatingOnSelf(subjectId))
             {
                 _logger.LogWarning("Permission denied trying to get user {0}", subjectId);
-                return Response.Web.Error<User>("Permission denied.", HttpStatusCode.Forbidden);
+                return Response.Web.Error<User>(_localizer["Permission denied."], HttpStatusCode.Forbidden);
             }
             var userResponse = await _userStore.GetUserAsync(subjectId, true);
             if(userResponse.HasError)
             {
-                return Response.Web.Error<User>("Not found.", HttpStatusCode.NotFound);
+                return Response.Web.Error<User>(_localizer["Not found."], HttpStatusCode.NotFound);
             }
             return Response.Web.Success(userResponse.Result);
         }
@@ -75,12 +79,12 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             if (!OperatingOnSelf(model.SubjectId))
             {
                 _logger.LogWarning("Permission denied trying to patch user {0}", model.SubjectId);
-                return Response.Web.Error<User>("Permission denied.", HttpStatusCode.Forbidden);
+                return Response.Web.Error<User>(_localizer["Permission denied."], HttpStatusCode.Forbidden);
             }
             var user = await _userStore.GetUserAsync(model.SubjectId, true);
             if (user == null)
             {
-                return Response.Web.Error<User>("User does not exist", HttpStatusCode.BadRequest);
+                return Response.Web.Error<User>(_localizer["User not found."], HttpStatusCode.NotFound);
             }
             var updateUserResponse = await _userStore.PatchUserAsync(model.SubjectId, model.Properties);
             if(updateUserResponse.HasError)
@@ -102,20 +106,21 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             if (!OperatingOnSelf(subjectId))
             {
                 _logger.LogWarning("Permission denied trying to change email address user {0}", subjectId);
-                return Response.Web.Error<ChangeEmailViewModel>("Permission denied.", HttpStatusCode.Forbidden);
+                return Response.Web.Error<ChangeEmailViewModel>(_localizer["Permission denied."], HttpStatusCode.Forbidden);
             }
             var userResponse = await _userStore.GetUserAsync(subjectId, true);
             if (userResponse.HasError)
             {
-                return Response.Web.Error<ChangeEmailViewModel>("User does not exist.", HttpStatusCode.BadRequest);
+                return Response.Web.Error<ChangeEmailViewModel>("User not found.", HttpStatusCode.NotFound);
             }
             var user = userResponse.Result;
 
-            // check if a cancel email change code link is still valid
+            // Check if a cancel email change code link is still valid. Note that the cancel email change code link does
+            // not interfere with getting a one time code to sign in because it is associated with the OLD email address.
             var previouslyChangedEmail = user.Claims.FirstOrDefault(x => x.Type == PasswordlessLoginConstants.Security.PreviousEmailClaimType)?.Value;
             if(previouslyChangedEmail != null && (await _oneTimeCodeService.UnexpiredOneTimeCodeExistsAsync(previouslyChangedEmail)))
             {
-                return Response.Web.Error<ChangeEmailViewModel>("You cannot change your email address again until the link to cancel the last email change (sent to your old email address) expires.", HttpStatusCode.Forbidden);
+                return Response.Web.Error<ChangeEmailViewModel>(_localizer["You cannot change your email address again until the link to cancel the last email change (sent to your old email address) expires."], HttpStatusCode.Forbidden);
             }
             var usernameAvailableResponse = await UsernameIsReallyAvailableAsync(newEmail);
             if(usernameAvailableResponse.HasError)
@@ -126,7 +131,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             if (!usernameIsAvailable)
             {
                 // This unavoidably reveals the presence of an existing account, but can't be easily exploited
-                return Response.Web.Error<ChangeEmailViewModel>("Username is not available", HttpStatusCode.Conflict);
+                return Response.Web.Error<ChangeEmailViewModel>(_localizer["Username is not available."], HttpStatusCode.Conflict);
             }
             var oldEmail = user.Email;
 
@@ -138,7 +143,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 {
                     // TODO: review to ensure that this will not prevent changing one's email address if the
                     // old address is undeliverable
-                    return Response.Web.Error<ChangeEmailViewModel>($"Change cancelled because of failure to send email notice: {status.Text}");
+                    return Response.Web.Error<ChangeEmailViewModel>($"{_localizer["Change cancelled because of failure to send email notice:"]} {status.Text}");
                 }
             }
 
@@ -171,12 +176,12 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             var response = await _oneTimeCodeService.CheckOneTimeCodeAsync(longCode, null);
             if(response.Status.StatusCode != CheckOneTimeCodeStatusCode.VerifiedWithoutNonce) // TODO: investigate if VerifiedWithNonce is possible and valid
             {
-                return Response.Web.Error<ChangeEmailViewModel>("Invalid code.", HttpStatusCode.BadRequest);
+                return Response.Web.Error<ChangeEmailViewModel>(_localizer["Invalid code."], HttpStatusCode.BadRequest);
             }
             var userResponse = await _userStore.GetUserByPreviousEmailAsync(response.Result.SentTo);
             if (userResponse.HasError)
             {
-                return Response.Web.Error<ChangeEmailViewModel>("User not found.", HttpStatusCode.BadRequest);
+                return Response.Web.Error<ChangeEmailViewModel>(_localizer["User not found."], HttpStatusCode.BadRequest);
             }
             var user = userResponse.Result;
 
@@ -199,7 +204,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 NewEmail = updatedUser.Email,
             };
             await _eventNotificationService.NotifyEventAsync(viewModel.OldEmail, EventType.CancelEmailChange, $"Reverted to {viewModel.NewEmail}");
-            return Response.Web.Success(viewModel);
+            return Response.Web.Success(viewModel, _localizer["Email address change has been reverted."]);
         }
 
         public async Task<Response<bool, Status>> UsernameIsReallyAvailableAsync(string email)

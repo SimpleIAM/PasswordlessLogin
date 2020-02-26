@@ -10,12 +10,14 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
     {
         public string ApplicationId { get; set; }
 
-        [Required]
+        [Display(Name = "Email")]
+        [Required(ErrorMessage = "{0} is required.")]
         [EmailAddress]
         [RegularExpression(PasswordlessLoginConstants.BasicEmailRegexPattern, ErrorMessage = "Enter a valid email address")]
         public string Email { get; set; }
 
         // Optional password
+        [Display(Name = "Password")]
         public string Password { get; set; }
 
         public Dictionary<string, string> Claims {get; set;}

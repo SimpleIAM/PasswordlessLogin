@@ -7,12 +7,15 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
 {
     public class AuthenticatePasswordInputModel
     {
-        [Required]
+        [Display(Name = "Username")]
+        [Required(ErrorMessage = "{0} is required.")]
         public string Username { get; set; }
 
-        [Required]
+        [Display(Name = "Password")]
+        [Required(ErrorMessage = "{0} is required.")]
         public string Password { get; set; }
 
+        [Display(Name = "Stay Signed In")]
         public bool StaySignedIn { get; set; }
         
         public string NextUrl { get; set; }

@@ -1,0 +1,85 @@
+Account not found.
+Account temporarily locked.
+An unexpected error occurred.
+Change cancelled because of failure to send email notice:
+Changing '{0}' is not allowed.
+Check your email for password reset instructions.
+Could not deliver message. Email address is not valid.
+Email address change has been reverted.
+Email address is temporarily reserved.
+Email sent.
+Failed to add the user.
+Failed to save the password.
+Failed to save the one time code.
+Failed to save trusted browser.
+Failed to send email.
+Failed to send email. Please try again.
+Failed to temporarily lock the account.
+Failed to update old password.
+Hmm. Something went wrong. Please try again.
+Invalid application id.
+Invalid code.
+Message sent. Please check your email.
+Not found.
+One time code failure count was not updated.
+One time code failure count was updated.
+One time code found.
+One time code not found.
+One time code saved.
+One time code sent count was not updated.
+One time code sent count was updated.
+One time code was cancelled.
+One time code was generated.
+One time code was not cancelled.
+One time code was not removed.
+One time code was not saved.
+One time code was removed.
+Only one email address is allowed.
+Password does not meet minimum strength requirements.
+Password failure count not updated.
+Password failure count updated.
+Password found.
+Password is temporarily locked.
+Password not found.
+Password not removed.
+Password not updated.
+Password removed.
+Password saved.
+Password updated.
+Password was correct.
+Password was not correct.
+Password was not set.
+Permission denied.
+Please check your email to complete the sign up process.
+Please wait a few minutes and try again.
+Please wait a few minutes before requesting a new code.
+Something went wrong.
+Subject id or browser id was missing.
+Subject id was missing.
+The date the password was last changed was found.
+The one time code had an invalid format.
+The one time code has expired.
+The one time code is locked.
+The one time code is locked. Please request a new one after a few minutes.
+The one time code was not correct.
+The one time code was verified.
+The sign in link expired.
+The sign in link is invalid.
+The username or one time code wasn't right.
+The username or password wasn't right.
+Too many requests.
+Trusted browser added.
+Trusted browser found.
+Trusted browser not found or it did not belong to this user.
+Trusted browser saved.
+Trusted browser successfully removed.
+Trusted browser was not found.
+Unique identifier is required.
+User found.
+User not found.
+User saved.
+Username is not available.
+We sent a code to the email address asociated with your account (if found). Please check your email.
+You cannot change your email address again until the link to cancel the last email change (sent to your old email address) expires.
+Your one time code has expired. Please request a new one.
+Your password is temporarily locked. Use a one time code to sign in.

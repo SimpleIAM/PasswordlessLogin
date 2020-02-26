@@ -17,6 +17,7 @@ using SimpleIAM.PasswordlessLogin.Helpers;
 using SimpleIAM.PasswordlessLogin.Models;
 using SimpleIAM.PasswordlessLogin.Services;
 using SimpleIAM.PasswordlessLogin.Services.EventNotification;
+using SimpleIAM.PasswordlessLogin.Services.Localization;
 using SimpleIAM.PasswordlessLogin.Services.Message;
 using SimpleIAM.PasswordlessLogin.Services.OTC;
 using SimpleIAM.PasswordlessLogin.Services.Password;
@@ -45,6 +46,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
         private readonly ITrustedBrowserStore _trustedBrowserStore;
         private readonly ISignInService _signInService;
         private readonly IApplicationService _applicationService;
+        private readonly IApplicationLocalizer _localizer;
 
         public AuthenticateOrchestrator(
             ILogger<AuthenticateOrchestrator> logger,
@@ -58,7 +60,8 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             IHttpContextAccessor httpContextAccessor,
             ITrustedBrowserStore trustedBrowserStore,
             ISignInService signInService,
-            IApplicationService applicationService)
+            IApplicationService applicationService,
+            IApplicationLocalizer localizer)
         {
             _logger = logger;
             _eventNotificationService = eventNotificationService;
@@ -72,17 +75,18 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             _trustedBrowserStore = trustedBrowserStore;
             _signInService = signInService;
             _applicationService = applicationService;
+            _localizer = localizer;
         }
 
         public async Task<WebStatus> RegisterAsync(RegisterInputModel model)
         {
-            var genericSuccessMessage = "Please check your email to complete the sign up process.";
+            var genericSuccessMessage = _localizer["Please check your email to complete the sign up process."];
 
             _logger.LogDebug("Begin registration for {0}", model.Email);
 
             if (!ApplicationIdIsNullOrValid(model.ApplicationId))
             {
-                return WebStatus.Error("Invalid application id.", HttpStatusCode.BadRequest);
+                return WebStatus.Error(_localizer["Invalid application id."], HttpStatusCode.BadRequest);
             }
 
             if (!await _userStore.UsernameIsAvailable(model.Email))
@@ -101,7 +105,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 // Although the username is available, there is a valid one time code
                 // that can be used to cancel an email address change, so we can't
                 // reuse the address quite yet
-                return WebStatus.Error("Email address is temporarily reserved.", HttpStatusCode.Conflict);
+                return WebStatus.Error(_localizer["Email address is temporarily reserved."], HttpStatusCode.Conflict);
             }
 
             _logger.LogDebug("Email address not used by an existing user. Creating a new user.");
@@ -145,7 +149,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 }
                 else
                 {
-                    status.AddWarning("Password was not set.");
+                    status.AddWarning(_localizer["Password was not set."]);
                 }
             }
 
@@ -167,10 +171,10 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                     SetNonce(oneTimeCodeResponse.Result.ClientNonce);
                     return new WebStatus(status);
                 case GetOneTimeCodeStatusCode.TooManyRequests:
-                    return WebStatus.Error("Please wait a few minutes and try again.", HttpStatusCode.TooManyRequests);
+                    return WebStatus.Error(_localizer["Please wait a few minutes and try again."], HttpStatusCode.TooManyRequests);
                 case GetOneTimeCodeStatusCode.ServiceFailure:
                 default:
-                    return ServerError("Hmm, something went wrong. Can you try again?");
+                    return ServerError(_localizer["Hmm. Something went wrong. Please try again."]);
             }
         }
 
@@ -180,14 +184,14 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
 
             if (!ApplicationIdIsNullOrValid(model.ApplicationId))
             {
-                return WebStatus.Error("Invalid application id.", HttpStatusCode.BadRequest);
+                return WebStatus.Error(_localizer["Invalid application id."], HttpStatusCode.BadRequest);
             }
 
             // Note: Need to keep messages generic as to not reveal whether an account exists or not.
             var usernameIsValidEmail = EmailAddressChecker.EmailIsValid(model.Username);
             var defaultMessage = usernameIsValidEmail
-                ? "Message sent. Please check your email."
-                : "We sent a code to the email address asociated with your account (if found). Please check your email.";
+                ? _localizer["Message sent. Please check your email."]
+                : _localizer["We sent a code to the email address asociated with your account (if found). Please check your email."];
 
             // If the username provide is not an email address or phone number, tell the user "we sent you a code if you have an account"
             var userResponse = await _userStore.GetUserByUsernameAsync(model.Username);
@@ -238,10 +242,10 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                     SetNonce(oneTimeCodeResponse.Result.ClientNonce);
                     return new WebStatus(status);
                 case GetOneTimeCodeStatusCode.TooManyRequests:
-                    return WebStatus.Error("Please wait a few minutes before requesting a new code.", HttpStatusCode.TooManyRequests);
+                    return WebStatus.Error(_localizer["Please wait a few minutes before requesting a new code."], HttpStatusCode.TooManyRequests);
                 case GetOneTimeCodeStatusCode.ServiceFailure:
                 default:
-                    return ServerError("Hmm, something went wrong. Can you try again?");
+                    return ServerError(_localizer["Hmm. Something went wrong. Please try again."]);
             }            
         }
 
@@ -272,7 +276,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
         {
             _logger.LogDebug("Begin one time code authentication for {0}", model.Username);
 
-            var genericErrorMessage = "The username or one time code wasn't right.";
+            var genericErrorMessage = _localizer["The username or one time code wasn't right."];
             var userResponse = await _userStore.GetUserByUsernameAsync(model.Username);
             if (userResponse.HasError)
             {
@@ -293,16 +297,16 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                     return await SignInAndRedirectAsync(SignInMethod.OneTimeCode, model.Username, model.StaySignedIn, response.Result.RedirectUrl, nonceWasValid);
                 case CheckOneTimeCodeStatusCode.Expired:
                     await _eventNotificationService.NotifyEventAsync(model.Username, EventType.SignInFail, SignInType.OneTimeCode.ToString());
-                    return Unauthenticated("Your one time code has expired. Please request a new one.");
+                    return Unauthenticated(_localizer["Your one time code has expired. Please request a new one."]);
                 case CheckOneTimeCodeStatusCode.CodeIncorrect:
                 case CheckOneTimeCodeStatusCode.NotFound:
                     await _eventNotificationService.NotifyEventAsync(model.Username, EventType.SignInFail, SignInType.OneTimeCode.ToString());
                     return Unauthenticated(genericErrorMessage);
                 case CheckOneTimeCodeStatusCode.ShortCodeLocked:
-                    return Unauthenticated("The one time code is locked. Please request a new one after a few minutes.");
+                    return Unauthenticated(_localizer["The one time code is locked. Please request a new one after a few minutes."]);
                 case CheckOneTimeCodeStatusCode.ServiceFailure:
                 default:
-                    return ServerError("Something went wrong.");
+                    return ServerError(_localizer["Something went wrong."]);
             }
         }
 
@@ -310,7 +314,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
         {
             _logger.LogDebug("Begin password authentication for {0}", model.Username);
 
-            var genericErrorMessage = "The username or password wasn't right.";
+            var genericErrorMessage = _localizer["The username or password wasn't right."];
             var userResponse = await _userStore.GetUserByUsernameAsync(model.Username);
             if (userResponse.HasError)
             {
@@ -334,13 +338,13 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             switch(checkPasswordStatus.StatusCode)
             {
                 case CheckPasswordStatusCode.TemporarilyLocked:
-                    return Unauthenticated("Your password is temporarily locked. Use a one time code to sign in.");
+                    return Unauthenticated(_localizer["Your password is temporarily locked. Use a one time code to sign in."]);
                 case CheckPasswordStatusCode.PasswordIncorrect:
                 case CheckPasswordStatusCode.NotFound:
                     await _eventNotificationService.NotifyEventAsync(user.Email, EventType.SignInFail, $"{SignInType.Password} {checkPasswordStatus.StatusCode}");
                     return Unauthenticated(genericErrorMessage);
                 default:
-                    return ServerError("Hmm. Something went wrong. Please try again.");
+                    return ServerError(_localizer["Hmm. Something went wrong. Please try again."]);
             }
         }
 
@@ -358,14 +362,14 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                     return await SignInAndRedirectAsync(SignInMethod.Link, response.Result.SentTo, null, response.Result.RedirectUrl, nonceWasValid);
                 case CheckOneTimeCodeStatusCode.Expired:
                     await _eventNotificationService.NotifyEventAsync(response.Result.SentTo, EventType.SignInFail, SignInType.LongCode.ToString());
-                    return Unauthenticated("The sign in link expired.");
+                    return Unauthenticated(_localizer["The sign in link expired."]);
                 case CheckOneTimeCodeStatusCode.CodeIncorrect:
-                    return WebStatus.Error("Not found.", HttpStatusCode.NotFound);
+                    return WebStatus.Error(_localizer["Not found."], HttpStatusCode.NotFound);
                 case CheckOneTimeCodeStatusCode.NotFound:
-                    return Unauthenticated("The sign in link is invalid.");
+                    return Unauthenticated(_localizer["The sign in link is invalid."]);
                 case CheckOneTimeCodeStatusCode.ServiceFailure:
                 default:
-                    return ServerError("Something went wrong.");
+                    return ServerError(_localizer["Something went wrong."]);
             }
         }
 
@@ -375,10 +379,10 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
 
             if (!ApplicationIdIsNullOrValid(model.ApplicationId))
             {
-                return WebStatus.Error("Invalid application id.", HttpStatusCode.BadRequest);
+                return WebStatus.Error(_localizer["Invalid application id."], HttpStatusCode.BadRequest);
             }
 
-            var genericMessage = "Check your email for password reset instructions.";
+            var genericMessage = _localizer["Check your email for password reset instructions."];
             var userResponse = await _userStore.GetUserByUsernameAsync(model.Username);
             if (userResponse.HasError)
             {
@@ -417,7 +421,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 return new WebStatus(status);
             }
             _logger.LogError("Password reset message was not sent due to error encountered while generating a one time link.");
-            return ServerError("Hmm. Something went wrong. Please try again.");
+            return ServerError(_localizer["Hmm. Something went wrong. Please try again."]);
         }
 
         public async Task<WebStatus> SignOutAsync()
@@ -473,7 +477,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             {
                 // this could only happen if an account was removed, but a method of signing in remained
                 _logger.LogError("Strangely, there is no account for {0} anymore", username);
-                return Unauthenticated("Account not found");
+                return Unauthenticated(_localizer["Account not found."]);
             }
 
             var user = userResponse.Result;
@@ -519,7 +523,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                     {
                         _logger.LogWarning("Client nonce was missing or invalid. Perhaps the one time code has " +
                             "been intercepted and an unathorized party is trying to user it. Authentication blocked.");
-                        return Unauthenticated("Your one time code has expired. Please request a new one.");
+                        return Unauthenticated(_localizer["Your one time code has expired. Please request a new one."]);
                     }
                 }
                 else if (method == SignInMethod.Link || method == SignInMethod.OneTimeCode)
@@ -620,7 +624,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
 
             _httpContext.Response.SetBrowserId(browserId);
 
-            return Response.Success<string, WebStatus>(browserId, "Trusted browser added.");
+            return Response.Success<string, WebStatus>(browserId, _localizer["Trusted browser added."]);
         }
 
         public string SendToSetPasswordFirst(string nextUrl)

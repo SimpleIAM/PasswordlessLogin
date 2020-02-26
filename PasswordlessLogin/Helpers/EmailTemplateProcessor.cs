@@ -3,37 +3,39 @@
 
 using Microsoft.Extensions.FileProviders;
 using SimpleIAM.PasswordlessLogin.Services.Email;
+using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace SimpleIAM.PasswordlessLogin.Helpers
 {
     public static class EmailTemplateProcessor
     {
-        public static EmailTemplates GetTemplatesFromMailConfig(IFileProvider fileProvider)
+        public static EmailTemplates GetTemplates(IFileProvider fileProvider, CultureInfo[] supportedCultures)
         {
-            var templates = new EmailTemplates()
+            var templates = new EmailTemplates();
+            var cultureSuffixes = supportedCultures == null
+                ? new List<string>()
+                : supportedCultures.Select(ci => $".{ci.Name}").ToList();
+            cultureSuffixes.Add(""); // For the default/fallback template
+
+            foreach (var templateKey in PasswordlessLoginConstants.EmailTemplates.All)
             {
-                { PasswordlessLoginConstants.EmailTemplates.OneTimeCode, new EmailTemplate() },
-                { PasswordlessLoginConstants.EmailTemplates.SignInWithEmail, new EmailTemplate() },
-                { PasswordlessLoginConstants.EmailTemplates.Welcome, new EmailTemplate() },
-                { PasswordlessLoginConstants.EmailTemplates.PasswordReset, new EmailTemplate() },
-                { PasswordlessLoginConstants.EmailTemplates.PasswordChangedNotice, new EmailTemplate() },
-                { PasswordlessLoginConstants.EmailTemplates.PasswordRemovedNotice, new EmailTemplate() },
-                { PasswordlessLoginConstants.EmailTemplates.EmailChangedNotice, new EmailTemplate() },
-                { PasswordlessLoginConstants.EmailTemplates.AccountNotFound, new EmailTemplate() },
-                { PasswordlessLoginConstants.EmailTemplates.AccountAlreadyExists, new EmailTemplate() },
-            };
-            foreach(var template in templates)
-            {
-                var fileInfo = fileProvider.GetFileInfo($"{template.Key}.html");
-                if(fileInfo.Exists)
+                foreach (var cultureSuffix in cultureSuffixes)
                 {
-                    using (var reader = new StreamReader(fileInfo.CreateReadStream()))
+                    var fileInfo = fileProvider.GetFileInfo($"{templateKey}{cultureSuffix}.html");
+                    if (fileInfo.Exists)
                     {
-                        string data = reader.ReadToEnd();
-                        template.Value.Subject = (new Regex(@"\<title\>.*\<\/title\>", RegexOptions.Singleline)).Match(data).Value.Replace("<title>", "").Replace("</title>", "").Trim(' ', '\t', '\n', '\r');
-                        template.Value.Body = (new Regex(@"\<body\>.*\<\/body\>", RegexOptions.Singleline)).Match(data).Value.Replace("<body>", "").Replace("</body>", "").Trim(' ', '\t', '\n', '\r');
+                        var template = new EmailTemplate();
+                        using (var reader = new StreamReader(fileInfo.CreateReadStream()))
+                        {
+                            string data = reader.ReadToEnd();
+                            template.Subject = (new Regex(@"\<title\>.*\<\/title\>", RegexOptions.Singleline)).Match(data).Value.Replace("<title>", "").Replace("</title>", "").Trim(' ', '\t', '\n', '\r');
+                            template.Body = (new Regex(@"\<body\>.*\<\/body\>", RegexOptions.Singleline)).Match(data).Value.Replace("<body>", "").Replace("</body>", "").Trim(' ', '\t', '\n', '\r');
+                        }
+                        templates.Add($"{templateKey}{cultureSuffix}", template);
                     }
                 }
             }

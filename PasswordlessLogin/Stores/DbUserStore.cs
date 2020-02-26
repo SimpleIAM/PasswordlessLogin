@@ -9,17 +9,20 @@ using Microsoft.Extensions.Logging;
 using SimpleIAM.PasswordlessLogin.Entities;
 using SimpleIAM.PasswordlessLogin.Helpers;
 using SimpleIAM.PasswordlessLogin.Models;
+using SimpleIAM.PasswordlessLogin.Services.Localization;
 using StandardResponse;
 
 namespace SimpleIAM.PasswordlessLogin.Stores
 {
     public class DbUserStore : IUserStore
     {
+        private readonly IApplicationLocalizer _localizer;
         protected readonly ILogger _logger;
         protected readonly PasswordlessLoginDbContext _context;
 
-        public DbUserStore(ILogger<DbUserStore> logger, PasswordlessLoginDbContext context)
+        public DbUserStore(IApplicationLocalizer localizer, ILogger<DbUserStore> logger, PasswordlessLoginDbContext context)
         {
+            _localizer = localizer;
             _logger = logger;
             _context = context;
         }
@@ -47,11 +50,11 @@ namespace SimpleIAM.PasswordlessLogin.Stores
             var count = await _context.SaveChangesAsync();
             if (count == 0)
             {
-                return Response.Error<Models.User>("Failed to add user.");
+                return Response.Error<Models.User>(_localizer["Failed to add the user."]);
             }
 
             user.SubjectId = dbUser.SubjectId;
-            return Response.Success(user, "User saved.");
+            return Response.Success(user, _localizer["User saved."]);
         }
 
         public async Task<Response<Models.User, Status>> GetUserAsync(string subjectId, bool fetchClaims = false)
@@ -65,10 +68,10 @@ namespace SimpleIAM.PasswordlessLogin.Stores
             user = (await _context.Users.FindAsync(subjectId))?.ToModel();
             if (user == null)
             {
-                return Response.Error<Models.User>("User not found.");
+                return Response.Error<Models.User>(_localizer["User not found."]);
             }
 
-            return Response.Success(user, "User found.");
+            return Response.Success(user, _localizer["User found."]);
         }
 
         public async Task<Response<Models.User, Status>> GetUserByEmailAsync(string email, bool fetchClaims = false)
@@ -84,10 +87,10 @@ namespace SimpleIAM.PasswordlessLogin.Stores
             user = (await _context.Users.SingleOrDefaultAsync(x => x.Email == email))?.ToModel();
             if (user == null)
             {
-                return Response.Error<Models.User>("User not found.");
+                return Response.Error<Models.User>(_localizer["User not found."]);
             }
 
-            return Response.Success(user, "User found.");
+            return Response.Success(user, _localizer["User found."]);
         }
 
         public async Task<Response<Models.User, Status>> GetUserByUsernameAsync(string username, bool fetchClaims = false)
@@ -108,10 +111,10 @@ namespace SimpleIAM.PasswordlessLogin.Stores
 
             if (user == null)
             {
-                return Response.Error<Models.User>("User not found.");
+                return Response.Error<Models.User>(_localizer["User not found."]);
             }
 
-            return Response.Success(user, "User found.");
+            return Response.Success(user, _localizer["User found."]);
         }
 
         public async Task<Response<Models.User, Status>> PatchUserAsync(string subjectId, ILookup<string, string> Properties, bool changeProtectedClaims = false)
@@ -126,7 +129,7 @@ namespace SimpleIAM.PasswordlessLogin.Stores
                     var emails = values.Where(email => email != null).ToList();
                     if(emails.Count > 1)
                     {
-                        return Response.Error<Models.User>("Only one email address is allowed.");
+                        return Response.Error<Models.User>(_localizer["Only one email address is allowed."]);
                     }
                     if (emails.Count == 1)
                     {
@@ -140,7 +143,7 @@ namespace SimpleIAM.PasswordlessLogin.Stores
                 {
                     // ignore
                     _logger.LogWarning("Attempt to change {0} claim for user {1} was blocked", values.Key, subjectId);
-                    status.AddWarning($"Changing '{values.Key}' is not allowed.");
+                    status.AddWarning(_localizer["Changing '{0}' is not allowed.", values.Key]);
                 }
                 else
                 {

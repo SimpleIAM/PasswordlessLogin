@@ -8,8 +8,11 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
     public class SendCodeInputModel
     {
         public string ApplicationId { get; set; }
-        [Required]
+
+        [Display(Name = "Username")]
+        [Required(ErrorMessage = "{0} is required.")]
         public string Username { get; set; }
+
         public string NextUrl { get; set; }
     }
 }

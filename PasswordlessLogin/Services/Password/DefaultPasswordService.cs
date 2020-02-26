@@ -4,6 +4,7 @@
 using Microsoft.Extensions.Logging;
 using SimpleIAM.PasswordlessLogin.Configuration;
 using SimpleIAM.PasswordlessLogin.Models;
+using SimpleIAM.PasswordlessLogin.Services.Localization;
 using SimpleIAM.PasswordlessLogin.Stores;
 using StandardResponse;
 using System;
@@ -14,18 +15,21 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
 {
     public class DefaultPasswordService : IPasswordService
     {
+        protected readonly IApplicationLocalizer _localizer;
         protected readonly ILogger _logger;
         protected readonly IPasswordHashService _passwordHashService;
         protected readonly IPasswordHashStore _passwordHashStore;
         protected readonly PasswordlessLoginOptions _passwordlessLoginOptions;
 
         public DefaultPasswordService(
+            IApplicationLocalizer localizer,
             ILogger<DefaultPasswordService> logger,
             IPasswordHashService passwordHashService,
             IPasswordHashStore passwordHashStore,
-            PasswordlessLoginOptions passwordlessLoginOptions
+            PasswordlessLoginOptions passwordlessLoginOptions            
             )
         {
+            _localizer = localizer;
             _logger = logger;
             _passwordHashService = passwordHashService;
             _passwordHashStore = passwordHashStore;
@@ -43,13 +47,13 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
             var status = new SetPasswordStatus();
             if (string.IsNullOrEmpty(uniqueIdentifier))
             {
-                status.AddError("Unique identifier is required.");
+                status.AddError(_localizer["Unique identifier is required."]);
                 return status;
             }
             _logger.LogDebug("Setting password for {0}", uniqueIdentifier);
             if (!PasswordIsStrongEnough(password))
             {
-                status.AddError("Password does not meet strength requirements.");
+                status.AddError(_localizer["Password does not meet minimum strength requirements."]);
                 status.PasswordDoesNotMeetStrengthRequirements = true;
                 return status;
             }
@@ -57,7 +61,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
             var removeStatus = await RemovePasswordAsync(uniqueIdentifier);
             if(removeStatus.HasError)
             {
-                status.AddError("Failed to update old password.");
+                status.AddError(_localizer["Failed to update old password."]);
                 return status;
             }
             var addStatus = await _passwordHashStore.AddPasswordHashAsync(uniqueIdentifier, hash);
@@ -81,7 +85,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
 
             if (AccountIsLocked(lockMode, hashInfo.FailedAttemptCount, hashInfo.TempLockUntilUTC))
             {
-                return CheckPasswordStatus.Error("Password is temporarily locked.", CheckPasswordStatusCode.TemporarilyLocked);
+                return CheckPasswordStatus.Error(_localizer["Password is temporarily locked."], CheckPasswordStatusCode.TemporarilyLocked);
             }
 
             var checkHashResult = _passwordHashService.CheckPasswordHash(hashInfo.Hash, password);
@@ -95,7 +99,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
                     return await ProcessMatchesAndReturnAsync(uniqueIdentifier);
                 default:
                     // this should never happen
-                    return CheckPasswordStatus.Error("An unexpected error occurred.", CheckPasswordStatusCode.ServiceFailure);
+                    return CheckPasswordStatus.Error(_localizer["An unexpected error occurred."], CheckPasswordStatusCode.ServiceFailure);
             }
         }
 
@@ -112,10 +116,10 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
 
         protected async Task<CheckPasswordStatus> ProcessDoesNotMatchAndReturnAsync(string uniqueIdentifier, PasswordLockMode lockMode, int failedAttemptCount)
         {
-            _logger.LogDebug("Password does not match");
+            _logger.LogDebug("Password does not match.");
             if(lockMode == PasswordLockMode.DoNotLock)
             {
-                return CheckPasswordStatus.Error("Password was incorrect.", CheckPasswordStatusCode.PasswordIncorrect);
+                return CheckPasswordStatus.Error(_localizer["Password was not correct."], CheckPasswordStatusCode.PasswordIncorrect);
             }
 
             var currentFailedAttemptCount = failedAttemptCount + 1;
@@ -131,13 +135,13 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
                 }
                 await _passwordHashStore.UpdatePasswordHashTempLockAsync(uniqueIdentifier, lockUntil, currentFailedAttemptCount);
 
-                return CheckPasswordStatus.Error("Password is temporarily locked.", CheckPasswordStatusCode.TemporarilyLocked);
+                return CheckPasswordStatus.Error(_localizer["Password is temporarily locked."], CheckPasswordStatusCode.TemporarilyLocked);
             }
             else
             {
                 _logger.LogDebug("Updating failed attempt count");
                 await _passwordHashStore.UpdatePasswordHashFailureCountAsync(uniqueIdentifier, failedAttemptCount + 1);
-                return CheckPasswordStatus.Error("Password was incorrect.", CheckPasswordStatusCode.PasswordIncorrect);
+                return CheckPasswordStatus.Error(_localizer["Password was not correct."], CheckPasswordStatusCode.PasswordIncorrect);
             }
         }
 
@@ -150,7 +154,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
             {
                 _logger.LogWarning("Password should be rehashed, but unable to update the password hash for user {0}.", uniqueIdentifier);
             }
-            return Status.Success<CheckPasswordStatus>("Password was correct.");
+            return Status.Success<CheckPasswordStatus>(_localizer["Password was correct."]);
         }
 
         protected async Task<CheckPasswordStatus> ProcessMatchesAndReturnAsync(string uniqueIdentifier)
@@ -161,7 +165,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
             {
                 _logger.LogWarning("Could not clear failure count for user {0}.", uniqueIdentifier);
             }
-            return Status.Success<CheckPasswordStatus>("Password was correct.");
+            return Status.Success<CheckPasswordStatus>(_localizer["Password was correct."]);
         }
 
         private bool PasswordIsStrongEnough(string password)
@@ -176,7 +180,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
             {
                 return new Response<DateTime, Status>(response.Status);
             }
-            return Response.Success(response.Result.LastChangedUTC, "The date the password was last changed was found.");
+            return Response.Success(response.Result.LastChangedUTC, _localizer["The date the password was last changed was found."]);
         }
     }
 }

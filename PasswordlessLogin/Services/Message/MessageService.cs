@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using SimpleIAM.PasswordlessLogin.Configuration;
 using SimpleIAM.PasswordlessLogin.Helpers;
 using SimpleIAM.PasswordlessLogin.Services.Email;
+using SimpleIAM.PasswordlessLogin.Services.Localization;
 using StandardResponse;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -13,6 +14,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
 {
     public class MessageService : IMessageService
     {
+        private readonly IApplicationLocalizer _localizer;
         private readonly ILogger _logger;
         private readonly IEmailTemplateService _emailTemplateService;
         private readonly IUrlService _urlService;
@@ -20,6 +22,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
         private readonly IApplicationService _applicationService;
 
         public MessageService(
+            IApplicationLocalizer localizer,
             ILogger<MessageService> logger,
             IEmailTemplateService emailTemplateService,
             IUrlService urlService,
@@ -27,6 +30,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
             IApplicationService applicationService
             )
         {
+            _localizer = localizer;
             _logger = logger;
             _emailTemplateService = emailTemplateService;
             _urlService = urlService;
@@ -134,7 +138,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Message
 
         private Status NotAnEmailAddress()
         {
-            return Status.Error("Could not deliver message. Email address is not valid."); // non-email addresses not implemented
+            return Status.Error(_localizer["Could not deliver message. Email address is not valid."]); // non-email addresses not implemented
         }
 
         public async Task<Status> SendWelcomeMessageAsync(string applicationId, string sendTo, string oneTimeCode, string longCode, IDictionary<string, string> userFields)

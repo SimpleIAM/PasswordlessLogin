@@ -9,17 +9,20 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SimpleIAM.PasswordlessLogin.Entities;
 using SimpleIAM.PasswordlessLogin.Services;
+using SimpleIAM.PasswordlessLogin.Services.Localization;
 using StandardResponse;
 
 namespace SimpleIAM.PasswordlessLogin.Stores
 {
     public class DbTrustedBrowserStore : ITrustedBrowserStore
     {
+        private readonly IApplicationLocalizer _localizer;
         private readonly ILogger _logger;
         private readonly PasswordlessLoginDbContext _context;
 
-        public DbTrustedBrowserStore(ILogger<DbTrustedBrowserStore> logger, PasswordlessLoginDbContext context)
+        public DbTrustedBrowserStore(IApplicationLocalizer localizer, ILogger<DbTrustedBrowserStore> logger, PasswordlessLoginDbContext context)
         {
+            _localizer = localizer;
             _logger = logger;
             _context = context;
         }
@@ -31,7 +34,7 @@ namespace SimpleIAM.PasswordlessLogin.Stores
             if (string.IsNullOrEmpty(subjectId) || string.IsNullOrEmpty(browserId))
             {
                 _logger.LogDebug("Subject id or browser id was missing.");
-                return Response.Error<Models.TrustedBrowser>("Subject id or browser id was missing.");
+                return Response.Error<Models.TrustedBrowser>(_localizer["Subject id or browser id was missing."]);
             }
 
             var dbBrowser = new TrustedBrowser()
@@ -46,10 +49,10 @@ namespace SimpleIAM.PasswordlessLogin.Stores
             var count = await _context.SaveChangesAsync();
             if(count == 0)
             {
-                return Response.Error<Models.TrustedBrowser>("Failed to save trusted browser.");
+                return Response.Error<Models.TrustedBrowser>(_localizer["Failed to save trusted browser."]);
             }
 
-            return Response.Success(dbBrowser.ToModel(), "Trusted browser saved."); ;
+            return Response.Success(dbBrowser.ToModel(), _localizer["Trusted browser saved."]);
         }
 
         public async Task<Response<Models.TrustedBrowser, Status>> GetTrustedBrowserAsync(string subjectId, string browserId)
@@ -59,17 +62,17 @@ namespace SimpleIAM.PasswordlessLogin.Stores
             if (string.IsNullOrEmpty(subjectId) || string.IsNullOrEmpty(browserId))
             {
                 _logger.LogDebug("Subject id or browser id was missing.");
-                return Response.Error<Models.TrustedBrowser>("Subject id or browser id was missing.");
+                return Response.Error<Models.TrustedBrowser>(_localizer["Subject id or browser id was missing."]);
             }
             var browserIdHash = FastHashService.GetHash(browserId, subjectId);
             var model = (await _context.TrustedBrowsers.SingleOrDefaultAsync(x => x.BrowserIdHash == browserIdHash))?.ToModel();
             if (model == null)
             {
                 _logger.LogDebug("Trusted browser was not found.");
-                return Response.Error<Models.TrustedBrowser>("Trusted browser was not found.");
+                return Response.Error<Models.TrustedBrowser>(_localizer["Trusted browser was not found."]);
             }
             _logger.LogDebug("Trusted browser was found.");
-            return Response.Success(model, "Trusted browser found.");
+            return Response.Success(model, _localizer["Trusted browser found."]);
         }
 
         public async Task<Response<IEnumerable<Models.TrustedBrowser>, Status>> GetTrustedBrowserAsync(string subjectId)
@@ -78,7 +81,7 @@ namespace SimpleIAM.PasswordlessLogin.Stores
 
             if (string.IsNullOrEmpty(subjectId))
             {
-                return Response.Error<IEnumerable<Models.TrustedBrowser>>("Subject id was missing.");
+                return Response.Error<IEnumerable<Models.TrustedBrowser>>(_localizer["Subject id was missing."]);
             }
             var browsers = await _context.TrustedBrowsers.Where(x => x.SubjectId == subjectId).Select(x => x.ToModel()).ToListAsync();
             return Response.Success((IEnumerable<Models.TrustedBrowser>)browsers);
@@ -92,13 +95,13 @@ namespace SimpleIAM.PasswordlessLogin.Stores
             if(dbBrowser == null || dbBrowser.SubjectId != subjectId)
             {
                 _logger.LogDebug("Trusted browser not found or it did not belong to this user.");
-                return Status.Error("Trusted browser not found or it did not belong to this user.");
+                return Status.Error(_localizer["Trusted browser not found or it did not belong to this user."]);
             }
             _context.Remove(dbBrowser);
             var count = await _context.SaveChangesAsync();
             var success = count > 0;
             _logger.LogDebug("Trusted browser successfully removed.");
-            return Status.Success("Trusted browser successfully removed.");
+            return Status.Success(_localizer["Trusted browser successfully removed."]);
         }
     }
 }
