@@ -630,6 +630,11 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
         public string SendToSetPasswordFirst(string nextUrl)
         {
             var setPasswordUrl = _urlService.GetSetPasswordUrl();
+            if(nextUrl?.StartsWith(setPasswordUrl) == true)
+            {
+                // Avoid a double redirect to set password
+                return nextUrl;
+            }
             return $"{setPasswordUrl}?nextUrl={nextUrl}";
         }
 
