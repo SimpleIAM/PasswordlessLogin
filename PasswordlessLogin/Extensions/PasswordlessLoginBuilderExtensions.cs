@@ -116,7 +116,7 @@ namespace Microsoft.Extensions.DependencyInjection
         }
 
         public static PasswordlessLoginBuilder AddAuth(this PasswordlessLoginBuilder builder)
-        {
+        { 
             builder.Services
                 .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
                 .AddCookie(options =>

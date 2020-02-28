@@ -122,15 +122,9 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             {
                 return Response.Web.Error<ChangeEmailViewModel>(_localizer["You cannot change your email address again until the link to cancel the last email change (sent to your old email address) expires."], HttpStatusCode.Forbidden);
             }
-            var usernameAvailableResponse = await UsernameIsReallyAvailableAsync(newEmail);
-            if(usernameAvailableResponse.HasError)
+            var usernameAvailableStatus = await UsernameIsReallyAvailableAsync(newEmail, subjectId);
+            if (usernameAvailableStatus.HasError)
             {
-                return new Response<ChangeEmailViewModel, WebStatus>(new WebStatus(usernameAvailableResponse.Status));
-            }
-            var usernameIsAvailable = usernameAvailableResponse.Result;
-            if (!usernameIsAvailable)
-            {
-                // This unavoidably reveals the presence of an existing account, but can't be easily exploited
                 return Response.Web.Error<ChangeEmailViewModel>(_localizer["Username is not available."], HttpStatusCode.Conflict);
             }
             var oldEmail = user.Email;
@@ -207,15 +201,17 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             return Response.Web.Success(viewModel, _localizer["Email address change has been reverted."]);
         }
 
-        public async Task<Response<bool, Status>> UsernameIsReallyAvailableAsync(string email)
+        public async Task<Status> UsernameIsReallyAvailableAsync(string email, string subjectId)
         {
             // Note: a username that has been recently "released" via a change of email address will
             // not become available until the one time link that can cancel the change expires.
 
-            var available = (await _userStore.UsernameIsAvailable(email))
+            var available = (await _userStore.UsernameIsAvailable(email, subjectId))
                 && !(await _oneTimeCodeService.UnexpiredOneTimeCodeExistsAsync(email));
 
-            return Response.Success(available);
+            return available 
+                ? Status.Success(_localizer["Username is available."]) 
+                : Status.Error(_localizer["Username is not available."]);
         }
 
         private bool OperatingOnSelf(string subjectId)

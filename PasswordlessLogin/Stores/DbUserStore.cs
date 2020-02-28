@@ -165,10 +165,19 @@ namespace SimpleIAM.PasswordlessLogin.Stores
             return response.IsOk;
         }
 
-        public async Task<bool> UsernameIsAvailable(string username)
+        public async Task<bool> UsernameIsAvailable(string username, string subjectId = null)
         {
-            // In this user store, usernames are restricted to email address until we implement cell phone usernames
-            return !(await UserExists(username)) && EmailAddressChecker.EmailIsValid(username); 
+            // In this user store, usernames are restricted to email addresses
+            if(!EmailAddressChecker.EmailIsValid(username))
+            {
+                return false;
+            }
+            var response = await GetUserByUsernameAsync(username);
+            if (response.IsOk)
+            {
+                return response.Result.SubjectId == subjectId;
+            }
+            return true;
         }
     }
 }

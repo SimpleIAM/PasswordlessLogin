@@ -17,6 +17,6 @@ namespace SimpleIAM.PasswordlessLogin.Stores
         Task<Response<User, Status>> AddUserAsync(User user);
         Task<Response<User, Status>> PatchUserAsync(string subjectId, ILookup<string, string> Properties, bool changeProtectedClaims = false);
         Task<bool> UserExists(string username);
-        Task<bool> UsernameIsAvailable(string username);
+        Task<bool> UsernameIsAvailable(string username, string subjectId = null);
     }
 }
