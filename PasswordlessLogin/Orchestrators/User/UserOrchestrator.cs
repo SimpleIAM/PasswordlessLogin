@@ -55,15 +55,11 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             _localizer = localizer;
         }
 
-        public async Task<Response<User, WebStatus>> GetUserAsync(string subjectId)
+        public async Task<Response<User, WebStatus>> GetUserAsync()
         {
+            var subjectId = _httpContext.User.GetSubjectId();
             _logger.LogTrace("Get user {0}", subjectId);
 
-            if (!OperatingOnSelf(subjectId))
-            {
-                _logger.LogWarning("Permission denied trying to get user {0}", subjectId);
-                return Response.Web.Error<User>(_localizer["Permission denied."], HttpStatusCode.Forbidden);
-            }
             var userResponse = await _userStore.GetUserAsync(subjectId, true);
             if(userResponse.HasError)
             {
@@ -74,19 +70,15 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
 
         public async Task<Response<User, WebStatus>> PatchUserAsync(PatchUserModel model)
         {
-            _logger.LogTrace("Patch user {0}", model.SubjectId);
+            var subjectId = _httpContext.User.GetSubjectId();
+            _logger.LogTrace("Patch user {0}", subjectId);
 
-            if (!OperatingOnSelf(model.SubjectId))
-            {
-                _logger.LogWarning("Permission denied trying to patch user {0}", model.SubjectId);
-                return Response.Web.Error<User>(_localizer["Permission denied."], HttpStatusCode.Forbidden);
-            }
-            var user = await _userStore.GetUserAsync(model.SubjectId, true);
-            if (user == null)
+            var userResponse = await _userStore.GetUserAsync(subjectId, true);
+            if (userResponse.HasError)
             {
                 return Response.Web.Error<User>(_localizer["User not found."], HttpStatusCode.NotFound);
             }
-            var updateUserResponse = await _userStore.PatchUserAsync(model.SubjectId, model.Properties);
+            var updateUserResponse = await _userStore.PatchUserAsync(subjectId, model.Properties);
             if(updateUserResponse.HasError)
             {
                 var status = new WebStatus(updateUserResponse.Status);
@@ -99,15 +91,11 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
         }
 
         public async Task<Response<ChangeEmailViewModel, WebStatus>> ChangeEmailAddressAsync(
-            string subjectId, string newEmail, string applicationId = null)
+            string newEmail, string applicationId = null)
         {
+            var subjectId = _httpContext.User.GetSubjectId();
             _logger.LogTrace("Change email for user {0} to {1}", subjectId, newEmail);
 
-            if (!OperatingOnSelf(subjectId))
-            {
-                _logger.LogWarning("Permission denied trying to change email address user {0}", subjectId);
-                return Response.Web.Error<ChangeEmailViewModel>(_localizer["Permission denied."], HttpStatusCode.Forbidden);
-            }
             var userResponse = await _userStore.GetUserAsync(subjectId, true);
             if (userResponse.HasError)
             {
@@ -212,11 +200,6 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             return available 
                 ? Status.Success(_localizer["Username is available."]) 
                 : Status.Error(_localizer["Username is not available."]);
-        }
-
-        private bool OperatingOnSelf(string subjectId)
-        {
-            return subjectId == _httpContext.User.GetSubjectId();
         }
     }
 }

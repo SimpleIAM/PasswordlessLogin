@@ -22,13 +22,9 @@ namespace SimpleIAM.PasswordlessLogin.API
             };
         }
 
-        public static Orchestrators.PatchUserModel ToPatchUserModel(this API.PatchUserInputModel source, string subjectId)
+        public static Orchestrators.PatchUserModel ToPatchUserModel(this API.PatchUserInputModel source)
         {
-            var target = new Orchestrators.PatchUserModel()
-            {
-                SubjectId = subjectId
-            };
-
+            var target = new Orchestrators.PatchUserModel();
             var properties = new List<KeyValuePair<string, string>>();
             foreach (var item in source.Properties)
             {

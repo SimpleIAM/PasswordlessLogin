@@ -50,8 +50,7 @@ namespace SimpleIAM.PasswordlessLogin.API
         [HttpGet("")]
         public async Task<IActionResult> GetUser()
         {
-            var subjectId = User.GetSubjectId();
-            var response = await _userOrchestrator.GetUserAsync(subjectId);
+            var response = await _userOrchestrator.GetUserAsync();
             if(response.HasError)
             {
                 return response.ToJsonResult();
@@ -65,7 +64,7 @@ namespace SimpleIAM.PasswordlessLogin.API
         {
             var subjectId = User.GetSubjectId();
 
-            var patch = model?.ToPatchUserModel(subjectId);
+            var patch = model?.ToPatchUserModel();
             var response = await _userOrchestrator.PatchUserAsync(patch);
             if (response.HasError)
             {
@@ -98,8 +97,7 @@ namespace SimpleIAM.PasswordlessLogin.API
                     return (new ActionResponse("Invalid application id", HttpStatusCode.BadRequest)).ToJsonResult();
                 }
 
-                var subjectId = User.GetSubjectId();
-                var getUserResponse = await _userOrchestrator.GetUserAsync(subjectId);
+                var getUserResponse = await _userOrchestrator.GetUserAsync();
                 if(getUserResponse.HasError)
                 {
                     return getUserResponse.Status.ToJsonResult();
@@ -119,7 +117,7 @@ namespace SimpleIAM.PasswordlessLogin.API
                     return Unauthenticated("Please reauthenticate to proceed.");
                 }
 
-                var status = await _passwordService.SetPasswordAsync(subjectId, model.NewPassword);
+                var status = await _passwordService.SetPasswordAsync(user.SubjectId, model.NewPassword);
                 if(status.IsOk)
                 {
                     await _eventNotificationService.NotifyEventAsync(user.Email, EventType.SetPassword);
@@ -148,8 +146,7 @@ namespace SimpleIAM.PasswordlessLogin.API
                     return (new ActionResponse("Invalid application id", HttpStatusCode.BadRequest)).ToJsonResult();
                 }
 
-                var subjectId = User.GetSubjectId();
-                var getUserResponse = await _userOrchestrator.GetUserAsync(subjectId);
+                var getUserResponse = await _userOrchestrator.GetUserAsync();
                 if (getUserResponse.HasError)
                 {
                     return getUserResponse.Status.ToJsonResult();
@@ -169,7 +166,7 @@ namespace SimpleIAM.PasswordlessLogin.API
                     return Unauthenticated("Please reauthenticate to proceed");
                 }
 
-                var removeStatus = await _passwordService.RemovePasswordAsync(subjectId);
+                var removeStatus = await _passwordService.RemovePasswordAsync(user.SubjectId);
                 if (removeStatus.IsOk)
                 { 
                     await _eventNotificationService.NotifyEventAsync(user.Email, EventType.RemovePassword);
@@ -191,8 +188,7 @@ namespace SimpleIAM.PasswordlessLogin.API
                     return (new ActionResponse("Invalid application id.", HttpStatusCode.BadRequest)).ToJsonResult();
                 }
 
-                var subjectId = User.GetSubjectId();
-                var getUserResponse = await _userOrchestrator.GetUserAsync(subjectId);
+                var getUserResponse = await _userOrchestrator.GetUserAsync();
                 if (getUserResponse.HasError)
                 {
                     return getUserResponse.Status.ToJsonResult();
@@ -212,7 +208,7 @@ namespace SimpleIAM.PasswordlessLogin.API
                     return Unauthenticated("Please reauthenticate to proceed.");
                 }
 
-                var response = await _userOrchestrator.ChangeEmailAddressAsync(subjectId, model.NewEmail, model.ApplicationId);
+                var response = await _userOrchestrator.ChangeEmailAddressAsync(model.NewEmail, model.ApplicationId);
                 return response.ToJsonResult();
             }
             return new ActionResponse(ModelState).ToJsonResult();

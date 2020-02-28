@@ -7,8 +7,6 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
 {
     public class PatchUserModel
     {
-        public string SubjectId { get; set; }
-
         public ILookup<string, string> Properties { get; set; }
     }
 }
