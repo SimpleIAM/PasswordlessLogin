@@ -107,6 +107,14 @@ namespace Microsoft.Extensions.DependencyInjection
             return builder.AddSmtpEmail(smtpOptions);
         }
 
+        public static PasswordlessLoginBuilder AddSmtpEmail(this PasswordlessLoginBuilder builder, IConfiguration configuration)
+        {
+            var smtpOptions = new SmtpOptions();
+            configuration.Bind(smtpOptions);
+
+            return builder.AddSmtpEmail(smtpOptions);
+        }
+
         public static PasswordlessLoginBuilder AddSmtpEmail(this PasswordlessLoginBuilder builder, SmtpOptions smtpOptions)
         {
             builder.Services.AddSingleton(smtpOptions);

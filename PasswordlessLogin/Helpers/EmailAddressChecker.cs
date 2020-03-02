@@ -19,14 +19,17 @@ namespace SimpleIAM.PasswordlessLogin.Helpers
                 return false;
             }
 
-            // Use .NET's built-in validation
-            if(!new EmailAddressAttribute().IsValid(email))
+            // Require at least a 2-letter extension after the @
+            // (validation below allows extensionless domains like localhost)
+            // Sample:  a@b.cd : Length = 6, LastIndexOf('.') = 3, IndexOf('@') = 1
+            // Index:   012345
+            if (email.LastIndexOf('.') < (email.IndexOf('@') + 1) || email.LastIndexOf('.') > (email.Length - 3))
             {
                 return false;
             }
 
-            // Also require a dot after the @ (validation above enforces formatting of extension, but allows extensionless domains like localhost)
-            if (email.LastIndexOf('.') < email.IndexOf('@'))
+            // Use .NET's built-in validation
+            if (!new EmailAddressAttribute().IsValid(email))
             {
                 return false;
             }
