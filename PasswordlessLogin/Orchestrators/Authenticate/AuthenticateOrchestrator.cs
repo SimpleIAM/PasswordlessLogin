@@ -635,7 +635,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 // Avoid a double redirect to set password
                 return nextUrl;
             }
-            return $"{setPasswordUrl}?nextUrl={nextUrl}";
+            return $"{setPasswordUrl}?nextUrl={System.Web.HttpUtility.UrlEncode(nextUrl)}";
         }
 
         private string ValidatedNextUrl(string nextUrl)
