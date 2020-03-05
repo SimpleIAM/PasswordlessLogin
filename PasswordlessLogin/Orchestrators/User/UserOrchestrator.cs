@@ -63,22 +63,21 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             var userResponse = await _userStore.GetUserAsync(subjectId, true);
             if(userResponse.HasError)
             {
-                return Response.Web.Error<User>(_localizer["Not found."], HttpStatusCode.NotFound);
+                return Response.Web.Error<User>(_localizer["User not found."], HttpStatusCode.NotFound);
             }
             return Response.Web.Success(userResponse.Result);
         }
 
         public async Task<Response<User, WebStatus>> PatchUserAsync(PatchUserModel model)
         {
-            var subjectId = _httpContext.User.GetSubjectId();
-            _logger.LogTrace("Patch user {0}", subjectId);
+            _logger.LogTrace("Patch user {0}", _httpContext.User.GetSubjectId());
 
-            var userResponse = await _userStore.GetUserAsync(subjectId, true);
+            var userResponse = await GetUserAsync();
             if (userResponse.HasError)
             {
-                return Response.Web.Error<User>(_localizer["User not found."], HttpStatusCode.NotFound);
+                return userResponse;
             }
-            var updateUserResponse = await _userStore.PatchUserAsync(subjectId, model.Properties);
+            var updateUserResponse = await _userStore.PatchUserAsync(userResponse.Result.SubjectId, model.Properties);
             if(updateUserResponse.HasError)
             {
                 var status = new WebStatus(updateUserResponse.Status);
@@ -93,10 +92,9 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
         public async Task<Response<ChangeEmailViewModel, WebStatus>> ChangeEmailAddressAsync(
             string newEmail, string applicationId = null)
         {
-            var subjectId = _httpContext.User.GetSubjectId();
-            _logger.LogTrace("Change email for user {0} to {1}", subjectId, newEmail);
+            _logger.LogTrace("Change email for user {0} to {1}", _httpContext.User.GetSubjectId(), newEmail);
 
-            var userResponse = await _userStore.GetUserAsync(subjectId, true);
+            var userResponse = await GetUserAsync();
             if (userResponse.HasError)
             {
                 return Response.Web.Error<ChangeEmailViewModel>("User not found.", HttpStatusCode.NotFound);
@@ -110,7 +108,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             {
                 return Response.Web.Error<ChangeEmailViewModel>(_localizer["You cannot change your email address again until the link to cancel the last email change (sent to your old email address) expires."], HttpStatusCode.Forbidden);
             }
-            var usernameAvailableStatus = await UsernameIsReallyAvailableAsync(newEmail, subjectId);
+            var usernameAvailableStatus = await UsernameIsReallyAvailableAsync(newEmail, user.SubjectId);
             if (usernameAvailableStatus.HasError)
             {
                 return Response.Web.Error<ChangeEmailViewModel>(_localizer["Username is not available."], HttpStatusCode.Conflict);
@@ -134,7 +132,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
                 ["email"] = newEmail,
                 [PasswordlessLoginConstants.Security.PreviousEmailClaimType] = oldEmail
             };
-            var updateUserResponse = await _userStore.PatchUserAsync(subjectId, changes.ToLookup(x => x.Key, x => x.Value), true);
+            var updateUserResponse = await _userStore.PatchUserAsync(user.SubjectId, changes.ToLookup(x => x.Key, x => x.Value), true);
             if(updateUserResponse.HasError)
             {
                 var patchStatus = new WebStatus(updateUserResponse.Status);
