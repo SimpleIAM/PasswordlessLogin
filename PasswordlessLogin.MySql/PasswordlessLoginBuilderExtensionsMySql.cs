@@ -10,7 +10,7 @@ namespace Microsoft.Extensions.DependencyInjection
 {
     public static class PasswordlessLoginBuilderExtensionsMySql
     {
-        public static PasswordlessLoginBuilder AddSqlServer(this PasswordlessLoginBuilder builder, 
+        public static PasswordlessLoginBuilder AddMySql(this PasswordlessLoginBuilder builder, 
             Action<DbContextOptionsBuilder> options)
         {
             builder.Services.AddDbContext<PasswordlessLoginDbContext>(options);
