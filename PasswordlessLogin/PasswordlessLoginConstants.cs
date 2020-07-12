@@ -70,7 +70,7 @@ namespace SimpleIAM.PasswordlessLogin
             public const int DefaultPbkdf2Iterations = 50000;
             public const int DefaultMinimumPasswordLength = 8;
             public const int DefaultMinimumPasswordStrengthInBits = 30;
-            public const int DefaultTempLockPaswordFailedAttemptCount = 5;
+            public const int DefaultTempLockPasswordFailedAttemptCount = 5;
             public const int DefaultTempLockPasswordMinutes = 5;
             public const int DefaultMaxUntrustedPasswordFailedAttempts = 15;
             public const int DefaultDefaultSessionLengthMinutes = 720; // 12 hours

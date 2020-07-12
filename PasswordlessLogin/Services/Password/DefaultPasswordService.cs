@@ -91,11 +91,11 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
             var checkHashResult = _passwordHashService.CheckPasswordHash(hashInfo.Hash, password);
             switch(checkHashResult)
             {
-                case CheckPaswordHashResult.DoesNotMatch:
+                case CheckPasswordHashResult.DoesNotMatch:
                     return await ProcessDoesNotMatchAndReturnAsync(uniqueIdentifier, lockMode, hashInfo.FailedAttemptCount);
-                case CheckPaswordHashResult.MatchesNeedsRehash:
+                case CheckPasswordHashResult.MatchesNeedsRehash:
                     return await ProcessMatchesNeedsRehashAndReturnAsync(uniqueIdentifier, password);
-                case CheckPaswordHashResult.Matches:
+                case CheckPasswordHashResult.Matches:
                     return await ProcessMatchesAndReturnAsync(uniqueIdentifier);
                 default:
                     // this should never happen
@@ -123,7 +123,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
             }
 
             var currentFailedAttemptCount = failedAttemptCount + 1;
-            if (currentFailedAttemptCount >= _passwordlessLoginOptions.TempLockPaswordFailedAttemptCount)
+            if (currentFailedAttemptCount >= _passwordlessLoginOptions.TempLockPasswordFailedAttemptCount)
             {
                 var lockUntil = DateTime.UtcNow.AddMinutes(_passwordlessLoginOptions.TempLockPasswordMinutes);
                 _logger.LogDebug("Locking password until {0} (UTC)", lockUntil);

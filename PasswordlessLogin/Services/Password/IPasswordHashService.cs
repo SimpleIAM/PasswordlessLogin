@@ -8,6 +8,6 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
     {
         string HashPassword(string password);
 
-        CheckPaswordHashResult CheckPasswordHash(string passwordHash, string password);
+        CheckPasswordHashResult CheckPasswordHash(string passwordHash, string password);
     }
 }

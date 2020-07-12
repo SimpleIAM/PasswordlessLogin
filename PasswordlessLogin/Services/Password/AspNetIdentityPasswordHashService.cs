@@ -107,7 +107,7 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
                 | ((uint)(buffer[offset + 3]));
         }
 
-        public virtual CheckPaswordHashResult CheckPasswordHash(string passwordHash, string password)
+        public virtual CheckPasswordHashResult CheckPasswordHash(string passwordHash, string password)
         {
             if (passwordHash == null)
             {
@@ -126,13 +126,13 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
             catch(FormatException ex)
             {
                 // the password hash is invalid
-                return CheckPaswordHashResult.DoesNotMatch;
+                return CheckPasswordHashResult.DoesNotMatch;
             }
 
             // read the format marker from the hashed password
             if (decodedHashedPassword.Length == 0)
             {
-                return CheckPaswordHashResult.DoesNotMatch;
+                return CheckPasswordHashResult.DoesNotMatch;
             }
             switch (decodedHashedPassword[0])
             {
@@ -140,11 +140,11 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
                     if (VerifyHashedPasswordV2(decodedHashedPassword, password))
                     {
                         // This is an old password hash format - the caller needs to rehash
-                        return CheckPaswordHashResult.MatchesNeedsRehash;
+                        return CheckPasswordHashResult.MatchesNeedsRehash;
                     }
                     else
                     {
-                        return CheckPaswordHashResult.DoesNotMatch;
+                        return CheckPasswordHashResult.DoesNotMatch;
                     }
 
                 case 0x01:
@@ -153,16 +153,16 @@ namespace SimpleIAM.PasswordlessLogin.Services.Password
                     {
                         // If this hasher was configured with a higher iteration count, change the entry now.
                         return (embeddedIterCount < _iterCount)
-                            ? CheckPaswordHashResult.MatchesNeedsRehash
-                            : CheckPaswordHashResult.Matches;
+                            ? CheckPasswordHashResult.MatchesNeedsRehash
+                            : CheckPasswordHashResult.Matches;
                     }
                     else
                     {
-                        return CheckPaswordHashResult.DoesNotMatch;
+                        return CheckPasswordHashResult.DoesNotMatch;
                     }
 
                 default:
-                    return CheckPaswordHashResult.DoesNotMatch; // unknown format marker
+                    return CheckPasswordHashResult.DoesNotMatch; // unknown format marker
             }
         }
 

@@ -3,7 +3,7 @@
 
 namespace SimpleIAM.PasswordlessLogin.Services.Password
 {
-    public enum CheckPaswordHashResult
+    public enum CheckPasswordHashResult
     {
         Matches,
         MatchesNeedsRehash,
