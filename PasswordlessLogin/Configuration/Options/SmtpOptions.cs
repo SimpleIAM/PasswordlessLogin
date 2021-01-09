@@ -10,5 +10,9 @@ namespace SimpleIAM.PasswordlessLogin.Configuration
         public string Username { get; set; } = "";
         public string Password { get; set; } = "";
         public bool UseSsl { get; set; } = true;
+        /// <summary>
+        /// Use the configured Username and Password to authenticate with the SMTP server, otherwise no auth is attempted (typically anonymous).
+        /// </summary>
+        public bool UseAuthentication { get; set; } = true;
     }
 }
