@@ -10,5 +10,6 @@ namespace SimpleIAM.PasswordlessLogin.Configuration
         public string Username { get; set; } = "";
         public string Password { get; set; } = "";
         public bool UseSsl { get; set; } = true;
+        public bool UseAuthentication { get; set; } = true;
     }
 }

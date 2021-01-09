@@ -59,8 +59,11 @@ namespace SimpleIAM.PasswordlessLogin.Services.Email
                 {
                     _logger.LogDebug("Connecting to {0}:{1} ({2})", _smtpOptions.Server, _smtpOptions.Port, _smtpOptions.UseSsl ? "ssl" : "not ssl");
                     await client.ConnectAsync(_smtpOptions.Server, _smtpOptions.Port, _smtpOptions.UseSsl);
-                    _logger.LogDebug("Authenticating with SMTP server");
-                    await client.AuthenticateAsync(_smtpOptions.Username, _smtpOptions.Password);
+                    if (_smtpOptions.UseAuthentication)
+                    {
+                        _logger.LogDebug("Authenticating with SMTP server");
+                        await client.AuthenticateAsync(_smtpOptions.Username, _smtpOptions.Password);
+                    }
                     _logger.LogDebug("Sending message");
                     await client.SendAsync(message);
                 }
