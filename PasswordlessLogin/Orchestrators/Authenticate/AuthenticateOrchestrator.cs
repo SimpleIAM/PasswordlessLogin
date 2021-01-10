@@ -191,7 +191,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
             var usernameIsValidEmail = EmailAddressChecker.EmailIsValid(model.Username);
             var defaultMessage = usernameIsValidEmail
                 ? _localizer["Message sent. Please check your email."]
-                : _localizer["We sent a code to the email address asociated with your account (if found). Please check your email."];
+                : _localizer["We sent a code to the email address associated with your account (if found). Please check your email."];
 
             // If the username provide is not an email address or phone number, tell the user "we sent you a code if you have an account"
             var userResponse = await _userStore.GetUserByUsernameAsync(model.Username);
@@ -442,7 +442,7 @@ namespace SimpleIAM.PasswordlessLogin.Orchestrators
 
         private async Task<WebStatus> SignInAndRedirectAsync(SignInMethod method, string username, bool? staySignedIn, string nextUrl, bool? nonceWasValid)
         {
-            _logger.LogTrace("Begining sign in and redirect logic for {0}", username);
+            _logger.LogTrace("Beginning sign in and redirect logic for {0}", username);
             /*
             Do they have a partial sign in, and this was the second credential (code + password) or (password + code) [= 2 of 3]
                 Yes, skip to SIGN IN

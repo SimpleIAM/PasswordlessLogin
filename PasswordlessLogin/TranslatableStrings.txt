@@ -80,7 +80,7 @@ User not found.
 User saved.
 Username is available.
 Username is not available.
-We sent a code to the email address asociated with your account (if found). Please check your email.
+We sent a code to the email address associated with your account (if found). Please check your email.
 You cannot change your email address again until the link to cancel the last email change (sent to your old email address) expires.
 Your one time code has expired. Please request a new one.
 Your password is temporarily locked. Use a one time code to sign in.
