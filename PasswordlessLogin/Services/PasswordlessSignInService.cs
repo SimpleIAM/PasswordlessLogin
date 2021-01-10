@@ -34,7 +34,7 @@ namespace SimpleIAM.PasswordlessLogin.Services
             {
                 userClaims.Add(new Claim("amr", method));
             }
-            var identity = new ClaimsIdentity(claims, "pwd", "name", "role");
+            var identity = new ClaimsIdentity(userClaims, "pwd", "name", "role");
             var principal = new ClaimsPrincipal(identity);
             if (_httpContext.User.Identity.IsAuthenticated && _httpContext.User.GetSubjectId() != subjectId)
             {
