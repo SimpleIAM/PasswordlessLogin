@@ -16,10 +16,11 @@ namespace SimpleIAM.PasswordlessLogin.Services.Email
             _logger = logger;
         }
 
-        public async Task<Status> SendEmailAsync(string from, string to, string subject, string body)
+        public async Task<Status> SendEmailAsync(EmailAddress from, string to, string subject, string body)
         {
             _logger.LogInformation("Sending email to log (sensitive info not redacted, use only in dev)");
-            _logger.LogInformation("From: {0}\r\nTo: {1}\r\nSubject: {2}\r\nBody:\r\n{3}", from, to, subject, body);
+            _logger.LogInformation("From: {0}\r\nTo: {1}\r\nSubject: {2}\r\nBody:\r\n{3}", from.Email, to, subject,
+                body);
             return Status.Success("Email sent.");
         }
     }

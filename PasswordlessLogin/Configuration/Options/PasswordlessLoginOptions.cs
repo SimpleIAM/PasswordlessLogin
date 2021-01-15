@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 using System.Collections.Generic;
+using SameSiteMode = Microsoft.AspNetCore.Http.SameSiteMode;
 
 namespace SimpleIAM.PasswordlessLogin.Configuration
 {
@@ -12,8 +13,6 @@ namespace SimpleIAM.PasswordlessLogin.Configuration
             Urls = new UrlOptions();
         }
 
-        public string EmailFrom { get; set; } = "from.address@not.configured";
-        public string DisplayName { get; set; } = PasswordlessLoginConstants.DefaultDisplayName;
         public string[] IdpUserClaims { get; set; } = new string[] { };
         public string IdpUserNameClaim { get; set; } = "email";
         public int DefaultSessionLengthMinutes { get; set; } = PasswordlessLoginConstants.Security.DefaultDefaultSessionLengthMinutes;
@@ -33,5 +32,8 @@ namespace SimpleIAM.PasswordlessLogin.Configuration
         public bool NonceRequiredOnUntrustedBrowser { get; set; } = true;
         public UrlOptions Urls { get; set; }
         public IDictionary<string, string> CustomProperties { get; set; }
+        public SameSiteMode CookieSameSiteMode { get; set; } = SameSiteMode.Unspecified;
+
+        public MailOptions Mail { get; set; } = new MailOptions();
     }
 }

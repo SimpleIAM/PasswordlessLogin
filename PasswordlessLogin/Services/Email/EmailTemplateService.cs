@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Options;
 
 namespace SimpleIAM.PasswordlessLogin.Services.Email
 {
@@ -18,17 +19,20 @@ namespace SimpleIAM.PasswordlessLogin.Services.Email
         private readonly IEmailService _emailService;
         private readonly EmailTemplates _templates;
         private readonly PasswordlessLoginOptions _options;
+        private MailOptions _mailOptions;
 
         public EmailTemplateService(
             ILogger<EmailTemplateService> logger, 
             IEmailService emailService, 
             EmailTemplates templates,
-            PasswordlessLoginOptions options)
+            PasswordlessLoginOptions options,
+            IOptions<MailOptions> mailOptions)
         {
             _logger = logger;
             _templates = templates;
             _emailService = emailService;
             _options = options;
+            _mailOptions = mailOptions.Value;
         }
 
         public async Task<Status> SendEmailAsync(string templateName, string to, IDictionary<string, string> fields)
@@ -45,7 +49,8 @@ namespace SimpleIAM.PasswordlessLogin.Services.Email
             }
 
             _logger.LogDebug("Merging data into email template: ", template);
-            var from = new StringBuilder(_options.EmailFrom);
+            var from = new StringBuilder(_mailOptions.FromEmail);
+            var fromDisplayName = new StringBuilder(_mailOptions.FromDisplayName);
             var subject = new StringBuilder(template.Subject);
             var body = new StringBuilder(template.Body);
             if(fields != null)
@@ -53,11 +58,12 @@ namespace SimpleIAM.PasswordlessLogin.Services.Email
                 foreach (var field in fields)
                 {
                     from = from.Replace("{{" + field.Key + "}}", field.Value);
+                    fromDisplayName= fromDisplayName.Replace("{{" + field.Key + "}}", field.Value);
                     subject = subject.Replace("{{" + field.Key + "}}", field.Value);
                     body = body.Replace("{{" + field.Key + "}}", field.Value);
                 }
             }
-            return await _emailService.SendEmailAsync(from.ToString(), to, subject.ToString(), body.ToString());
+            return await _emailService.SendEmailAsync(new EmailAddress{DisplayName = fromDisplayName.ToString(), Email = from.ToString()}, to, subject.ToString(), body.ToString());
         }
     }
 }
