@@ -26,14 +26,19 @@ namespace SimpleIAM.PasswordlessLogin.Services.Email
             _smtpOptions = smtpOptions;
         }
 
-        public async Task<Status> SendEmailAsync(string from, string to, string subject, string body)
+        public async Task<Status> SendEmailAsync(EmailAddress from, string to, string subject, string body)
         {
             _logger.LogDebug("Sending email to {0} with subject {1}", to, subject);
-            var message = new MimeMessage()
+            var message = new MimeMessage
             {                
                 Subject = subject
             };
-            message.From.Add(MailboxAddress.Parse(from));
+            var fromAddress = MailboxAddress.Parse(from.Email);
+            if (!string.IsNullOrEmpty(from.DisplayName))
+            {
+                fromAddress.Name = from.DisplayName;
+            }
+            message.From.Add(fromAddress);
             message.To.Add(MailboxAddress.Parse(to));
             if (body?.Contains("</") == true || body?.Contains("/>") == true)
             {

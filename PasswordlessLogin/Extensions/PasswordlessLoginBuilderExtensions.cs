@@ -36,10 +36,15 @@ namespace Microsoft.Extensions.DependencyInjection
 {
     public static class PasswordlessLoginBuilderExtensions
     {
-        public static PasswordlessLoginBuilder AddPasswordlessLogin(this PasswordlessLoginBuilder builder)
+        public static PasswordlessLoginBuilder AddPasswordlessLogin(this PasswordlessLoginBuilder builder, IConfiguration configuration=null)
         {
             var services = builder.Services;
             services.AddSingleton(builder.Options);
+
+            if (configuration != null)
+            {
+                services.Configure<MailOptions>(options => configuration.GetSection(PasswordlessLoginConstants.ConfigurationSections.Mail).Bind(options));
+            }
 
             services.TryAddTransient<IEventNotificationService, DefaultEventNotificationService>();
             services.TryAddTransient<IOneTimeCodeStore, DbOneTimeCodeStore>();
@@ -110,8 +115,8 @@ namespace Microsoft.Extensions.DependencyInjection
         public static PasswordlessLoginBuilder AddSmtpEmail(this PasswordlessLoginBuilder builder, IConfiguration configuration)
         {
             var smtpOptions = new SmtpOptions();
-            configuration.Bind(smtpOptions);
 
+            configuration.GetSection(PasswordlessLoginConstants.ConfigurationSections.Smtp).Bind(smtpOptions);
             return builder.AddSmtpEmail(smtpOptions);
         }
 
@@ -129,6 +134,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
                 .AddCookie(options =>
                 {
+                    options.Cookie.SameSite = builder.Options.CookieSameSiteMode;
                     options.ExpireTimeSpan = TimeSpan.FromMinutes(builder.Options.DefaultSessionLengthMinutes);
                     options.ConfigurePasswordlessAuthenticationOptions(builder.Options.Urls);
                 });
@@ -143,6 +149,7 @@ namespace Microsoft.Extensions.DependencyInjection
             options.SlidingExpiration = true;
             options.ReturnUrlParameter = "returnUrl";
 
+            //options.Cookie.SameSite = SameSiteMode.None; // we allow cookies to be sent to us with CORS request
             options.Cookie.IsEssential = true;
             options.Cookie.HttpOnly = true;
             options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
